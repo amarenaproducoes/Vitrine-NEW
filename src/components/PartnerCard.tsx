@@ -37,6 +37,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             partner_id: partner.id,
             partner_name: partner.name,
             coupon_code: partner.coupon,
+            coupon_description: partner.couponDescription,
             whatsapp: whatsapp
           }
         ]);
@@ -163,6 +164,9 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                   <CheckCircle2 size={16} className="text-[#279267]" />
                   <span className="text-[#279267] font-bold text-sm">Cupom Desbloqueado!</span>
                 </div>
+                {partner.couponDescription && (
+                  <p className="text-xs text-slate-700 font-medium mb-2">{partner.couponDescription}</p>
+                )}
                 <div className="w-full py-2.5 bg-white rounded-lg border-2 border-[#279267] mb-1 select-all shadow-sm">
                   <span className="text-lg font-mono font-black text-slate-800 tracking-wider">{partner.coupon}</span>
                 </div>

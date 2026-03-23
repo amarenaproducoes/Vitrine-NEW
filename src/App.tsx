@@ -25,15 +25,27 @@ const ScrollToTop = () => {
         if ('scrollRestoration' in window.history) {
             window.history.scrollRestoration = 'manual';
         }
+        
+        const forceScrollToTop = () => {
+            window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+            document.documentElement.scrollTop = 0;
+            document.body.scrollTop = 0;
+        };
+
         if (!hash) {
-            window.scrollTo(0, 0); 
-            setTimeout(() => window.scrollTo(0, 0), 100);
+            forceScrollToTop(); 
+            // Múltiplas tentativas para garantir que o navegador móvel obedeça após renderizar
+            requestAnimationFrame(() => {
+                forceScrollToTop();
+                setTimeout(forceScrollToTop, 50);
+                setTimeout(forceScrollToTop, 300);
+            });
         } else {
             const id = hash.replace('#', '');
             const element = document.getElementById(id);
             if (element) {
                 element.scrollIntoView({ behavior: 'smooth' });
-                setTimeout(() => element.scrollIntoView({ behavior: 'smooth' }), 100);
+                setTimeout(() => element.scrollIntoView({ behavior: 'smooth' }), 300);
             }
         }
     }, [pathname, hash]);
@@ -158,7 +170,7 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
 };
 
 const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: string | null, setCommercialBanner: React.Dispatch<React.SetStateAction<string | null>> }) => {
-    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '' });
+    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '' });
     const [editingId, setEditingId] = useState<string | null>(null);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -221,7 +233,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         image_url: finalImageUrl,
                         link: formData.link,
                         whatsapp_link: formData.whatsappLink || null,
-                        coupon: formData.coupon || null
+                        coupon: formData.coupon || null,
+                        coupon_description: formData.couponDescription || null
                     })
                     .eq('id', editingId);
 
@@ -241,7 +254,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         image_url: finalImageUrl,
                         link: formData.link,
                         whatsapp_link: formData.whatsappLink || null,
-                        coupon: formData.coupon || null
+                        coupon: formData.coupon || null,
+                        coupon_description: formData.couponDescription || null
                     }])
                     .select()
                     .single();
@@ -262,7 +276,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     const resetForm = () => {
-        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '' });
+        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '' });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -278,7 +292,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             imageFile: null,
             link: partner.link,
             whatsappLink: partner.whatsappLink || '',
-            coupon: partner.coupon || ''
+            coupon: partner.coupon || '',
+            couponDescription: partner.couponDescription || ''
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -457,6 +472,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             <input required type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
                             <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do WhatsApp (wa.me/...)" value={formData.whatsappLink} onChange={e => setFormData({...formData, whatsappLink: e.target.value})} />
                             <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Cupom de Desconto (Opcional)" value={formData.coupon} onChange={e => setFormData({...formData, coupon: e.target.value})} />
+                            <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="O que o cliente ganha com o cupom? (Opcional)" value={formData.couponDescription} onChange={e => setFormData({...formData, couponDescription: e.target.value})} />
                             
                             <div className="space-y-2">
                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Foto do Anunciante</label>
@@ -623,7 +639,8 @@ const App = () => {
                     imageUrl: p.image_url,
                     link: p.link,
                     whatsappLink: p.whatsapp_link,
-                    coupon: p.coupon
+                    coupon: p.coupon,
+                    couponDescription: p.coupon_description
                 }));
                 setPartners(formattedPartners);
             }

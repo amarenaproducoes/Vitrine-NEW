@@ -14,6 +14,7 @@ export interface Partner {
   link: string;
   whatsappLink?: string;
   coupon?: string;
+  couponDescription?: string;
 }
 
 export interface Lead {
