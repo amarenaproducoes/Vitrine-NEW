@@ -1,0 +1,672 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
+import { HashRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
+import { 
+    Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
+    Filter, Info, ArrowRight, Zap, Edit2, Upload, X
+} from 'lucide-react';
+
+import Header from './components/Header';
+import Footer from './components/Footer';
+import PartnerCard from './components/PartnerCard';
+import LeadForm from './components/LeadForm';
+import AdminMessagesPage from './components/AdminMessagesPage';
+import { CATEGORIES } from './constants';
+import { Partner, Category } from './types';
+import { supabase } from './lib/supabase';
+
+const ScrollToTop = () => {
+    const { pathname, hash } = useLocation();
+    useEffect(() => { 
+        if ('scrollRestoration' in window.history) {
+            window.history.scrollRestoration = 'manual';
+        }
+        if (!hash) {
+            window.scrollTo(0, 0); 
+            setTimeout(() => window.scrollTo(0, 0), 100);
+        } else {
+            const id = hash.replace('#', '');
+            const element = document.getElementById(id);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+                setTimeout(() => element.scrollIntoView({ behavior: 'smooth' }), 100);
+            }
+        }
+    }, [pathname, hash]);
+    return null;
+};
+
+const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
+    const isTop = position === 'top';
+    const adMessages = [
+        "📢 ANUNCIE AQUI! SUA MARCA VISTA POR MILHARES DIARIAMENTE",
+        "🚀 IMPULSIONE SEU NEGÓCIO NO NOSSO CIRCUITO DE TVs",
+        "✨ APAREÇA AÍ POR AQUI • O MELHOR ESPAÇO PUBLICITÁRIO DA REGIÃO",
+        "💰 PREÇOS ESPECIAIS PARA NOVOS ANUNCIANTES • CONSULTE-NOS",
+        "📺 SUA MARCA EM DESTAQUE EM ESTABELECIMENTOS DE ALTO FLUXO"
+    ];
+
+    return (
+        <div className={`block w-full overflow-hidden relative py-1.5 ${isTop ? 'bg-[#c54b4b]' : 'bg-slate-900'} border-y ${isTop ? 'border-[#b13b3b]' : 'border-slate-800'} z-40`}>
+            <div className="flex whitespace-nowrap overflow-hidden">
+                <div className="animate-marquee flex items-center">
+                    {[...adMessages, ...adMessages].map((msg, i) => (
+                        <div key={i} className="flex items-center mx-12 text-white font-black uppercase italic tracking-tighter text-sm md:text-lg">
+                            <Zap className="mr-4 w-5 h-5 text-yellow-300 animate-pulse" />
+                            <span>{msg}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+const LandingPage = ({ partners, categories, commercialBanner }: { partners: Partner[], categories: Category[], commercialBanner: string | null }) => {
+    const [activeCategory, setActiveCategory] = useState("Todos");
+    const filteredPartners = activeCategory === "Todos" ? partners : partners.filter(p => p.category === activeCategory);
+    
+    return (
+        <main className="flex-grow">
+            {commercialBanner && (
+                <div className="w-full block bg-slate-900 border-b border-slate-800">
+                    <img src={commercialBanner} alt="Banner Publicitário" className="w-full h-auto block" />
+                </div>
+            )}
+            <section id="vitrine" className="relative overflow-hidden bg-slate-900 pt-16 pb-24 md:pt-24 md:pb-32">
+                <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-[#279267]/10 rounded-full blur-[120px]"></div>
+                <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c54b4b]/10 rounded-full blur-[120px]"></div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+                    <div className="inline-flex items-center space-x-2 bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-full text-[#279267] text-xs font-bold uppercase tracking-widest mb-8 border border-slate-700/50"><Sparkles size={14} /><span>Sua marca em todo lugar</span></div>
+                    <h1 className="text-4xl md:text-7xl font-black text-white mb-6 leading-tight">Vitrine <span className="text-[#279267] italic">Exclusiva</span></h1>
+                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-medium">Confira abaixo nossos parceiros que já estão brilhando nas telas do nosso circuito de divulgação.</p>
+                </div>
+            </section>
+
+            <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center space-x-2 whitespace-nowrap">
+                    <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
+                    {['Todos', ...categories.map(c => c.name)].map(cat => (
+                        <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
+                    ))}
+                </div>
+            </section>
+
+            <section className="py-20 bg-gray-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        {filteredPartners.length > 0 ? filteredPartners.map((partner) => (<PartnerCard key={partner.id} partner={partner} />)) : (
+                            <div className="col-span-full py-20 text-center">
+                                <div className="text-slate-300 mb-4 flex justify-center"><Store size={64} strokeWidth={1} /></div>
+                                <h3 className="text-xl font-bold text-slate-400">Nenhum parceiro nesta categoria ainda.</h3>
+                                <a href="#anuncie" className="text-[#279267] font-bold mt-2 inline-block hover:underline">Seja o primeiro a anunciar aqui!</a>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
+
+            <section id="anuncie" className="py-24 bg-white border-t border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:flex lg:items-center lg:gap-16">
+                    <div className="lg:w-1/2 mb-16 lg:mb-0">
+                        <div className="inline-flex items-center space-x-2 text-[#c54b4b] font-bold text-xs uppercase tracking-widest mb-4">
+                            <Megaphone size={14} /> <span>Impulsione seu negócio</span>
+                        </div>
+                        <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-8 leading-tight">Sua marca <span className="text-[#279267]">aparecendo</span> nos melhores lugares.</h2>
+                        <p className="text-slate-600 text-lg leading-relaxed mb-8">Nossa rede de TVs inteligentes em comércios e veículos de aplicativos garante visibilidade máxima para quem realmente importa: o seu cliente local.</p>
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[#279267] font-black text-2xl mb-1">10k+</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase">Visualizações/mês</p>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[#279267] font-black text-2xl mb-1">100%</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase">Foco Regional</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="lg:w-1/2">
+                        <LeadForm type="anunciante" title="Quero Anunciar" subtitle="Preencha os dados e nossa equipe entrará em contato com uma proposta exclusiva." />
+                    </div>
+                </div>
+            </section>
+
+            <section id="parceria" className="py-24 bg-slate-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-16">
+                    <h2 className="text-4xl font-black text-slate-900 mb-4">Seja nosso parceiro estratégico</h2>
+                    <p className="text-slate-600 max-w-2xl mx-auto">Temos oportunidades para quem deseja monetizar seu veículo ou seu estabelecimento comercial.</p>
+                </div>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="grid md:grid-cols-2 gap-12">
+                        <LeadForm type="motorista" title="Motorista de App" subtitle="Renda extra instalando nossas telas inteligentes em seu veículo. Simples e rentável." />
+                        <LeadForm type="comerciante" title="Comerciante" subtitle="Transforme o tempo de espera dos seus clientes em entretenimento e lucro extra." />
+                    </div>
+                </div>
+            </section>
+
+            <section id="contato" className="py-24 bg-white border-t border-slate-100">
+                <div className="max-w-3xl mx-auto px-4">
+                    <LeadForm type="contato" title="Fale Conosco" subtitle="Dúvidas, sugestões ou suporte? Estamos prontos para te atender via WhatsApp." />
+                </div>
+            </section>
+        </main>
+    );
+};
+
+const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: string | null, setCommercialBanner: React.Dispatch<React.SetStateAction<string | null>> }) => {
+    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '' });
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [deleteConfirm, setDeleteConfirm] = useState<{type: 'partner' | 'category' | 'banner', id: string} | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const previewUrl = URL.createObjectURL(file);
+            setFormData(prev => ({ ...prev, imageUrl: previewUrl, imageFile: file }));
+        }
+    };
+
+    const handleAddOrUpdate = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!formData.imageUrl && !formData.imageFile) {
+            alert("Por favor, selecione uma imagem para o parceiro.");
+            return;
+        }
+
+        setIsSubmitting(true);
+
+        try {
+            let finalImageUrl = formData.imageUrl;
+
+            if (formData.imageFile) {
+                const fileExt = formData.imageFile.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from('partners')
+                    .upload(fileName, formData.imageFile, {
+                        cacheControl: '3600',
+                        upsert: false
+                    });
+
+                if (uploadError) {
+                    console.error('Upload error:', uploadError);
+                    throw new Error('Erro ao fazer upload da imagem. Verifique se o bucket "partners" existe e é público.');
+                }
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('partners')
+                    .getPublicUrl(fileName);
+
+                finalImageUrl = publicUrl;
+            }
+
+            if (editingId) {
+                const { error } = await supabase
+                    .from('partners')
+                    .update({
+                        name: formData.name,
+                        category: formData.category,
+                        activity: formData.activity,
+                        description: formData.description,
+                        address: formData.address,
+                        image_url: finalImageUrl,
+                        link: formData.link,
+                        whatsapp_link: formData.whatsappLink || null,
+                        coupon: formData.coupon || null
+                    })
+                    .eq('id', editingId);
+
+                if (error) throw error;
+                
+                setPartners(prev => prev.map(p => p.id === editingId ? { ...formData, imageUrl: finalImageUrl, id: editingId } : p));
+                alert("Parceiro atualizado com sucesso!");
+            } else {
+                const { data, error } = await supabase
+                    .from('partners')
+                    .insert([{
+                        name: formData.name,
+                        category: formData.category,
+                        activity: formData.activity,
+                        description: formData.description,
+                        address: formData.address,
+                        image_url: finalImageUrl,
+                        link: formData.link,
+                        whatsapp_link: formData.whatsappLink || null,
+                        coupon: formData.coupon || null
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                
+                const newPartner: Partner = { ...formData, imageUrl: finalImageUrl, id: data.id };
+                setPartners([newPartner, ...partners]);
+                alert("Parceiro adicionado com sucesso!");
+            }
+            resetForm();
+        } catch (error: any) {
+            console.error('Error saving partner:', error);
+            alert(error.message || 'Erro ao salvar parceiro. Tente novamente.');
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const resetForm = () => {
+        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '' });
+        setEditingId(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleEdit = (partner: Partner) => {
+        setFormData({
+            name: partner.name,
+            category: partner.category,
+            activity: partner.activity,
+            description: partner.description,
+            address: partner.address,
+            imageUrl: partner.imageUrl,
+            imageFile: null,
+            link: partner.link,
+            whatsappLink: partner.whatsappLink || '',
+            coupon: partner.coupon || ''
+        });
+        setEditingId(partner.id);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    
+    const handleRemove = (id: string) => { 
+        setDeleteConfirm({ type: 'partner', id });
+    };
+
+    const handleAddCategory = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newCategoryName.trim()) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('categories')
+                .insert([{ name: newCategoryName.trim() }])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setCategories([...categories, data]);
+            setNewCategoryName('');
+            if (!formData.category) {
+                setFormData(prev => ({ ...prev, category: data.name }));
+            }
+            alert("Categoria adicionada com sucesso!");
+        } catch (error) {
+            console.error('Error adding category:', error);
+            alert('Erro ao adicionar categoria. Pode já existir.');
+        }
+    };
+
+    const handleRemoveCategory = (id: string) => {
+        setDeleteConfirm({ type: 'category', id });
+    };
+
+    const executeDelete = async () => {
+        if (!deleteConfirm) return;
+        
+        if (deleteConfirm.type === 'partner') {
+            try {
+                const { error } = await supabase.from('partners').delete().eq('id', deleteConfirm.id);
+                if (error) throw error;
+                setPartners(partners.filter(p => p.id !== deleteConfirm.id)); 
+                if (editingId === deleteConfirm.id) resetForm();
+            } catch (error) {
+                console.error('Error deleting partner:', error);
+            }
+        } else if (deleteConfirm.type === 'category') {
+            try {
+                const { error } = await supabase.from('categories').delete().eq('id', deleteConfirm.id);
+                if (error) throw error;
+                setCategories(categories.filter(c => c.id !== deleteConfirm.id));
+            } catch (error) {
+                console.error('Error deleting category:', error);
+            }
+        } else if (deleteConfirm.type === 'banner') {
+            try {
+                const { error } = await supabase
+                    .from('commercial_banner')
+                    .delete()
+                    .eq('id', 1);
+                    
+                if (error) throw error;
+                
+                setCommercialBanner(null);
+            } catch (error) {
+                console.error('Error removing banner:', error);
+            }
+        }
+        setDeleteConfirm(null);
+    };
+
+    const handleUploadBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            const fileExt = file.name.split('.').pop();
+            const fileName = `banner_${Date.now()}.${fileExt}`;
+            
+            const { error: uploadError } = await supabase.storage
+                .from('banners')
+                .upload(fileName, file, {
+                    cacheControl: '3600',
+                    upsert: true
+                });
+
+            if (uploadError) {
+                console.error('Upload error:', uploadError);
+                throw new Error('Erro ao fazer upload do banner. Verifique se o bucket "banners" existe.');
+            }
+
+            const { data: { publicUrl } } = supabase.storage
+                .from('banners')
+                .getPublicUrl(fileName);
+
+            const { error: dbError } = await supabase
+                .from('commercial_banner')
+                .upsert({ id: 1, image_url: publicUrl });
+
+            if (dbError) throw dbError;
+
+            setCommercialBanner(publicUrl);
+            alert("Banner atualizado com sucesso!");
+        } catch (error: any) {
+            console.error('Error uploading banner:', error);
+            alert(error.message || 'Erro ao salvar banner. Tente novamente.');
+        }
+    };
+
+    const handleRemoveBanner = () => {
+        setDeleteConfirm({ type: 'banner', id: '1' });
+    };
+
+    return (
+        <div className="max-w-7xl mx-auto px-4 py-16">
+            <div className="flex items-center space-x-3 mb-10">
+                <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl">
+                    {editingId ? <Edit2 size={32} /> : <Plus size={32} />}
+                </div>
+                <h1 className="text-4xl font-black text-slate-900">
+                    {editingId ? "Editar Anunciante" : "Gerenciamento de Vitrine"}
+                </h1>
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
+                <h2 className="text-2xl font-black text-slate-900 mb-4">Banner Publicitário Principal</h2>
+                <p className="text-slate-500 mb-6">Adicione um banner de destaque que será exibido logo abaixo da faixa vermelha na página inicial. Apenas 1 imagem é permitida por vez.</p>
+                
+                {commercialBanner ? (
+                    <div className="space-y-4">
+                        <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex justify-center">
+                            <img src={commercialBanner} alt="Banner Atual" className="max-w-full h-auto rounded-lg shadow-sm" style={{ maxHeight: '150px' }} />
+                        </div>
+                        <button onClick={handleRemoveBanner} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
+                            Remover Banner Atual
+                        </button>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative">
+                            <input type="file" accept="image/*" onChange={handleUploadBanner} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                            <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                            <p className="text-slate-600 font-medium">Clique ou arraste uma imagem aqui</p>
+                            <p className="text-[#c54b4b] font-bold mt-2 text-sm">Formato obrigatório: 2275 x 281 Pixels</p>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                <div className="lg:col-span-1">
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 sticky top-28">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-black flex items-center text-[#279267]">
+                                {editingId ? "Alterar Dados" : "Novo Parceiro"}
+                            </h2>
+                            {editingId && (
+                                <button onClick={resetForm} className="text-slate-400 hover:text-red-500 transition-colors">
+                                    <X size={20} />
+                                </button>
+                            )}
+                        </div>
+                        <form onSubmit={handleAddOrUpdate} className="space-y-4">
+                            <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Nome da Empresa" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                            <select required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                {categories.length === 0 && <option value="">Nenhuma categoria cadastrada</option>}
+                                {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
+                            </select>
+                            <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Atividade (Ex: Pizzaria)" value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
+                            <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Endereço" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                            <textarea rows={2} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                            <input required type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
+                            <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do WhatsApp (wa.me/...)" value={formData.whatsappLink} onChange={e => setFormData({...formData, whatsappLink: e.target.value})} />
+                            <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Cupom de Desconto (Opcional)" value={formData.coupon} onChange={e => setFormData({...formData, coupon: e.target.value})} />
+                            
+                            <div className="space-y-2">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Foto do Anunciante</label>
+                                <div 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden aspect-video bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
+                                >
+                                    {formData.imageUrl ? (
+                                        <>
+                                            <img src={formData.imageUrl} alt="Preview" referrerPolicy="no-referrer" className="w-full h-full object-cover bg-white" />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                <Upload className="text-white" size={32} />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center p-4">
+                                            <Upload className="mx-auto text-slate-300 mb-2" size={32} />
+                                            <p className="text-xs font-bold text-slate-400">Clique para fazer upload</p>
+                                        </div>
+                                    )}
+                                </div>
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    className="hidden" 
+                                    accept="image/*" 
+                                    onChange={handleFileChange} 
+                                />
+                            </div>
+
+                            <button disabled={isSubmitting} className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-[#279267] transition-all flex items-center justify-center space-x-2 shadow-lg active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
+                                {isSubmitting ? (
+                                    <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                ) : (
+                                    <>
+                                        {editingId ? <Edit2 size={20} /> : <Plus size={20} />}
+                                        <span>{editingId ? "Salvar Alterações" : "Cadastrar na Vitrine"}</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="bg-[#279267]/5 border border-[#279267]/10 p-4 rounded-2xl flex items-center space-x-3 text-[#279267] text-sm mb-6">
+                        <Info size={18} />
+                        <p><strong>Gestão de Anunciantes:</strong> Clique no ícone de lápis para editar ou na lixeira para remover permanentemente.</p>
+                    </div>
+
+                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 mb-8">
+                        <h3 className="text-lg font-bold text-slate-900 mb-4">Gerenciar Categorias</h3>
+                        <form onSubmit={handleAddCategory} className="flex gap-2 mb-4">
+                            <input 
+                                type="text" 
+                                className="flex-grow px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
+                                placeholder="Nova Categoria" 
+                                value={newCategoryName} 
+                                onChange={e => setNewCategoryName(e.target.value)} 
+                            />
+                            <button type="submit" className="bg-slate-900 text-white px-4 py-2 rounded-xl font-bold hover:bg-[#279267] transition-colors">
+                                Adicionar
+                            </button>
+                        </form>
+                        <div className="flex flex-wrap gap-2">
+                            {categories.map(c => (
+                                <div key={c.id} className="inline-flex items-center bg-slate-50 border border-slate-200 px-3 py-1 rounded-full text-sm font-medium text-slate-700">
+                                    {c.name}
+                                    <button onClick={() => handleRemoveCategory(c.id)} className="ml-2 text-slate-400 hover:text-red-500">
+                                        <X size={14} />
+                                    </button>
+                                </div>
+                            ))}
+                            {categories.length === 0 && <span className="text-sm text-slate-400">Nenhuma categoria cadastrada.</span>}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {partners.map(p => (
+                            <div key={p.id} className={`bg-white p-4 rounded-2xl shadow-sm border transition-all flex items-center space-x-4 ${editingId === p.id ? 'border-[#279267] ring-2 ring-green-100 ring-offset-2' : 'border-slate-100'}`}>
+                                <img src={p.imageUrl} alt={p.name} referrerPolicy="no-referrer" className="w-16 h-16 rounded-xl object-cover shadow-inner bg-white" />
+                                <div className="flex-grow min-w-0">
+                                    <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
+                                    <p className="text-[10px] font-black text-[#279267] uppercase">{p.category}</p>
+                                </div>
+                                <div className="flex space-x-1">
+                                    <button 
+                                        onClick={() => handleEdit(p)} 
+                                        className={`p-3 rounded-xl transition-all ${editingId === p.id ? 'text-[#279267] bg-green-50' : 'text-slate-300 hover:text-[#279267] hover:bg-green-50'}`}
+                                        title="Editar parceiro"
+                                    >
+                                        <Edit2 size={18} />
+                                    </button>
+                                    <button 
+                                        onClick={() => handleRemove(p.id)} 
+                                        className="p-3 text-slate-300 hover:text-[#c54b4b] hover:bg-red-50 rounded-xl transition-all" 
+                                        title="Excluir parceiro"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {deleteConfirm && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-bold text-slate-900 mb-2">Confirmar Exclusão</h3>
+                        <p className="text-slate-600 mb-6">
+                            Tem certeza que deseja remover {deleteConfirm.type === 'partner' ? 'este parceiro' : deleteConfirm.type === 'category' ? 'esta categoria' : 'o banner atual'}? Esta ação não pode ser desfeita.
+                        </p>
+                        <div className="flex space-x-3">
+                            <button 
+                                onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button 
+                                onClick={executeDelete}
+                                className="flex-1 px-4 py-2 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors"
+                            >
+                                Excluir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const App = () => {
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [commercialBanner, setCommercialBanner] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const fetchData = async () => {
+        try {
+            const [partnersRes, categoriesRes, bannerRes] = await Promise.all([
+                supabase.from('partners').select('*').order('created_at', { ascending: false }),
+                supabase.from('categories').select('*').order('name', { ascending: true }),
+                supabase.from('commercial_banner').select('*').eq('id', 1).maybeSingle()
+            ]);
+
+            if (partnersRes.error) throw partnersRes.error;
+            if (categoriesRes.error) throw categoriesRes.error;
+
+            if (partnersRes.data) {
+                const formattedPartners: Partner[] = partnersRes.data.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    category: p.category,
+                    activity: p.activity,
+                    description: p.description,
+                    address: p.address,
+                    imageUrl: p.image_url,
+                    link: p.link,
+                    whatsappLink: p.whatsapp_link,
+                    coupon: p.coupon
+                }));
+                setPartners(formattedPartners);
+            }
+
+            if (categoriesRes.data) {
+                setCategories(categoriesRes.data);
+            }
+
+            if (bannerRes.data) {
+                setCommercialBanner(bannerRes.data.image_url);
+            }
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <div className="w-12 h-12 border-4 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    return (
+        <Router>
+            <ScrollToTop />
+            <div className="min-h-screen flex flex-col bg-gray-50 pt-20">
+                <Header />
+                <CommercialBanner position="top" />
+                <Routes>
+                    <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} />} />
+                    <Route path="/admin" element={<AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} />} />
+                    <Route path="/admin-mensagens" element={<AdminMessagesPage />} />
+                    <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} />} />
+                </Routes>
+                <Footer />
+                <CommercialBanner position="bottom" />
+            </div>
+        </Router>
+    );
+};
+
+export default App;

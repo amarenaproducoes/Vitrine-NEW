@@ -1,0 +1,7 @@
+{
+  "name": "Vitrine - Aparece aí por aqui",
+  "description": "Uma vitrine digital responsiva para exibição de parceiros e captação de novos anunciantes através de QR Codes em pontos estratégicos.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
