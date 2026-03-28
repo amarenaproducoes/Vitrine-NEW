@@ -31,7 +31,8 @@ const AdminMessagesPage = () => {
                     type: l.type,
                     message: l.message,
                     created_at: l.created_at,
-                    contacted: l.contacted
+                    contacted: l.contacted,
+                    ip_address: l.ip_address
                 }));
                 setLeads(formattedLeads);
             }
@@ -123,6 +124,7 @@ const AdminMessagesPage = () => {
                                     <th className="p-4 font-bold">Nome</th>
                                     <th className="p-4 font-bold">WhatsApp</th>
                                     <th className="p-4 font-bold">Tipo</th>
+                                    <th className="p-4 font-bold">IP</th>
                                     <th className="p-4 font-bold">Mensagem / Empresa</th>
                                     <th className="p-4 font-bold text-center">Status</th>
                                 </tr>
@@ -161,6 +163,9 @@ const AdminMessagesPage = () => {
                                                 <Tag size={12} className="mr-1" />
                                                 {lead.type}
                                             </span>
+                                        </td>
+                                        <td className="p-4 text-slate-500 text-[10px] font-mono">
+                                            {lead.ip_address || '-'}
                                         </td>
                                         <td className="p-4 text-slate-600 text-sm max-w-xs truncate" title={lead.message || '-'}>
                                             {lead.message || <span className="text-slate-400 italic">Sem mensagem</span>}

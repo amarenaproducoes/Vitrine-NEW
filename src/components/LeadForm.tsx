@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { getUserIP } from '../lib/ip';
 
 interface LeadFormProps {
   type: 'anunciante' | 'motorista' | 'comerciante' | 'contato';
@@ -36,6 +37,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
     setStatus('loading');
     
     try {
+      const ip = await getUserIP();
       const { error } = await supabase
         .from('leads')
         .insert([
@@ -43,7 +45,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             full_name: formData.fullName,
             whatsapp: formData.whatsapp,
             type: type,
-            message: formData.message || null
+            message: formData.message || null,
+            ip_address: ip
           }
         ]);
 

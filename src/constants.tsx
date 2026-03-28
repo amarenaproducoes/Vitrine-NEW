@@ -27,7 +27,9 @@ export const PARTNERS_MOCK: Partner[] = [
     address: 'Av. das Flores, 123 - Centro',
     imageUrl: 'https://picsum.photos/seed/pizza/800/600',
     link: 'https://instagram.com',
-    coupon: 'BELLA10'
+    coupon: 'BELLA10',
+    isAuthorized: true,
+    orderIndex: 1
   },
   {
     id: '2',
@@ -37,7 +39,9 @@ export const PARTNERS_MOCK: Partner[] = [
     description: 'Especialistas em injeção eletrônica e manutenção preventiva para seu veículo.',
     address: 'Rua dos Motores, 45 - Industrial',
     imageUrl: 'https://picsum.photos/seed/car/800/600',
-    link: 'https://google.com'
+    link: 'https://google.com',
+    isAuthorized: true,
+    orderIndex: 2
   },
   {
     id: '3',
@@ -47,12 +51,15 @@ export const PARTNERS_MOCK: Partner[] = [
     description: 'Tendências da moda masculina e feminina com preços que cabem no seu bolso.',
     address: 'Shopping Norte, Loja 12 - Piso 2',
     imageUrl: 'https://picsum.photos/seed/fashion/800/600',
-    link: 'https://whatsapp.com'
+    link: 'https://whatsapp.com',
+    isAuthorized: true,
+    orderIndex: 3
   }
 ];
 
 export const NAV_LINKS = [
   { label: 'Vitrine', path: '/#vitrine' },
+  { label: 'Sobre Nós', path: '/sobre-nos' },
   { label: 'Anuncie Aqui', path: '/#anuncie' },
   { label: 'Seja Parceiro', path: '/#parceria' },
   { label: 'Contato', path: '/#contato' },

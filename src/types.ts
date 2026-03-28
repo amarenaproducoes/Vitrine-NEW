@@ -15,6 +15,23 @@ export interface Partner {
   whatsappLink?: string;
   coupon?: string;
   couponDescription?: string;
+  isAuthorized: boolean;
+  orderIndex: number;
+}
+
+export interface SuccessCase {
+  id: string;
+  companyName: string;
+  description: string;
+  logoUrl: string;
+  storeImageUrl: string;
+  created_at?: string;
+}
+
+export interface AboutConfig {
+  id: number;
+  history: string;
+  logoUrl: string | null;
 }
 
 export interface Lead {
@@ -25,6 +42,7 @@ export interface Lead {
   message?: string;
   created_at: string;
   contacted?: boolean;
+  ip_address?: string;
 }
 
 export interface BrandTheme {

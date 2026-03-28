@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2 } from 'lucide-react';
+import { motion } from 'motion/react';
+import * as htmlToImage from 'html-to-image';
 import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
+import { getUserIP } from '../lib/ip';
 
 interface PartnerCardProps {
   partner: Partner;
@@ -23,13 +26,42 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>('hidden');
   const [whatsapp, setWhatsapp] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const couponRef = useRef<HTMLDivElement>(null);
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}`;
+
+  const expirationDate = new Date();
+  expirationDate.setDate(expirationDate.getDate() + 7);
+  const formattedDate = expirationDate.toLocaleDateString('pt-BR');
+
+  useEffect(() => {
+    if (unlockStep === 'unlocked' && couponRef.current) {
+      const timer = setTimeout(async () => {
+        try {
+          const dataUrl = await htmlToImage.toPng(couponRef.current!, {
+            backgroundColor: '#f0fdf4', // matches bg-green-50/50
+            pixelRatio: 2,
+            cacheBust: true,
+            skipFonts: true // Disable font embedding to avoid CORS issues with external stylesheets
+          });
+          
+          const link = document.createElement('a');
+          link.href = dataUrl;
+          link.download = `cupom-${partner.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+          link.click();
+        } catch (err) {
+          console.error('Error generating coupon image:', err);
+        }
+      }, 800); // slightly longer delay to ensure styles are fully applied
+      return () => clearTimeout(timer);
+    }
+  }, [unlockStep, partner.name]);
 
   const handleUnlock = async () => {
     if (whatsapp.replace(/\D/g, '').length < 10) return;
     
     setIsUnlocking(true);
     try {
+      const ip = await getUserIP();
       const { error } = await supabase
         .from('unlocked_coupons')
         .insert([
@@ -38,7 +70,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             partner_name: partner.name,
             coupon_code: partner.coupon,
             coupon_description: partner.couponDescription,
-            whatsapp: whatsapp
+            whatsapp: whatsapp,
+            ip_address: ip
           }
         ]);
 
@@ -54,15 +87,37 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
 
   const trackClick = async (destination: 'instagram' | 'whatsapp') => {
     try {
+      const ip = await getUserIP();
       await supabase.from('partner_clicks').insert([
         {
           partner_id: partner.id,
           partner_name: partner.name,
-          destination: destination
+          destination: destination,
+          ip_address: ip
         }
       ]);
     } catch (error) {
       console.error('Error tracking click:', error);
+    }
+  };
+
+  const handleShare = async () => {
+    const shareText = `Confira os descontos de ${partner.name} no Aparece aí por aqui!`;
+    const shareUrl = window.location.origin;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: partner.name,
+          text: shareText,
+          url: shareUrl,
+        });
+      } catch (err) {
+        console.error('Error sharing:', err);
+      }
+    } else {
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+      window.open(whatsappUrl, '_blank');
     }
   };
 
@@ -80,6 +135,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             {partner.category}
           </span>
         </div>
+        <button 
+          onClick={handleShare}
+          className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full text-slate-600 hover:text-[#279267] shadow-lg transition-colors z-10"
+          title="Compartilhar"
+        >
+          <Share2 size={16} />
+        </button>
       </div>
       
       <div className="p-6 flex-grow flex flex-col">
@@ -112,7 +174,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
         </p>
         
         {partner.coupon && (
-          <div className="mb-6 border-2 border-dashed border-[#279267]/30 rounded-xl p-4 bg-green-50/50 relative overflow-hidden">
+          <div ref={couponRef} className="mb-6 border-2 border-dashed border-[#279267]/30 rounded-xl p-4 bg-green-50/50 relative overflow-hidden">
             {unlockStep === 'hidden' && (
               <div className="flex flex-col items-center text-center">
                 <div className="flex items-center space-x-2 mb-2">
@@ -159,11 +221,26 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
               </div>
             )}
             {unlockStep === 'unlocked' && (
-              <div className="flex flex-col items-center text-center animate-in zoom-in duration-300">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 260,
+                  damping: 20 
+                }}
+                className="flex flex-col items-center text-center"
+              >
                 <div className="flex items-center space-x-1 mb-2">
                   <CheckCircle2 size={16} className="text-[#279267]" />
                   <span className="text-[#279267] font-bold text-sm">Cupom Desbloqueado!</span>
                 </div>
+                
+                <div className="flex items-center space-x-1 mb-3 px-3 py-1 bg-white rounded-full border border-slate-200 shadow-sm">
+                  <Phone size={10} className="text-slate-400" />
+                  <span className="text-[10px] font-bold text-slate-600">{whatsapp}</span>
+                </div>
+
                 {partner.couponDescription && (
                   <p className="text-xs text-slate-700 font-medium mb-2">{partner.couponDescription}</p>
                 )}
@@ -171,7 +248,10 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                   <span className="text-lg font-mono font-black text-slate-800 tracking-wider">{partner.coupon}</span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-medium">Apresente este código no estabelecimento</span>
-              </div>
+                <p className="text-[9px] text-slate-400 mt-1 leading-tight">
+                  Este cupom é válido por 07 dias. Apresente até o dia <span className="font-bold">{formattedDate}</span> e garanta o seu brinde.
+                </p>
+              </motion.div>
             )}
           </div>
         )}
