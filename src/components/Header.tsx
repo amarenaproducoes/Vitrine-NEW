@@ -3,7 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { Menu, X, Megaphone } from 'lucide-react';
 import { NAV_LINKS } from '../constants';
 
-const Header: React.FC = () => {
+interface HeaderProps {
+  headerLogo?: string | null;
+}
+
+const Header: React.FC<HeaderProps> = ({ headerLogo }) => {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
 
@@ -18,19 +22,25 @@ const Header: React.FC = () => {
   return (
     <nav className="fixed top-0 w-full z-50 bg-slate-900 border-b border-slate-800 backdrop-blur-md bg-opacity-90">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-20 items-center">
+        <div className="flex justify-between h-24 items-center">
           <Link to="/" className="flex items-center space-x-3">
-            <div className="bg-[#279267] p-2 rounded-lg">
-              <Megaphone className="text-white w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[#279267] font-extrabold text-xl tracking-tight leading-none block uppercase">
-                Aparece aí
-              </span>
-              <span className="text-[#c54b4b] text-xs font-bold tracking-widest uppercase">
-                por aqui
-              </span>
-            </div>
+            {headerLogo ? (
+              <img src={headerLogo} alt="Aparece aí por aqui" className="h-[90px] w-auto object-contain py-2" />
+            ) : (
+              <>
+                <div className="bg-[#279267] p-2 rounded-lg">
+                  <Megaphone className="text-white w-6 h-6" />
+                </div>
+                <div>
+                  <span className="text-[#279267] font-extrabold text-xl tracking-tight leading-none block uppercase">
+                    Aparece aí
+                  </span>
+                  <span className="text-[#c54b4b] text-xs font-bold tracking-widest uppercase">
+                    por aqui
+                  </span>
+                </div>
+              </>
+            )}
           </Link>
 
           <div className="hidden md:flex space-x-8">

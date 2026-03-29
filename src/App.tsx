@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
-    Filter, Info, ArrowRight, Zap, Edit2, Upload, X
+    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -16,9 +16,12 @@ import PartnerCard from './components/PartnerCard';
 import LeadForm from './components/LeadForm';
 import AdminMessagesPage from './components/AdminMessagesPage';
 import AboutUsPage from './components/AboutUsPage';
+import RouletteModal from './components/RouletteModal';
+import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
-import { Partner, Category, SuccessCase, AboutConfig } from './types';
+import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog } from './types';
 import { supabase } from './lib/supabase';
+import { getUserIP } from './lib/ip';
 import Editor, { 
     Toolbar, 
     BtnBold, 
@@ -97,11 +100,93 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
 
 const LandingPage = ({ partners, categories, commercialBanner }: { partners: Partner[], categories: Category[], commercialBanner: string | null }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
+    const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
+    const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
+    const [showRoulette, setShowRoulette] = useState(false);
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const refId = params.get('ref');
+        if (refId) {
+            handleRefAccess(parseInt(refId));
+        }
+    }, [location]);
+
+    const handleRefAccess = async (displayId: number) => {
+        try {
+            const { data: partner } = await supabase
+                .from('partners')
+                .select('*')
+                .eq('display_id', displayId)
+                .maybeSingle();
+
+            if (partner) {
+                const ip = await getUserIP();
+                // Log access
+                await supabase.from('partner_access_logs').insert({
+                    partner_id: partner.id,
+                    ip_address: ip
+                });
+
+                // Fetch cashback configs
+                const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
+                if (configs && configs.length > 0) {
+                    setCashbackConfigs(configs);
+                    setRoulettePartner({
+                        id: partner.id,
+                        name: partner.name,
+                        category: partner.category,
+                        activity: partner.activity,
+                        description: partner.description,
+                        address: partner.address,
+                        imageUrl: partner.image_url,
+                        link: partner.link,
+                        whatsappLink: partner.whatsapp_link,
+                        coupon: partner.coupon,
+                        couponDescription: partner.coupon_description,
+                        isAuthorized: partner.is_authorized,
+                        orderIndex: partner.order_index,
+                        displayId: partner.display_id
+                    });
+                    setShowRoulette(true);
+                }
+            }
+        } catch (error) {
+            console.error('Error handling ref access:', error);
+        }
+    };
+
+    const handleWin = async (value: number) => {
+        if (!roulettePartner) return;
+        try {
+            const ip = await getUserIP();
+            await supabase.from('cashback_logs').insert({
+                store_name: roulettePartner.name,
+                cashback_value: value,
+                ip_address: ip
+            });
+        } catch (error) {
+            console.error('Error logging cashback:', error);
+        }
+    };
+
     const authorizedPartners = partners.filter(p => p.isAuthorized).sort((a, b) => a.orderIndex - b.orderIndex);
     const filteredPartners = activeCategory === "Todos" ? authorizedPartners : authorizedPartners.filter(p => p.category === activeCategory);
     
     return (
         <main className="flex-grow">
+            <AnimatePresence>
+                {showRoulette && roulettePartner && (
+                    <RouletteModal 
+                        isOpen={showRoulette}
+                        onClose={() => setShowRoulette(false)}
+                        storeName={roulettePartner.name}
+                        configs={cashbackConfigs}
+                        onWin={handleWin}
+                    />
+                )}
+            </AnimatePresence>
             {commercialBanner && (
                 <div className="w-full block bg-slate-900 border-b border-slate-800">
                     <img src={commercialBanner} alt="Banner Publicitário" className="w-full h-auto block" />
@@ -187,11 +272,11 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
     );
 };
 
-const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: string | null, setCommercialBanner: React.Dispatch<React.SetStateAction<string | null>> }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases'>('partners');
+const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: string | null, setCommercialBanner: React.Dispatch<React.SetStateAction<string | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>> }) => {
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback'>('partners');
     
     // Partner Form State
-    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, orderIndex: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, orderIndex: 0 });
+    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, orderIndex: number, displayId: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, orderIndex: 0, displayId: 0 });
     const [editingId, setEditingId] = useState<string | null>(null);
     
     // About Us State
@@ -203,6 +288,11 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const [caseFormData, setCaseFormData] = useState<{companyName: string, description: string, logoUrl: string, logoFile: File | null, storeImageUrl: string, storeFile: File | null}>({ companyName: '', description: '', logoUrl: '', logoFile: null, storeImageUrl: '', storeFile: null });
     const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
 
+    // Ranking State
+    const [rankingData, setRankingData] = useState<any[]>([]);
+    const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
+    const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
+
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<{type: 'partner' | 'category' | 'banner' | 'case', id: string} | null>(null);
@@ -213,7 +303,65 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
     useEffect(() => {
         fetchAdminData();
-    }, []);
+        if (activeTab === 'ranking') fetchRanking();
+        if (activeTab === 'cashback') fetchCashbackConfigs();
+    }, [activeTab]);
+
+    const fetchRanking = async () => {
+        try {
+            const now = new Date();
+            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+
+            const { data: partnersData } = await supabase.from('partners').select('id, name, display_id');
+            if (!partnersData) return;
+
+            const ranking = await Promise.all(partnersData.map(async (p) => {
+                const { count: monthCount } = await supabase
+                    .from('partner_access_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('partner_id', p.id)
+                    .gte('created_at', firstDayOfMonth);
+
+                const { count: weekCount } = await supabase
+                    .from('partner_access_logs')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('partner_id', p.id)
+                    .gte('created_at', sevenDaysAgo);
+
+                return {
+                    ...p,
+                    monthCount: monthCount || 0,
+                    weekCount: weekCount || 0
+                };
+            }));
+
+            setRankingData(ranking.sort((a, b) => b.monthCount - a.monthCount).slice(0, 10));
+        } catch (error) {
+            console.error('Error fetching ranking:', error);
+        }
+    };
+
+    const fetchCashbackConfigs = async () => {
+        try {
+            const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
+            const { data: logs } = await supabase.from('cashback_logs').select('*').order('created_at', { ascending: false }).limit(50);
+            if (configs) setCashbackConfigs(configs);
+            if (logs) setCashbackLogs(logs);
+        } catch (error) {
+            console.error('Error fetching cashback:', error);
+        }
+    };
+
+    const handleUpdateCashbackConfig = async (id: number, field: string, value: any) => {
+        try {
+            const { error } = await supabase.from('cashback_configs').update({ [field]: value }).eq('id', id);
+            if (error) throw error;
+            setCashbackConfigs(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
+        } catch (error) {
+            console.error('Error updating cashback config:', error);
+        }
+    };
 
     const fetchAdminData = async () => {
         try {
@@ -288,7 +436,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             }
 
             if (editingId) {
-                const { error } = await supabase
+                const { data, error } = await supabase
                     .from('partners')
                     .update({
                         name: formData.name,
@@ -302,13 +450,16 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         coupon: formData.coupon || null,
                         coupon_description: formData.couponDescription || null,
                         is_authorized: formData.isAuthorized,
-                        order_index: formData.orderIndex
+                        order_index: formData.orderIndex,
+                        display_id: formData.displayId
                     })
-                    .eq('id', editingId);
+                    .eq('id', editingId)
+                    .select()
+                    .single();
 
                 if (error) throw error;
                 
-                setPartners(prev => prev.map(p => p.id === editingId ? { ...formData, imageUrl: finalImageUrl, id: editingId } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                setPartners(prev => prev.map(p => p.id === editingId ? { ...formData, imageUrl: finalImageUrl, id: editingId, displayId: data.display_id } : p).sort((a, b) => a.orderIndex - b.orderIndex));
                 alert("Parceiro atualizado com sucesso!");
             } else {
                 const { data, error } = await supabase
@@ -325,14 +476,15 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         coupon: formData.coupon || null,
                         coupon_description: formData.couponDescription || null,
                         is_authorized: formData.isAuthorized,
-                        order_index: formData.orderIndex
+                        order_index: formData.orderIndex,
+                        display_id: formData.displayId
                     }])
                     .select()
                     .single();
 
                 if (error) throw error;
                 
-                const newPartner: Partner = { ...formData, imageUrl: finalImageUrl, id: data.id };
+                const newPartner: Partner = { ...formData, imageUrl: finalImageUrl, id: data.id, displayId: data.display_id };
                 setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
                 alert("Parceiro adicionado com sucesso!");
             }
@@ -346,7 +498,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     const resetForm = () => {
-        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, orderIndex: 0 });
+        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, orderIndex: 0, displayId: 0 });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -365,7 +517,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             coupon: partner.coupon || '',
             couponDescription: partner.couponDescription || '',
             isAuthorized: partner.isAuthorized,
-            orderIndex: partner.orderIndex
+            orderIndex: partner.orderIndex,
+            displayId: partner.displayId || 0
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -429,11 +582,15 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 const { error } = await supabase
                     .from('commercial_banner')
                     .delete()
-                    .eq('id', 1);
+                    .eq('id', parseInt(deleteConfirm.id));
                     
                 if (error) throw error;
                 
-                setCommercialBanner(null);
+                if (deleteConfirm.id === '1') {
+                    setCommercialBanner(null);
+                } else if (deleteConfirm.id === '2') {
+                    setHeaderLogo(null);
+                }
             } catch (error) {
                 console.error('Error removing banner:', error);
             }
@@ -453,13 +610,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         setDeleteConfirm(null);
     };
 
-    const handleUploadBanner = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleUploadBanner = async (e: React.ChangeEvent<HTMLInputElement>, id: number = 1) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         try {
             const fileExt = file.name.split('.').pop();
-            const fileName = `banners/banner_${Date.now()}.${fileExt}`;
+            const fileName = `banners/banner_${id}_${Date.now()}.${fileExt}`;
             
             const { error: uploadError } = await supabase.storage
                 .from('partners')
@@ -470,7 +627,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             if (uploadError) {
                 console.error('Upload error:', uploadError);
-                throw new Error('Erro ao fazer upload do banner. Verifique se o bucket "partners" existe.');
+                throw new Error('Erro ao fazer upload da imagem. Verifique se o bucket "partners" existe.');
             }
 
             const { data: { publicUrl } } = supabase.storage
@@ -479,20 +636,25 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             const { error: dbError } = await supabase
                 .from('commercial_banner')
-                .upsert({ id: 1, image_url: publicUrl });
+                .upsert({ id: id, image_url: publicUrl });
 
             if (dbError) throw dbError;
 
-            setCommercialBanner(publicUrl);
-            alert("Banner atualizado com sucesso!");
+            if (id === 1) {
+                setCommercialBanner(publicUrl);
+                alert("Banner atualizado com sucesso!");
+            } else if (id === 2) {
+                setHeaderLogo(publicUrl);
+                alert("Logotipo do cabeçalho atualizado com sucesso!");
+            }
         } catch (error: any) {
-            console.error('Error uploading banner:', error);
-            alert(error.message || 'Erro ao salvar banner. Tente novamente.');
+            console.error('Error uploading image:', error);
+            alert(error.message || 'Erro ao salvar imagem. Tente novamente.');
         }
     };
 
-    const handleRemoveBanner = () => {
-        setDeleteConfirm({ type: 'banner', id: '1' });
+    const handleRemoveBanner = (id: number = 1) => {
+        setDeleteConfirm({ type: 'banner', id: id.toString() });
     };
 
     const handleUpdateAbout = async (e: React.FormEvent) => {
@@ -599,11 +761,38 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     <button onClick={() => setActiveTab('partners')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
                     <button onClick={() => setActiveTab('about')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
                     <button onClick={() => setActiveTab('cases')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
+                    <button onClick={() => setActiveTab('ranking')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
+                    <button onClick={() => setActiveTab('cashback')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
                 </div>
             </div>
 
             {activeTab === 'partners' && (
                 <>
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
+                        <h2 className="text-2xl font-black text-slate-900 mb-4">Logotipo do Cabeçalho</h2>
+                        <p className="text-slate-500 mb-6">Adicione o logotipo que será exibido no cabeçalho do site. Apenas 1 imagem é permitida por vez.</p>
+                        
+                        {headerLogo ? (
+                            <div className="space-y-4">
+                                <div className="border border-slate-200 rounded-xl p-4 bg-slate-900 flex justify-center">
+                                    <img src={headerLogo} alt="Logo Atual" className="max-w-full h-auto rounded-lg shadow-sm" style={{ maxHeight: '90px' }} />
+                                </div>
+                                <button onClick={() => handleRemoveBanner(2)} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
+                                    Remover Logo Atual
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative">
+                                    <input type="file" accept="image/*" onChange={(e) => handleUploadBanner(e, 2)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
+                                    <p className="text-slate-600 font-medium">Clique ou arraste uma imagem aqui</p>
+                                    <p className="text-[#c54b4b] font-bold mt-2 text-sm">Formato obrigatório: 270 x 90 Pixels</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                     <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
                         <h2 className="text-2xl font-black text-slate-900 mb-4">Banner Publicitário Principal</h2>
                         <p className="text-slate-500 mb-6">Adicione um banner de destaque que será exibido logo abaixo da faixa vermelha na página inicial. Apenas 1 imagem é permitida por vez.</p>
@@ -613,14 +802,14 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                 <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex justify-center">
                                     <img src={commercialBanner} alt="Banner Atual" className="max-w-full h-auto rounded-lg shadow-sm" style={{ maxHeight: '150px' }} />
                                 </div>
-                                <button onClick={handleRemoveBanner} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
+                                <button onClick={() => handleRemoveBanner(1)} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
                                     Remover Banner Atual
                                 </button>
                             </div>
                         ) : (
                             <div className="space-y-4">
                                 <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative">
-                                    <input type="file" accept="image/*" onChange={handleUploadBanner} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                    <input type="file" accept="image/*" onChange={(e) => handleUploadBanner(e, 1)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                     <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
                                     <p className="text-slate-600 font-medium">Clique ou arraste uma imagem aqui</p>
                                     <p className="text-[#c54b4b] font-bold mt-2 text-sm">Formato obrigatório: 2275 x 563 Pixels</p>
@@ -665,6 +854,17 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                 onChange={e => setFormData({...formData, orderIndex: parseInt(e.target.value) || 0})} 
                                             />
                                         </div>
+                                    </div>
+                                    <div className="flex flex-col space-y-1">
+                                        <label htmlFor="displayId" className="text-[10px] font-bold text-slate-500 uppercase ml-1">ID para QR Code (Número Único)</label>
+                                        <input 
+                                            type="number" 
+                                            id="displayId"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
+                                            placeholder="Ex: 1, 2, 3..." 
+                                            value={formData.displayId} 
+                                            onChange={e => setFormData({...formData, displayId: parseInt(e.target.value) || 0})} 
+                                        />
                                     </div>
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Nome da Empresa" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
                                     <select required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
@@ -927,6 +1127,164 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 </div>
             )}
 
+            {activeTab === 'ranking' && (
+                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                    <div className="flex items-center space-x-3 mb-8">
+                        <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
+                            <Trophy size={24} />
+                        </div>
+                        <div>
+                            <h2 className="text-2xl font-black text-slate-900">Ranking de Parceiros</h2>
+                            <p className="text-slate-500 text-sm">Top 10 parceiros mais acessados no mês atual.</p>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-100">
+                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">ID QR Code</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Acessos (Mês)</th>
+                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Acessos (7 dias)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {rankingData.map((item, index) => (
+                                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                        <td className="py-4 px-4">
+                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                {index + 1}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-4 font-bold text-slate-900">{item.name}</td>
+                                        <td className="py-4 px-4 text-center font-mono text-slate-500">{item.display_id || '-'}</td>
+                                        <td className="py-4 px-4 text-center">
+                                            <span className="bg-green-100 text-[#279267] px-3 py-1 rounded-full text-sm font-bold">
+                                                {item.monthCount}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-4 text-center text-slate-400 text-sm font-medium">
+                                            {item.weekCount}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {rankingData.length === 0 && (
+                                    <tr>
+                                        <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">Nenhum dado de acesso registrado este mês.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'cashback' && (
+                <div className="space-y-8">
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-8">
+                            <div className="bg-green-100 text-[#279267] p-3 rounded-2xl">
+                                <Settings size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Configuração de Cashback</h2>
+                                <p className="text-slate-500 text-sm">Defina os valores e as probabilidades da roleta.</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                            {cashbackConfigs.map((config) => (
+                                <div key={config.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Opção {config.id}</span>
+                                        <div className="bg-white p-2 rounded-lg shadow-sm">
+                                            <DollarSign size={16} className="text-[#279267]" />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Rótulo (Ex: R$ 5,00)</label>
+                                        <input 
+                                            type="text"
+                                            value={config.label}
+                                            onChange={(e) => handleUpdateCashbackConfig(config.id, 'label', e.target.value)}
+                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Valor Numérico</label>
+                                        <input 
+                                            type="number"
+                                            value={config.value}
+                                            onChange={(e) => handleUpdateCashbackConfig(config.id, 'value', parseFloat(e.target.value))}
+                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Probabilidade (%)</label>
+                                        <input 
+                                            type="number"
+                                            value={config.probability}
+                                            onChange={(e) => handleUpdateCashbackConfig(config.id, 'probability', parseFloat(e.target.value))}
+                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900"
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start space-x-3 text-amber-700 text-xs">
+                            <Info size={16} className="shrink-0 mt-0.5" />
+                            <p><strong>Dica:</strong> A soma das probabilidades não precisa ser exatamente 100%. O sistema utiliza pesos relativos para determinar o vencedor.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-8">
+                            <div className="bg-slate-100 text-slate-600 p-3 rounded-2xl">
+                                <History size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Logs de Cashback</h2>
+                                <p className="text-slate-500 text-sm">Histórico recente de prêmios concedidos.</p>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Data/Hora</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loja</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Valor</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">IP do Cliente</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cashbackLogs.map((log) => (
+                                        <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 px-4 text-sm text-slate-500">
+                                                {new Date(log.created_at).toLocaleString('pt-BR')}
+                                            </td>
+                                            <td className="py-4 px-4 font-bold text-slate-900">{log.store_name}</td>
+                                            <td className="py-4 px-4">
+                                                <span className="text-[#279267] font-black">R$ {log.cashback_value.toFixed(2)}</span>
+                                            </td>
+                                            <td className="py-4 px-4 text-xs font-mono text-slate-400">{log.ip_address}</td>
+                                        </tr>
+                                    ))}
+                                    {cashbackLogs.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className="py-20 text-center text-slate-400 font-bold">Nenhum log de cashback registrado ainda.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {deleteConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
@@ -969,6 +1327,8 @@ const App = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [commercialBanner, setCommercialBanner] = useState<string | null>(null);
+    const [headerLogo, setHeaderLogo] = useState<string | null>(null);
+    const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -980,14 +1340,14 @@ const App = () => {
             const [partnersRes, categoriesRes, bannerRes] = await Promise.all([
                 supabase.from('partners').select('*').order('order_index', { ascending: true }),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
-                supabase.from('commercial_banner').select('*').eq('id', 1).maybeSingle()
+                supabase.from('commercial_banner').select('*').in('id', [1, 2])
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
             if (categoriesRes.error) throw categoriesRes.error;
 
             if (partnersRes.data) {
-                const formattedPartners: Partner[] = partnersRes.data.map(p => ({
+                const mappedPartners: Partner[] = partnersRes.data.map(p => ({
                     id: p.id,
                     name: p.name,
                     category: p.category,
@@ -1000,9 +1360,27 @@ const App = () => {
                     coupon: p.coupon,
                     couponDescription: p.coupon_description,
                     isAuthorized: p.is_authorized ?? true,
-                    orderIndex: p.order_index ?? 0
+                    orderIndex: p.order_index ?? 0,
+                    displayId: p.display_id || 0
                 }));
-                setPartners(formattedPartners);
+                setPartners(mappedPartners);
+
+                // Fetch featured partner (most accesses in last 7 days)
+                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+                const { data: accessLogs } = await supabase
+                    .from('partner_access_logs')
+                    .select('partner_id')
+                    .gte('created_at', sevenDaysAgo);
+
+                if (accessLogs && accessLogs.length > 0) {
+                    const counts: { [key: string]: number } = {};
+                    accessLogs.forEach(log => {
+                        counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
+                    });
+                    const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                    const topPartner = mappedPartners.find(p => p.id === topPartnerId);
+                    if (topPartner) setFeaturedPartner(topPartner);
+                }
             }
 
             if (categoriesRes.data) {
@@ -1010,7 +1388,10 @@ const App = () => {
             }
 
             if (bannerRes.data) {
-                setCommercialBanner(bannerRes.data.image_url);
+                const mainBanner = bannerRes.data.find(b => b.id === 1);
+                const logoBanner = bannerRes.data.find(b => b.id === 2);
+                if (mainBanner) setCommercialBanner(mainBanner.image_url);
+                if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -1030,17 +1411,17 @@ const App = () => {
     return (
         <Router>
             <ScrollToTop />
-            <div className="min-h-screen flex flex-col bg-gray-50 pt-20">
-                <Header />
+            <div className="min-h-screen flex flex-col bg-gray-50 pt-24">
+                <Header headerLogo={headerLogo} />
                 <CommercialBanner position="top" />
                 <Routes>
                     <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} />} />
                     <Route path="/sobre-nos" element={<AboutUsPage />} />
-                    <Route path="/admin" element={<AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} />} />
+                    <Route path="/admin" element={<AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />} />
                     <Route path="/admin-mensagens" element={<AdminMessagesPage />} />
                     <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} />} />
                 </Routes>
-                <Footer />
+                <Footer featuredPartner={featuredPartner} />
                 <CommercialBanner position="bottom" />
             </div>
         </Router>

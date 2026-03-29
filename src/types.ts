@@ -17,6 +17,29 @@ export interface Partner {
   couponDescription?: string;
   isAuthorized: boolean;
   orderIndex: number;
+  displayId?: number;
+}
+
+export interface PartnerAccessLog {
+  id: string;
+  partner_id: string;
+  created_at: string;
+  ip_address: string;
+}
+
+export interface CashbackConfig {
+  id: number;
+  label: string;
+  value: number;
+  probability: number;
+}
+
+export interface CashbackLog {
+  id: string;
+  store_name: string;
+  cashback_value: number;
+  ip_address: string;
+  created_at: string;
 }
 
 export interface SuccessCase {
