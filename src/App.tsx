@@ -103,6 +103,7 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [showRoulette, setShowRoulette] = useState(false);
+    const [showTestPanel, setShowTestPanel] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
@@ -268,6 +269,41 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
                     <LeadForm type="contato" title="Fale Conosco" subtitle="Dúvidas, sugestões ou suporte? Estamos prontos para te atender via WhatsApp." />
                 </div>
             </section>
+
+            {/* Floating Test Panel (Dev Only) */}
+            <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end">
+                {showTestPanel && (
+                    <div className="bg-white p-4 rounded-2xl shadow-2xl mb-4 border border-slate-200 w-72 max-h-96 flex flex-col">
+                        <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-black text-slate-800 text-sm">🛠️ Testar Roleta</h3>
+                            <button onClick={() => setShowTestPanel(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={16} />
+                            </button>
+                        </div>
+                        <div className="overflow-y-auto flex-grow space-y-2 pr-2 custom-scrollbar">
+                            {partners.filter(p => p.displayId).map(p => (
+                                <button 
+                                    key={p.id}
+                                    onClick={() => handleRefAccess(p.displayId)}
+                                    className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-[#279267] hover:text-white rounded-lg text-xs font-bold transition-colors border border-slate-100"
+                                >
+                                    ID {p.displayId} - {p.name}
+                                </button>
+                            ))}
+                            {partners.filter(p => p.displayId).length === 0 && (
+                                <p className="text-xs text-slate-500 text-center py-4">Nenhum parceiro com ID configurado.</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+                <button 
+                    onClick={() => setShowTestPanel(!showTestPanel)}
+                    className="bg-slate-900 text-white px-4 py-3 rounded-full shadow-xl font-bold text-sm flex items-center space-x-2 hover:bg-slate-800 transition-transform hover:scale-105"
+                >
+                    <Sparkles size={16} className="text-yellow-400" />
+                    <span>Testar Roleta</span>
+                </button>
+            </div>
         </main>
     );
 };

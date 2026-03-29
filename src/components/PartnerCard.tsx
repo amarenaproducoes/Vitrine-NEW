@@ -177,9 +177,9 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           <div ref={couponRef} className="mb-6 border-2 border-dashed border-[#279267]/30 rounded-xl p-4 bg-green-50/50 relative overflow-hidden">
             {unlockStep === 'hidden' && (
               <div className="flex flex-col items-center text-center">
-                <div className="flex items-center space-x-2 mb-2">
-                  <Gift size={16} className="text-[#279267]" />
-                  <span className="text-[#279267] font-bold text-sm">Cupom Exclusivo</span>
+                <div className="flex items-center space-x-2 mb-3">
+                  <Gift size={18} className="text-[#279267] flex-shrink-0" />
+                  <span className="text-[#279267] font-bold text-sm leading-tight">Para liberar o seu cupom exclusivo, confirme o seu Whatsapp</span>
                 </div>
                 <div className="w-full h-10 bg-white/60 backdrop-blur-sm rounded-lg mb-3 flex items-center justify-center border border-slate-200 relative overflow-hidden">
                     <div className="absolute inset-0 bg-[repeating-linear-gradient(45deg,transparent,transparent_10px,rgba(0,0,0,0.03)_10px,rgba(0,0,0,0.03)_20px)]"></div>
@@ -187,26 +187,31 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 </div>
                 <button
                   onClick={() => setUnlockStep('input')}
-                  className="w-full bg-[#279267] text-white text-xs font-bold px-4 py-2.5 rounded-lg hover:bg-[#1e7452] transition-colors shadow-sm"
+                  className="w-full bg-[#279267] text-white text-xs font-bold px-4 py-3 rounded-lg hover:bg-[#1e7452] transition-colors shadow-sm"
                 >
-                  Desbloquear Desconto
+                  Garantir meu benefício agora!
                 </button>
               </div>
             )}
             {unlockStep === 'input' && (
-              <div className="flex flex-col items-center animate-in fade-in duration-200">
-                <span className="text-slate-700 font-bold text-xs mb-2 text-center">Para liberar, informe seu WhatsApp:</span>
+              <div className="flex flex-col items-center animate-in fade-in duration-200 w-full">
+                <span className="text-slate-700 font-bold text-xs mb-1 text-center">Para liberar o seu benefício, digite o seu Whatsapp e ganhe:</span>
+                {partner.couponDescription && (
+                  <span className="text-[#279267] font-black text-sm mb-3 text-center bg-white px-2 py-1.5 rounded-md border border-green-100 shadow-sm w-full">
+                    {partner.couponDescription}
+                  </span>
+                )}
                 <input
                   type="tel"
                   placeholder="(11) 99999-9999"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(formatWhatsApp(e.target.value))}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 mb-2 focus:outline-none focus:border-[#279267] bg-white"
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 mb-2 focus:outline-none focus:border-[#279267] bg-white text-center font-bold tracking-wider"
                   autoFocus
                 />
                 <button
                   onClick={handleUnlock}
-                  className="w-full bg-[#279267] text-white text-xs font-bold px-4 py-2.5 rounded-lg hover:bg-[#1e7452] transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center"
+                  className="w-full bg-[#279267] text-white text-xs font-bold px-4 py-3 rounded-lg hover:bg-[#1e7452] transition-colors shadow-sm disabled:opacity-50 flex items-center justify-center"
                   disabled={whatsapp.replace(/\D/g, '').length < 10 || isUnlocking}
                 >
                   {isUnlocking ? (
@@ -236,9 +241,9 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                   <span className="text-[#279267] font-bold text-sm">Cupom Desbloqueado!</span>
                 </div>
                 
-                <div className="flex items-center space-x-1 mb-3 px-3 py-1 bg-white rounded-full border border-slate-200 shadow-sm">
-                  <Phone size={10} className="text-slate-400" />
-                  <span className="text-[10px] font-bold text-slate-600">{whatsapp}</span>
+                <div className="flex items-center justify-center space-x-1.5 mb-3 px-4 py-1 bg-white rounded-full border border-slate-200 shadow-sm whitespace-nowrap">
+                  <Phone size={10} className="text-slate-400 flex-shrink-0" />
+                  <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{whatsapp}</span>
                 </div>
 
                 {partner.couponDescription && (
@@ -249,7 +254,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 </div>
                 <span className="text-[10px] text-slate-500 font-medium">Apresente este código no estabelecimento</span>
                 <p className="text-[9px] text-slate-400 mt-1 leading-tight">
-                  Este cupom é válido por 07 dias. Apresente até o dia <span className="font-bold">{formattedDate}</span> e garanta o seu brinde.
+                  Este cupom é válido por 07 dias. Apresente até o dia <span className="font-bold">{formattedDate}</span> e garanta o seu benefício.
                 </p>
               </motion.div>
             )}
