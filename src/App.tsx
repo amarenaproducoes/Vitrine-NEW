@@ -108,8 +108,12 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
     const location = useLocation();
 
     useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        const refId = params.get('ref');
+        // Check both window.location.search (before hash) and location.search (after hash)
+        const windowParams = new URLSearchParams(window.location.search);
+        const locationParams = new URLSearchParams(location.search);
+        
+        const refId = windowParams.get('ref') || locationParams.get('ref');
+        
         if (refId) {
             handleRefAccess(parseInt(refId));
         }
