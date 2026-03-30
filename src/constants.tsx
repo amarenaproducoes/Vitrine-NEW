@@ -65,7 +65,5 @@ export const NAV_LINKS = [
   { label: 'Sobre Nós', path: '/sobre-nos' },
   { label: 'Anuncie Aqui', path: '/#anuncie' },
   { label: 'Seja Parceiro', path: '/#parceria' },
-  { label: 'Contato', path: '/#contato' },
-  { label: 'Gerenciar', path: '/admin' },
-  { label: 'Admin Mensagens', path: '/admin-mensagens' }
+  { label: 'Contato', path: '/#contato' }
 ];

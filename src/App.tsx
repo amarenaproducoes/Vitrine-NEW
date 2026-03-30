@@ -4,10 +4,10 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { HashRouter as Router, Routes, Route, useLocation, Link } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
-    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History
+    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -18,6 +18,8 @@ import AdminMessagesPage from './components/AdminMessagesPage';
 import AboutUsPage from './components/AboutUsPage';
 import RouletteModal from './components/RouletteModal';
 import WelcomeModal from './components/WelcomeModal';
+import LoginPage from './components/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog } from './types';
@@ -101,6 +103,7 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
 
 const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }: { partners: Partner[], categories: Category[], commercialBanner: string | null, featuredPartner: Partner | null }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
+    const [searchTerm, setSearchTerm] = useState("");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [showRoulette, setShowRoulette] = useState(false);
@@ -182,7 +185,11 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
     };
 
     const authorizedPartners = partners.filter(p => p.isAuthorized).sort((a, b) => a.orderIndex - b.orderIndex);
-    const filteredPartners = activeCategory === "Todos" ? authorizedPartners : authorizedPartners.filter(p => p.category === activeCategory);
+    const filteredPartners = authorizedPartners.filter(p => {
+        const matchesCategory = activeCategory === "Todos" || p.category === activeCategory;
+        const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesCategory && matchesSearch;
+    });
     
     return (
         <main className="flex-grow">
@@ -223,12 +230,34 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                 </div>
             </section>
 
-            <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex items-center space-x-2 whitespace-nowrap">
-                    <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
-                    {['Todos', ...categories.map(c => c.name)].map(cat => (
-                        <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
-                    ))}
+            <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-grow">
+                        <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
+                        {['Todos', ...categories.map(c => c.name)].map(cat => (
+                            <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
+                        ))}
+                    </div>
+                    <div className="relative w-full md:w-80">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search size={18} className="text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Buscar parceiro pelo nome..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-2xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#279267] focus:border-[#279267] sm:text-sm transition-all font-medium"
+                        />
+                        {searchTerm && (
+                            <button 
+                                onClick={() => setSearchTerm("")}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </section>
 
@@ -238,8 +267,10 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                         {filteredPartners.length > 0 ? filteredPartners.map((partner) => (<PartnerCard key={partner.id} partner={partner} />)) : (
                             <div className="col-span-full py-20 text-center">
                                 <div className="text-slate-300 mb-4 flex justify-center"><Store size={64} strokeWidth={1} /></div>
-                                <h3 className="text-xl font-bold text-slate-400">Nenhum parceiro nesta categoria ainda.</h3>
-                                <a href="#anuncie" className="text-[#279267] font-bold mt-2 inline-block hover:underline">Seja o primeiro a anunciar aqui!</a>
+                                <h3 className="text-xl font-bold text-slate-400">
+                                    {searchTerm ? `Nenhum parceiro encontrado para "${searchTerm}"` : "Nenhum parceiro nesta categoria ainda."}
+                                </h3>
+                                {!searchTerm && <a href="#anuncie" className="text-[#279267] font-bold mt-2 inline-block hover:underline">Seja o primeiro a anunciar aqui!</a>}
                             </div>
                         )}
                     </div>
@@ -316,6 +347,7 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
 
 const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: string | null, setCommercialBanner: React.Dispatch<React.SetStateAction<string | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>> }) => {
     const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback'>('partners');
+    const navigate = useNavigate();
     
     // Partner Form State
     const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, cashbackEnabled: boolean, orderIndex: number, displayId: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: 0 });
@@ -790,6 +822,11 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         }
     };
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+    };
+
     return (
         <div className="max-w-7xl mx-auto px-4 py-8 md:py-16 overflow-x-hidden">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
@@ -802,12 +839,25 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     </h1>
                 </div>
                 
-                <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar whitespace-nowrap w-full md:w-auto">
-                    <button onClick={() => setActiveTab('partners')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
-                    <button onClick={() => setActiveTab('about')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
-                    <button onClick={() => setActiveTab('cases')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
-                    <button onClick={() => setActiveTab('ranking')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
-                    <button onClick={() => setActiveTab('cashback')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                    <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar whitespace-nowrap w-full sm:w-auto">
+                        <button onClick={() => setActiveTab('partners')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
+                        <button onClick={() => setActiveTab('about')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
+                        <button onClick={() => setActiveTab('cases')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
+                        <button onClick={() => setActiveTab('ranking')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
+                        <button onClick={() => setActiveTab('cashback')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
+                        <Link to="/admin-mensagens" className="px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 text-slate-500 hover:text-slate-900 flex items-center">
+                            <MessageSquare size={14} className="mr-2" />
+                            Mensagens
+                        </Link>
+                    </div>
+                    <button 
+                        onClick={handleLogout}
+                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20 text-sm"
+                    >
+                        <LogOut size={18} />
+                        <span>Sair</span>
+                    </button>
                 </div>
             </div>
 
@@ -1475,8 +1525,17 @@ const App = () => {
                 <Routes>
                     <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
                     <Route path="/sobre-nos" element={<AboutUsPage />} />
-                    <Route path="/admin" element={<AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />} />
-                    <Route path="/admin-mensagens" element={<AdminMessagesPage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/admin" element={
+                        <ProtectedRoute>
+                            <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/admin-mensagens" element={
+                        <ProtectedRoute>
+                            <AdminMessagesPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
                 </Routes>
                 <Footer />

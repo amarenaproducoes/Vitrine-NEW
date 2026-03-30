@@ -82,8 +82,9 @@ const Footer: React.FC = () => {
           </div>
         </div>
 
-        <div className="pt-8 border-t border-slate-800 text-center text-xs">
+        <div className="pt-8 border-t border-slate-800 text-center text-xs flex flex-col md:flex-row justify-between items-center gap-4">
           <p>&copy; {new Date().getFullYear()} Aparece aí por aqui. Todos os direitos reservados.</p>
+          <Link to="/admin" className="text-slate-600 hover:text-[#279267] transition-colors">Acesso Administrativo</Link>
         </div>
       </div>
     </footer>

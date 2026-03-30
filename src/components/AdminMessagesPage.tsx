@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Lead } from '../types';
-import { Filter, MessageSquare, Calendar, User, Phone, Tag, CheckSquare, Square } from 'lucide-react';
+import { Filter, MessageSquare, Calendar, User, Phone, Tag, CheckSquare, Square, LogOut, Settings } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
 
 const AdminMessagesPage = () => {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
     const [activeFilter, setActiveFilter] = useState<string>('Todos');
+    const navigate = useNavigate();
 
     const leadTypes = ['Todos', 'anunciante', 'motorista', 'comerciante', 'contato'];
 
@@ -74,6 +76,11 @@ const AdminMessagesPage = () => {
         ? leads 
         : leads.filter(lead => lead.type === activeFilter);
 
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        navigate('/login');
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -84,13 +91,31 @@ const AdminMessagesPage = () => {
 
     return (
         <div className="max-w-7xl mx-auto px-4 py-16 flex-grow w-full">
-            <div className="flex items-center space-x-3 mb-10">
-                <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl">
-                    <MessageSquare size={32} />
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
+                <div className="flex items-center space-x-3">
+                    <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl">
+                        <MessageSquare size={32} />
+                    </div>
+                    <h1 className="text-4xl font-black text-slate-900">
+                        Mensagens e Leads
+                    </h1>
                 </div>
-                <h1 className="text-4xl font-black text-slate-900">
-                    Mensagens e Leads
-                </h1>
+                <div className="flex items-center gap-4">
+                    <Link 
+                        to="/admin"
+                        className="flex items-center justify-center space-x-2 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all border border-slate-200"
+                    >
+                        <Settings size={20} />
+                        <span>Painel de Controle</span>
+                    </Link>
+                    <button 
+                        onClick={handleLogout}
+                        className="flex items-center justify-center space-x-2 px-6 py-3 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                    >
+                        <LogOut size={20} />
+                        <span>Sair</span>
+                    </button>
+                </div>
             </div>
 
             <section className="mb-8 bg-white p-4 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar">
