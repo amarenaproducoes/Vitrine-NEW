@@ -89,7 +89,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             <input
               required
               type="text"
-              className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50"
+              className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
               placeholder="Digite o nome da sua empresa..."
               value={formData.message}
               onChange={(e) => setFormData({...formData, message: e.target.value})}
@@ -104,7 +104,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
           <input
             required
             type="text"
-            className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50"
+            className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
             placeholder="Digite seu nome..."
             value={formData.fullName}
             onChange={(e) => setFormData({...formData, fullName: e.target.value})}
@@ -118,7 +118,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
           <input
             required
             type="tel"
-            className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50"
+            className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
             placeholder="(11) 99999-9999"
             value={formData.whatsapp}
             onChange={(e) => setFormData({...formData, whatsapp: formatWhatsApp(e.target.value)})}
@@ -132,7 +132,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             </label>
             <textarea
               rows={3}
-              className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50"
+              className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
               placeholder="Como podemos ajudar?"
               value={formData.message}
               onChange={(e) => setFormData({...formData, message: e.target.value})}

@@ -16,6 +16,7 @@ export interface Partner {
   coupon?: string;
   couponDescription?: string;
   isAuthorized: boolean;
+  cashbackEnabled: boolean;
   orderIndex: number;
   displayId?: number;
 }

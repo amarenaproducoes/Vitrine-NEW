@@ -17,6 +17,7 @@ import LeadForm from './components/LeadForm';
 import AdminMessagesPage from './components/AdminMessagesPage';
 import AboutUsPage from './components/AboutUsPage';
 import RouletteModal from './components/RouletteModal';
+import WelcomeModal from './components/WelcomeModal';
 import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog } from './types';
@@ -98,12 +99,12 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanner }: { partners: Partner[], categories: Category[], commercialBanner: string | null }) => {
+const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }: { partners: Partner[], categories: Category[], commercialBanner: string | null, featuredPartner: Partner | null }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [showRoulette, setShowRoulette] = useState(false);
-    const [showTestPanel, setShowTestPanel] = useState(false);
+    const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const location = useLocation();
 
     useEffect(() => {
@@ -130,27 +131,31 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
                     ip_address: ip
                 });
 
-                // Fetch cashback configs
-                const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
-                if (configs && configs.length > 0) {
-                    setCashbackConfigs(configs);
-                    setRoulettePartner({
-                        id: partner.id,
-                        name: partner.name,
-                        category: partner.category,
-                        activity: partner.activity,
-                        description: partner.description,
-                        address: partner.address,
-                        imageUrl: partner.image_url,
-                        link: partner.link,
-                        whatsappLink: partner.whatsapp_link,
-                        coupon: partner.coupon,
-                        couponDescription: partner.coupon_description,
-                        isAuthorized: partner.is_authorized,
-                        orderIndex: partner.order_index,
-                        displayId: partner.display_id
-                    });
-                    setShowRoulette(true);
+                // Only show modals if cashback is enabled for this partner
+                if (partner.cashback_enabled) {
+                    // Fetch cashback configs
+                    const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
+                    if (configs && configs.length > 0) {
+                        setCashbackConfigs(configs);
+                        setRoulettePartner({
+                            id: partner.id,
+                            name: partner.name,
+                            category: partner.category,
+                            activity: partner.activity,
+                            description: partner.description,
+                            address: partner.address,
+                            imageUrl: partner.image_url,
+                            link: partner.link,
+                            whatsappLink: partner.whatsapp_link,
+                            coupon: partner.coupon,
+                            couponDescription: partner.coupon_description,
+                            isAuthorized: partner.is_authorized,
+                            cashbackEnabled: partner.cashback_enabled,
+                            orderIndex: partner.order_index,
+                            displayId: partner.display_id
+                        });
+                        setShowWelcomeModal(true);
+                    }
                 }
             }
         } catch (error) {
@@ -178,6 +183,17 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
     return (
         <main className="flex-grow">
             <AnimatePresence>
+                {showWelcomeModal && roulettePartner && (
+                    <WelcomeModal 
+                        isOpen={showWelcomeModal}
+                        onClose={() => setShowWelcomeModal(false)}
+                        onAccept={() => {
+                            setShowWelcomeModal(false);
+                            setShowRoulette(true);
+                        }}
+                        storeName={roulettePartner.name}
+                    />
+                )}
                 {showRoulette && roulettePartner && (
                     <RouletteModal 
                         isOpen={showRoulette}
@@ -223,6 +239,27 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
                             </div>
                         )}
                     </div>
+
+                    {featuredPartner && (
+                        <div className="mt-16 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden">
+                            <div className="flex items-center space-x-4 w-full md:w-auto">
+                                <div className="bg-amber-400 p-3 rounded-2xl shadow-lg shadow-amber-400/20 flex-shrink-0">
+                                    <Trophy className="text-white w-6 h-6" />
+                                </div>
+                                <div className="min-w-0">
+                                    <h4 className="text-white font-black uppercase tracking-tight text-xs sm:text-sm">Parceiro da Semana</h4>
+                                    <p className="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">O mais acessado nos últimos 7 dias</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-4 bg-slate-800/50 p-3 rounded-2xl border border-slate-700 w-full md:w-auto md:pr-6 min-w-0">
+                                <img src={featuredPartner.imageUrl} alt={featuredPartner.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                                <div className="min-w-0">
+                                    <p className="text-white font-bold truncate">{featuredPartner.name}</p>
+                                    <p className="text-[#279267] text-[10px] font-black uppercase tracking-widest truncate">{featuredPartner.category}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </section>
 
@@ -269,41 +306,6 @@ const LandingPage = ({ partners, categories, commercialBanner }: { partners: Par
                     <LeadForm type="contato" title="Fale Conosco" subtitle="Dúvidas, sugestões ou suporte? Estamos prontos para te atender via WhatsApp." />
                 </div>
             </section>
-
-            {/* Floating Test Panel (Dev Only) */}
-            <div className="fixed bottom-4 right-4 z-[100] flex flex-col items-end">
-                {showTestPanel && (
-                    <div className="bg-white p-4 rounded-2xl shadow-2xl mb-4 border border-slate-200 w-72 max-h-96 flex flex-col">
-                        <div className="flex justify-between items-center mb-3">
-                            <h3 className="font-black text-slate-800 text-sm">🛠️ Testar Roleta</h3>
-                            <button onClick={() => setShowTestPanel(false)} className="text-slate-400 hover:text-slate-600">
-                                <X size={16} />
-                            </button>
-                        </div>
-                        <div className="overflow-y-auto flex-grow space-y-2 pr-2 custom-scrollbar">
-                            {partners.filter(p => p.displayId).map(p => (
-                                <button 
-                                    key={p.id}
-                                    onClick={() => handleRefAccess(p.displayId)}
-                                    className="w-full text-left px-3 py-2 bg-slate-50 hover:bg-[#279267] hover:text-white rounded-lg text-xs font-bold transition-colors border border-slate-100"
-                                >
-                                    ID {p.displayId} - {p.name}
-                                </button>
-                            ))}
-                            {partners.filter(p => p.displayId).length === 0 && (
-                                <p className="text-xs text-slate-500 text-center py-4">Nenhum parceiro com ID configurado.</p>
-                            )}
-                        </div>
-                    </div>
-                )}
-                <button 
-                    onClick={() => setShowTestPanel(!showTestPanel)}
-                    className="bg-slate-900 text-white px-4 py-3 rounded-full shadow-xl font-bold text-sm flex items-center space-x-2 hover:bg-slate-800 transition-transform hover:scale-105"
-                >
-                    <Sparkles size={16} className="text-yellow-400" />
-                    <span>Testar Roleta</span>
-                </button>
-            </div>
         </main>
     );
 };
@@ -312,7 +314,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback'>('partners');
     
     // Partner Form State
-    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, orderIndex: number, displayId: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, orderIndex: 0, displayId: 0 });
+    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, cashbackEnabled: boolean, orderIndex: number, displayId: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: 0 });
     const [editingId, setEditingId] = useState<string | null>(null);
     
     // About Us State
@@ -486,6 +488,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         coupon: formData.coupon || null,
                         coupon_description: formData.couponDescription || null,
                         is_authorized: formData.isAuthorized,
+                        cashback_enabled: formData.cashbackEnabled,
                         order_index: formData.orderIndex,
                         display_id: formData.displayId
                     })
@@ -512,6 +515,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         coupon: formData.coupon || null,
                         coupon_description: formData.couponDescription || null,
                         is_authorized: formData.isAuthorized,
+                        cashback_enabled: formData.cashbackEnabled,
                         order_index: formData.orderIndex,
                         display_id: formData.displayId
                     }])
@@ -534,7 +538,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     const resetForm = () => {
-        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, orderIndex: 0, displayId: 0 });
+        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: 0 });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -553,6 +557,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             coupon: partner.coupon || '',
             couponDescription: partner.couponDescription || '',
             isAuthorized: partner.isAuthorized,
+            cashbackEnabled: partner.cashbackEnabled,
             orderIndex: partner.orderIndex,
             displayId: partner.displayId || 0
         });
@@ -782,29 +787,29 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-16">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-4">
+        <div className="max-w-7xl mx-auto px-4 py-8 md:py-16 overflow-x-hidden">
+            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
                 <div className="flex items-center space-x-3">
-                    <div className="bg-slate-900 text-white p-3 rounded-2xl shadow-xl">
-                        <Plus size={32} />
+                    <div className="bg-slate-900 text-white p-2 sm:p-3 rounded-2xl shadow-xl flex-shrink-0">
+                        <Plus size={24} className="sm:w-8 sm:h-8" />
                     </div>
-                    <h1 className="text-4xl font-black text-slate-900">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-tight">
                         Painel de Controle
                     </h1>
                 </div>
                 
-                <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100">
-                    <button onClick={() => setActiveTab('partners')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
-                    <button onClick={() => setActiveTab('about')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
-                    <button onClick={() => setActiveTab('cases')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
-                    <button onClick={() => setActiveTab('ranking')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
-                    <button onClick={() => setActiveTab('cashback')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
+                <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar whitespace-nowrap w-full md:w-auto">
+                    <button onClick={() => setActiveTab('partners')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
+                    <button onClick={() => setActiveTab('about')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
+                    <button onClick={() => setActiveTab('cases')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
+                    <button onClick={() => setActiveTab('ranking')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
+                    <button onClick={() => setActiveTab('cashback')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
                 </div>
             </div>
 
             {activeTab === 'partners' && (
                 <>
-                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
+                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
                         <h2 className="text-2xl font-black text-slate-900 mb-4">Logotipo do Cabeçalho</h2>
                         <p className="text-slate-500 mb-6">Adicione o logotipo que será exibido no cabeçalho do site. Apenas 1 imagem é permitida por vez.</p>
                         
@@ -868,7 +873,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     )}
                                 </div>
                                 <form onSubmit={handleAddOrUpdate} className="space-y-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                             <input 
                                                 type="checkbox" 
@@ -879,6 +884,18 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                             />
                                             <label htmlFor="isAuthorized" className="text-sm font-bold text-slate-700 cursor-pointer">Divulgação autorizada</label>
                                         </div>
+                                        <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                            <input 
+                                                type="checkbox" 
+                                                id="cashbackEnabled" 
+                                                className="w-5 h-5 accent-[#279267] cursor-pointer" 
+                                                checked={formData.cashbackEnabled} 
+                                                onChange={e => setFormData({...formData, cashbackEnabled: e.target.checked})} 
+                                            />
+                                            <label htmlFor="cashbackEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Cashback Ativado</label>
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
                                         <div className="flex flex-col space-y-1">
                                             <label htmlFor="orderIndex" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Sequência</label>
                                             <input 
@@ -992,9 +1009,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 {partners.map(p => (
-                                    <div key={p.id} className={`bg-white p-4 rounded-2xl shadow-sm border transition-all flex items-center space-x-4 ${editingId === p.id ? 'border-[#279267] ring-2 ring-green-100 ring-offset-2' : 'border-slate-100'}`}>
-                                        <img src={p.imageUrl} alt={p.name} referrerPolicy="no-referrer" className="w-16 h-16 rounded-xl object-cover shadow-inner bg-white" />
-                                        <div className="flex-grow min-w-0">
+                                    <div key={p.id} className={`bg-white p-4 rounded-2xl shadow-sm border transition-all flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-4 ${editingId === p.id ? 'border-[#279267] ring-2 ring-green-100 ring-offset-2' : 'border-slate-100'}`}>
+                                        <img src={p.imageUrl} alt={p.name} referrerPolicy="no-referrer" className="w-16 h-16 rounded-xl object-cover shadow-inner bg-white flex-shrink-0" />
+                                        <div className="flex-grow min-w-0 text-center sm:text-left">
                                             <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
                                             <p className="text-[10px] font-black text-[#279267] uppercase">{p.category}</p>
                                         </div>
@@ -1023,7 +1040,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             )}
 
             {activeTab === 'about' && (
-                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
                     <h2 className="text-2xl font-black text-slate-900 mb-6">Configuração da Página 'Sobre Nós'</h2>
                     <form onSubmit={handleUpdateAbout} className="space-y-6">
                         <div className="space-y-2">
@@ -1107,7 +1124,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             {activeTab === 'cases' && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
                     <div className="lg:col-span-1">
-                        <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 sticky top-28">
+                        <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100 sticky top-28">
                             <h2 className="text-xl font-black text-[#279267] mb-6">{editingCaseId ? "Editar Case" : "Novo Case de Sucesso"}</h2>
                             <form onSubmit={handleAddOrUpdateCase} className="space-y-4">
                                 <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Nome da Empresa" value={caseFormData.companyName} onChange={e => setCaseFormData({...caseFormData, companyName: e.target.value})} />
@@ -1143,11 +1160,11 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
                     <div className="lg:col-span-2 space-y-6">
                         {successCases.map(item => (
-                            <div key={item.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex items-center space-x-6">
-                                <img src={item.storeImageUrl} className="w-32 h-24 rounded-2xl object-cover" />
-                                <div className="flex-grow">
+                            <div key={item.id} className="bg-white p-4 sm:p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-6">
+                                <img src={item.storeImageUrl} className="w-full sm:w-32 h-48 sm:h-24 rounded-2xl object-cover" />
+                                <div className="flex-grow text-center sm:text-left">
                                     <h4 className="font-black text-slate-900 text-lg">{item.companyName}</h4>
-                                    <p className="text-slate-500 text-sm line-clamp-2">{item.description}</p>
+                                    <p className="text-slate-500 text-sm line-clamp-3 sm:line-clamp-2">{item.description}</p>
                                 </div>
                                 <div className="flex space-x-2">
                                     <button onClick={() => {
@@ -1164,7 +1181,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             )}
 
             {activeTab === 'ranking' && (
-                <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
                     <div className="flex items-center space-x-3 mb-8">
                         <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
                             <Trophy size={24} />
@@ -1219,7 +1236,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             {activeTab === 'cashback' && (
                 <div className="space-y-8">
-                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
                         <div className="flex items-center space-x-3 mb-8">
                             <div className="bg-green-100 text-[#279267] p-3 rounded-2xl">
                                 <Settings size={24} />
@@ -1275,7 +1292,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         </div>
                     </div>
 
-                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
                         <div className="flex items-center space-x-3 mb-8">
                             <div className="bg-slate-100 text-slate-600 p-3 rounded-2xl">
                                 <History size={24} />
@@ -1328,30 +1345,30 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         <p className="text-slate-600 mb-6">
                             Tem certeza que deseja remover {deleteConfirm.type === 'partner' ? 'este parceiro' : deleteConfirm.type === 'category' ? 'esta categoria' : deleteConfirm.type === 'banner' ? 'o banner atual' : 'este case de sucesso'}? Esta ação não pode ser desfeita.
                         </p>
-                        <div className="flex space-x-3">
-                            <button 
-                                onClick={() => setDeleteConfirm(null)}
-                                className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
-                            >
-                                Cancelar
-                            </button>
-                            <button 
-                                onClick={async () => {
-                                    if (deleteConfirm.type === 'case') {
-                                        try {
-                                            await supabase.from('success_cases').delete().eq('id', deleteConfirm.id);
-                                            setSuccessCases(successCases.filter(c => c.id !== deleteConfirm.id));
-                                        } catch (error) { console.error(error); }
-                                        setDeleteConfirm(null);
-                                    } else {
-                                        executeDelete();
-                                    }
-                                }}
-                                className="flex-1 px-4 py-2 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors"
-                            >
-                                Excluir
-                            </button>
-                        </div>
+                                <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
+                                    <button 
+                                        onClick={() => setDeleteConfirm(null)}
+                                        className="flex-1 px-4 py-3 bg-slate-100 text-slate-700 font-bold rounded-xl hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        onClick={async () => {
+                                            if (deleteConfirm.type === 'case') {
+                                                try {
+                                                    await supabase.from('success_cases').delete().eq('id', deleteConfirm.id);
+                                                    setSuccessCases(successCases.filter(c => c.id !== deleteConfirm.id));
+                                                } catch (error) { console.error(error); }
+                                                setDeleteConfirm(null);
+                                            } else {
+                                                executeDelete();
+                                            }
+                                        }}
+                                        className="flex-1 px-4 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors"
+                                    >
+                                        Excluir
+                                    </button>
+                                </div>
                     </div>
                 </div>
             )}
@@ -1396,6 +1413,7 @@ const App = () => {
                     coupon: p.coupon,
                     couponDescription: p.coupon_description,
                     isAuthorized: p.is_authorized ?? true,
+                    cashbackEnabled: p.cashback_enabled ?? true,
                     orderIndex: p.order_index ?? 0,
                     displayId: p.display_id || 0
                 }));
@@ -1447,17 +1465,17 @@ const App = () => {
     return (
         <Router>
             <ScrollToTop />
-            <div className="min-h-screen flex flex-col bg-gray-50 pt-24">
+            <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
                 <Header headerLogo={headerLogo} />
                 <CommercialBanner position="top" />
                 <Routes>
-                    <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} />} />
+                    <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
                     <Route path="/sobre-nos" element={<AboutUsPage />} />
                     <Route path="/admin" element={<AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />} />
                     <Route path="/admin-mensagens" element={<AdminMessagesPage />} />
-                    <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} />} />
+                    <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
                 </Routes>
-                <Footer featuredPartner={featuredPartner} />
+                <Footer />
                 <CommercialBanner position="bottom" />
             </div>
         </Router>

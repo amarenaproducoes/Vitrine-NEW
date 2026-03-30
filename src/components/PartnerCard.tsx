@@ -206,7 +206,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                   placeholder="(11) 99999-9999"
                   value={whatsapp}
                   onChange={(e) => setWhatsapp(formatWhatsApp(e.target.value))}
-                  className="w-full px-3 py-2 text-sm rounded-lg border border-slate-200 mb-2 focus:outline-none focus:border-[#279267] bg-white text-center font-bold tracking-wider"
+                  className="w-full px-3 py-2 text-base rounded-lg border border-slate-200 mb-2 focus:outline-none focus:border-[#279267] bg-white text-center font-bold tracking-wider"
                   autoFocus
                 />
                 <button

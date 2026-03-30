@@ -22,10 +22,10 @@ const Header: React.FC<HeaderProps> = ({ headerLogo }) => {
   return (
     <nav className="fixed top-0 w-full z-50 bg-slate-900 border-b border-slate-800 backdrop-blur-md bg-opacity-90">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-24 items-center">
+        <div className="flex justify-between h-20 md:h-24 items-center">
           <Link to="/" className="flex items-center space-x-3">
             {headerLogo ? (
-              <img src={headerLogo} alt="Aparece aí por aqui" className="h-[90px] w-auto object-contain py-2" />
+              <img src={headerLogo} alt="Aparece aí por aqui" className="h-[60px] md:h-[90px] w-auto object-contain py-2" />
             ) : (
               <>
                 <div className="bg-[#279267] p-2 rounded-lg">

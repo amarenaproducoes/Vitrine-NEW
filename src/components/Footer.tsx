@@ -4,30 +4,10 @@ import { Link } from 'react-router-dom';
 import { BRAND_INFO } from '../constants';
 import { Partner } from '../types';
 
-const Footer: React.FC<{ featuredPartner?: Partner | null }> = ({ featuredPartner }) => {
+const Footer: React.FC = () => {
   return (
     <footer className="bg-slate-900 text-slate-400 pt-20 pb-10 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {featuredPartner && (
-          <div className="mb-16 p-6 bg-slate-800/50 border border-slate-700/50 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center space-x-4">
-              <div className="bg-amber-400 p-3 rounded-2xl shadow-lg shadow-amber-400/20">
-                <Trophy className="text-white w-6 h-6" />
-              </div>
-              <div>
-                <h4 className="text-white font-black uppercase tracking-tight">Parceiro da Semana</h4>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">O mais acessado nos últimos 7 dias</p>
-              </div>
-            </div>
-            <div className="flex items-center space-x-4 bg-slate-900/50 p-3 rounded-2xl border border-slate-800 pr-6">
-              <img src={featuredPartner.imageUrl} alt={featuredPartner.name} className="w-12 h-12 rounded-xl object-cover" />
-              <div>
-                <p className="text-white font-bold">{featuredPartner.name}</p>
-                <p className="text-[#279267] text-[10px] font-black uppercase tracking-widest">{featuredPartner.category}</p>
-              </div>
-            </div>
-          </div>
-        )}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
           <div className="col-span-1 lg:col-span-1">
             <div className="flex items-center space-x-3 mb-6">
