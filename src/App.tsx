@@ -375,6 +375,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const [sharePeriod, setSharePeriod] = useState<'all' | 'month'>('all');
     const [clickRankingData, setClickRankingData] = useState<any[]>([]);
     const [clickPeriod, setClickPeriod] = useState<'all' | 'month'>('all');
+    const [cashbackRankingData, setCashbackRankingData] = useState<any[]>([]);
+    const [cashbackRankingPeriod, setCashbackRankingPeriod] = useState<'all' | 'month'>('all');
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
 
@@ -405,7 +407,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         fetchAdminData();
         if (activeTab === 'ranking') fetchRanking();
         if (activeTab === 'cashback') fetchCashbackConfigs();
-    }, [activeTab, sharePeriod, clickPeriod]);
+    }, [activeTab, sharePeriod, clickPeriod, cashbackRankingPeriod]);
 
     useEffect(() => {
         if (!editingId && formData.displayId === 0 && partners.length > 0) {
@@ -472,6 +474,30 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             const { data: logs } = await supabase.from('cashback_logs').select('*').order('created_at', { ascending: false }).limit(50);
             if (configs) setCashbackConfigs(configs);
             if (logs) setCashbackLogs(logs);
+
+            // Fetch Ranking
+            let query = supabase.from('cashback_logs').select('store_name, cashback_value, created_at');
+            
+            if (cashbackRankingPeriod === 'month') {
+                const now = new Date();
+                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+                query = query.gte('created_at', firstDayOfMonth);
+            }
+
+            const { data: allLogs } = await query;
+            
+            if (allLogs) {
+                const ranking: { [key: string]: number } = {};
+                allLogs.forEach(log => {
+                    ranking[log.store_name] = (ranking[log.store_name] || 0) + Number(log.cashback_value);
+                });
+
+                const sortedRanking = Object.entries(ranking)
+                    .map(([name, total]) => ({ name, total }))
+                    .sort((a, b) => b.total - a.total);
+
+                setCashbackRankingData(sortedRanking);
+            }
         } catch (error) {
             console.error('Error fetching cashback:', error);
         }
@@ -1576,6 +1602,71 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start space-x-3 text-amber-700 text-xs">
                             <Info size={16} className="shrink-0 mt-0.5" />
                             <p><strong>Dica:</strong> A soma das probabilidades não precisa ser exatamente 100%. O sistema utiliza pesos relativos para determinar o vencedor.</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
+                                    <Trophy size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900">Ranking de Cashback</h2>
+                                    <p className="text-slate-500 text-sm">Somatório de valores ganhos por parceiro.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                <button 
+                                    onClick={() => setCashbackRankingPeriod('all')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${cashbackRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Todo o Período
+                                </button>
+                                <button 
+                                    onClick={() => setCashbackRankingPeriod('month')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${cashbackRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Mês Atual
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Cashback</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {cashbackRankingData.map((item, index) => (
+                                        <tr key={item.name} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 px-4">
+                                                <span className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-black ${
+                                                    index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                                                    index === 1 ? 'bg-slate-200 text-slate-700' : 
+                                                    index === 2 ? 'bg-amber-100 text-amber-700' : 
+                                                    'bg-slate-100 text-slate-500'
+                                                }`}>
+                                                    {index + 1}º
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-4 font-bold text-slate-900">{item.name}</td>
+                                            <td className="py-4 px-4 text-right">
+                                                <span className="text-[#279267] font-black">R$ {item.total.toFixed(2)}</span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {cashbackRankingData.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="py-20 text-center text-slate-400 font-bold">Nenhum cashback registrado no período selecionado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
