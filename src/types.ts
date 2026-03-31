@@ -39,6 +39,7 @@ export interface CashbackLog {
   id: string;
   store_name: string;
   cashback_value: number;
+  whatsapp: string;
   ip_address: string;
   created_at: string;
 }

@@ -123,6 +123,9 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
     }, [location]);
 
     const handleRefAccess = async (displayId: number) => {
+        // Check if modal was already shown in this session to prevent re-triggering on navigation
+        if (sessionStorage.getItem(`welcome_modal_shown_${displayId}`)) return;
+
         try {
             const { data: partner } = await supabase
                 .from('partners')
@@ -162,6 +165,8 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                             displayId: partner.display_id
                         });
                         setShowWelcomeModal(true);
+                        // Mark as shown for this session
+                        sessionStorage.setItem(`welcome_modal_shown_${displayId}`, 'true');
                     }
                 }
             }
@@ -170,13 +175,14 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
         }
     };
 
-    const handleWin = async (value: number) => {
+    const handleWin = async (value: number, whatsapp: string) => {
         if (!roulettePartner) return;
         try {
             const ip = await getUserIP();
             await supabase.from('cashback_logs').insert({
                 store_name: roulettePartner.name,
                 cashback_value: value,
+                whatsapp: whatsapp,
                 ip_address: ip
             });
         } catch (error) {
@@ -1687,6 +1693,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <tr className="border-b border-slate-100">
                                         <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Data/Hora</th>
                                         <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loja</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">WhatsApp</th>
                                         <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Valor</th>
                                         <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">IP do Cliente</th>
                                     </tr>
@@ -1698,6 +1705,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                 {new Date(log.created_at).toLocaleString('pt-BR')}
                                             </td>
                                             <td className="py-4 px-4 font-bold text-slate-900">{log.store_name}</td>
+                                            <td className="py-4 px-4 text-sm font-bold text-[#279267]">{log.whatsapp}</td>
                                             <td className="py-4 px-4">
                                                 <span className="text-[#279267] font-black">R$ {log.cashback_value.toFixed(2)}</span>
                                             </td>
@@ -1706,7 +1714,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     ))}
                                     {cashbackLogs.length === 0 && (
                                         <tr>
-                                            <td colSpan={4} className="py-20 text-center text-slate-400 font-bold">Nenhum log de cashback registrado ainda.</td>
+                                            <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">Nenhum log de cashback registrado ainda.</td>
                                         </tr>
                                     )}
                                 </tbody>

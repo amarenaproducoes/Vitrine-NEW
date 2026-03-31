@@ -22,13 +22,6 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onAccept, 
       >
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#279267] via-[#c54b4b] to-[#279267]"></div>
         
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full transition-colors z-10"
-        >
-          <X size={24} className="text-slate-400" />
-        </button>
-
         <div className="p-8 text-center">
           <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6 border-4 border-white shadow-lg">
             <Sparkles className="text-[#279267] w-10 h-10" />

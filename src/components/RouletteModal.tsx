@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Trophy, Sparkles } from 'lucide-react';
+import { X, Trophy, Sparkles, Phone, CheckCircle2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { CashbackConfig } from '../types';
 
@@ -9,10 +9,13 @@ interface RouletteModalProps {
   onClose: () => void;
   storeName: string;
   configs: CashbackConfig[];
-  onWin: (value: number) => void;
+  onWin: (value: number, whatsapp: string) => void;
 }
 
 const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeName, configs, onWin }) => {
+  const [step, setStep] = useState<'form' | 'wheel'>('form');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [hasConsented, setHasConsented] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const [result, setResult] = useState<CashbackConfig | null>(null);
   const [rotation, setRotation] = useState(0);
@@ -47,7 +50,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
     setTimeout(() => {
       setIsSpinning(false);
       setResult(selected);
-      onWin(selected.value);
+      onWin(selected.value, whatsapp);
       
       confetti({
         particleCount: 150,
@@ -58,7 +61,30 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
     }, 4000);
   };
 
+  const formatWhatsApp = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 11) {
+      let formatted = numbers;
+      if (numbers.length > 2) {
+        formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+      }
+      if (numbers.length > 7) {
+        formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+      }
+      return formatted;
+    }
+    return whatsapp;
+  };
+
+  const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const formatted = formatWhatsApp(e.target.value);
+    setWhatsapp(formatted);
+  };
+
   if (!isOpen) return null;
+
+  const isWhatsappValid = /^\(\d{2}\) \d{5}-\d{4}$/.test(whatsapp);
+  const isFormValid = isWhatsappValid && hasConsented;
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 backdrop-blur-sm">
@@ -77,94 +103,169 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
           </button>
 
           <div className="p-6 md:p-8 text-center">
-            <div className="mb-6">
-              <h2 className="text-2xl font-black text-slate-900 mb-2">
-                Bem-vindo à {storeName}!
-              </h2>
-              <p className="text-slate-500 font-medium text-sm md:text-base">
-                Gire a roleta e garanta seu cashback nesta compra!
-              </p>
-            </div>
-
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto mb-8">
-              {/* Pointer */}
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-                <div className="w-8 h-8 bg-[#c54b4b] rotate-45 rounded-sm shadow-lg border-2 border-white" />
-              </div>
-
-              {/* Wheel */}
-              <motion.div 
-                ref={wheelRef}
-                animate={{ rotate: rotation }}
-                transition={{ duration: 4, ease: [0.45, 0.05, 0.55, 0.95] }}
-                className="w-full h-full rounded-full border-8 border-slate-900 relative overflow-hidden shadow-2xl"
-                style={{
-                  background: `conic-gradient(${configs.map((_, i) => {
-                    const start = i * (360 / configs.length);
-                    const end = (i + 1) * (360 / configs.length);
-                    const color = i % 2 === 0 ? '#279267' : '#c54b4b';
-                    return `${color} ${start}deg ${end}deg`;
-                  }).join(', ')})`
-                }}
-              >
-                {configs.map((config, i) => {
-                  const angle = 360 / configs.length;
-                  const sliceCenter = i * angle + angle / 2;
-                  return (
-                    <div 
-                      key={config.id}
-                      className="absolute inset-0 flex items-start justify-center pt-8 sm:pt-10"
-                      style={{ transform: `rotate(${sliceCenter}deg)` }}
-                    >
-                      <span className="text-white font-black text-xl sm:text-2xl drop-shadow-md whitespace-nowrap">
-                        {config.label}
-                      </span>
-                    </div>
-                  );
-                })}
-                {/* Center point */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-slate-900 z-10 shadow-inner" />
-              </motion.div>
-            </div>
-
             <AnimatePresence mode="wait">
-              {result ? (
-                <motion.div 
-                  initial={{ y: 20, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  className="space-y-4"
+              {step === 'form' ? (
+                <motion.div
+                  key="form"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-6"
                 >
-                  <div className="bg-green-50 p-4 sm:p-6 rounded-2xl border-2 border-green-200">
-                    <div className="flex justify-center mb-2">
-                      <Trophy className="text-green-600 w-10 h-10 sm:w-12 sm:h-12" />
-                    </div>
-                    <h3 className="text-xl sm:text-2xl font-black text-green-700">
-                      Parabéns! Você ganhou {result.label}
-                    </h3>
-                    <p className="text-green-600 font-bold mt-2 text-sm sm:text-base">
-                      Apresente esta tela ao lojista para garantir seu cashback imediato!
-                    </p>
+                  <div className="bg-green-50 p-4 rounded-2xl mb-4">
+                    <Sparkles className="text-[#279267] w-8 h-8 mx-auto mb-2" />
+                    <h2 className="text-xl font-black text-slate-900">Quase lá!</h2>
+                    <p className="text-slate-600 text-sm">Identifique-se para liberar a roleta de prêmios.</p>
                   </div>
+
+                  <div className="space-y-4 text-left">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        Seu WhatsApp
+                      </label>
+                      <div className="relative">
+                        <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+                        <input 
+                          type="tel"
+                          placeholder="(00) 00000-0000"
+                          value={whatsapp}
+                          onChange={handleWhatsappChange}
+                          className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#279267] focus:bg-white outline-none transition-all font-bold text-slate-900"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
+                      <AlertCircle className="text-amber-600 w-5 h-5 shrink-0" />
+                      <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
+                        <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos sobre promoções e benefícios locais.
+                      </p>
+                    </div>
+
+                    <label className="flex items-start gap-3 cursor-pointer group">
+                      <div className="relative mt-1">
+                        <input 
+                          type="checkbox"
+                          checked={hasConsented}
+                          onChange={(e) => setHasConsented(e.target.checked)}
+                          className="sr-only"
+                        />
+                        <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${hasConsented ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                          {hasConsented && <CheckCircle2 className="text-white w-4 h-4" />}
+                        </div>
+                      </div>
+                      <span className="text-xs text-slate-600 font-medium leading-tight">
+                        Estou ciente e autorizo a coleta e uso dos meus dados para fins publicitários.
+                      </span>
+                    </label>
+                  </div>
+
                   <button 
-                    onClick={onClose}
-                    className="w-full py-3 sm:py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
+                    onClick={() => setStep('wheel')}
+                    disabled={!isFormValid}
+                    className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all transform flex items-center justify-center gap-2 ${isFormValid ? 'bg-[#279267] text-white hover:bg-green-700 hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                   >
-                    Continuar para a Vitrine
+                    LIBERAR ROLETA
                   </button>
                 </motion.div>
               ) : (
-                <button 
-                  onClick={spin}
-                  disabled={isSpinning}
-                  className={`w-full py-3 sm:py-4 ${isSpinning ? 'bg-slate-200 text-slate-400' : 'bg-[#279267] text-white hover:bg-green-700'} font-black text-lg sm:text-xl rounded-2xl shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2`}
+                <motion.div
+                  key="wheel"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
                 >
-                  {isSpinning ? 'Girando...' : (
-                    <>
-                      <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
-                      GIRAR AGORA!
-                    </>
-                  )}
-                </button>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-black text-slate-900 mb-2">
+                      Bem-vindo à {storeName}!
+                    </h2>
+                    <p className="text-slate-500 font-medium text-sm md:text-base">
+                      Gire a roleta e garanta seu cashback nesta compra!
+                    </p>
+                  </div>
+
+                  <div className="relative w-64 h-64 sm:w-72 sm:h-72 mx-auto mb-8">
+                    {/* Pointer */}
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
+                      <div className="w-8 h-8 bg-[#c54b4b] rotate-45 rounded-sm shadow-lg border-2 border-white" />
+                    </div>
+
+                    {/* Wheel */}
+                    <motion.div 
+                      ref={wheelRef}
+                      animate={{ rotate: rotation }}
+                      transition={{ duration: 4, ease: [0.45, 0.05, 0.55, 0.95] }}
+                      className="w-full h-full rounded-full border-8 border-slate-900 relative overflow-hidden shadow-2xl"
+                      style={{
+                        background: `conic-gradient(${configs.map((_, i) => {
+                          const start = i * (360 / configs.length);
+                          const end = (i + 1) * (360 / configs.length);
+                          const color = i % 2 === 0 ? '#279267' : '#c54b4b';
+                          return `${color} ${start}deg ${end}deg`;
+                        }).join(', ')})`
+                      }}
+                    >
+                      {configs.map((config, i) => {
+                        const angle = 360 / configs.length;
+                        const sliceCenter = i * angle + angle / 2;
+                        return (
+                          <div 
+                            key={config.id}
+                            className="absolute inset-0 flex items-start justify-center pt-8 sm:pt-10"
+                            style={{ transform: `rotate(${sliceCenter}deg)` }}
+                          >
+                            <span className="text-white font-black text-xl sm:text-2xl drop-shadow-md whitespace-nowrap">
+                              {config.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                      {/* Center point */}
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-white rounded-full border-4 border-slate-900 z-10 shadow-inner" />
+                    </motion.div>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {result ? (
+                      <motion.div 
+                        initial={{ y: 20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        className="space-y-4"
+                      >
+                        <div className="bg-green-50 p-4 sm:p-6 rounded-2xl border-2 border-green-200">
+                          <div className="flex justify-center mb-2">
+                            <Trophy className="text-green-600 w-10 h-10 sm:w-12 sm:h-12" />
+                          </div>
+                          <h3 className="text-xl sm:text-2xl font-black text-green-700">
+                            Parabéns! Você ganhou {result.label}
+                          </h3>
+                          <p className="text-green-600 font-bold mt-2 text-sm sm:text-base">
+                            Apresente esta tela ao lojista para garantir seu cashback imediato!
+                          </p>
+                        </div>
+                        <button 
+                          onClick={onClose}
+                          className="w-full py-3 sm:py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 transition-colors"
+                        >
+                          Continuar para a Vitrine
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <button 
+                        onClick={spin}
+                        disabled={isSpinning}
+                        className={`w-full py-3 sm:py-4 ${isSpinning ? 'bg-slate-200 text-slate-400' : 'bg-[#279267] text-white hover:bg-green-700'} font-black text-lg sm:text-xl rounded-2xl shadow-lg transition-all transform hover:scale-105 flex items-center justify-center gap-2`}
+                      >
+                        {isSpinning ? 'Girando...' : (
+                          <>
+                            <Sparkles className="w-5 h-5 sm:w-6 sm:h-6" />
+                            GIRAR AGORA!
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               )}
             </AnimatePresence>
           </div>
