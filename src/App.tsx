@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
-    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search
+    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -22,7 +22,7 @@ import LoginPage from './components/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
-import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog } from './types';
+import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData } from './types';
 import { supabase } from './lib/supabase';
 import { getUserIP } from './lib/ip';
 import Editor, { 
@@ -101,7 +101,7 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }: { partners: Partner[], categories: Category[], commercialBanner: string | null, featuredPartner: Partner | null }) => {
+const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }: { partners: Partner[], categories: Category[], commercialBanner: CommercialBannerData | null, featuredPartner: Partner | null }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
@@ -217,7 +217,13 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
             </AnimatePresence>
             {commercialBanner && (
                 <div className="w-full block bg-slate-900 border-b border-slate-800">
-                    <img src={commercialBanner} alt="Banner Publicitário" className="w-full h-auto block" />
+                    {commercialBanner.linkUrl ? (
+                        <a href={commercialBanner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
+                            <img src={commercialBanner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                        </a>
+                    ) : (
+                        <img src={commercialBanner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                    )}
                 </div>
             )}
             <section id="vitrine" className="relative overflow-hidden bg-slate-900 pt-16 pb-24 md:pt-24 md:pb-32">
@@ -345,13 +351,14 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
     );
 };
 
-const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: string | null, setCommercialBanner: React.Dispatch<React.SetStateAction<string | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>> }) => {
+const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: CommercialBannerData | null, setCommercialBanner: React.Dispatch<React.SetStateAction<CommercialBannerData | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>> }) => {
     const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback'>('partners');
     const navigate = useNavigate();
     
     // Partner Form State
     const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, cashbackEnabled: boolean, orderIndex: number, displayId: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: 0 });
     const [editingId, setEditingId] = useState<string | null>(null);
+    const [bannerLink, setBannerLink] = useState(commercialBanner?.linkUrl || '');
     
     // About Us State
     const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null });
@@ -364,6 +371,10 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
     // Ranking State
     const [rankingData, setRankingData] = useState<any[]>([]);
+    const [shareRankingData, setShareRankingData] = useState<any[]>([]);
+    const [sharePeriod, setSharePeriod] = useState<'all' | 'month'>('all');
+    const [clickRankingData, setClickRankingData] = useState<any[]>([]);
+    const [clickPeriod, setClickPeriod] = useState<'all' | 'month'>('all');
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
 
@@ -376,10 +387,31 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const caseStoreInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
+        if (commercialBanner?.linkUrl) {
+            setBannerLink(commercialBanner.linkUrl);
+        }
+    }, [commercialBanner]);
+
+    const getNextAvailableDisplayId = (currentPartners: Partner[]) => {
+        const usedIds = currentPartners.map(p => p.displayId).filter(id => id > 0);
+        let nextId = 1;
+        while (usedIds.includes(nextId)) {
+            nextId++;
+        }
+        return nextId;
+    };
+
+    useEffect(() => {
         fetchAdminData();
         if (activeTab === 'ranking') fetchRanking();
         if (activeTab === 'cashback') fetchCashbackConfigs();
-    }, [activeTab]);
+    }, [activeTab, sharePeriod, clickPeriod]);
+
+    useEffect(() => {
+        if (!editingId && formData.displayId === 0 && partners.length > 0) {
+            setFormData(prev => ({ ...prev, displayId: getNextAvailableDisplayId(partners) }));
+        }
+    }, [partners, editingId]);
 
     const fetchRanking = async () => {
         try {
@@ -411,6 +443,24 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             }));
 
             setRankingData(ranking.sort((a, b) => b.monthCount - a.monthCount).slice(0, 10));
+
+            // Fetch Share Ranking
+            const { data: shareRanking, error: shareError } = await supabase.rpc('get_partner_share_counts', { period: sharePeriod });
+            if (shareError) throw shareError;
+            setShareRankingData(shareRanking || []);
+
+            // Fetch Click Ranking
+            const { data: clickRanking, error: clickError } = await supabase.rpc('get_partner_click_counts', { period: clickPeriod });
+            if (clickError) throw clickError;
+            
+            // Explicitly sort by total clicks (Instagram + WhatsApp) descending
+            const sortedClickRanking = (clickRanking || []).sort((a: any, b: any) => {
+                const totalA = Number(a.instagram_count || 0) + Number(a.whatsapp_count || 0);
+                const totalB = Number(b.instagram_count || 0) + Number(b.whatsapp_count || 0);
+                return totalB - totalA;
+            });
+            
+            setClickRankingData(sortedClickRanking);
         } catch (error) {
             console.error('Error fetching ranking:', error);
         }
@@ -574,7 +624,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     const resetForm = () => {
-        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: 0 });
+        const nextId = getNextAvailableDisplayId(partners);
+        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: nextId });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -665,6 +716,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 
                 if (deleteConfirm.id === '1') {
                     setCommercialBanner(null);
+                    setBannerLink('');
                 } else if (deleteConfirm.id === '2') {
                     setHeaderLogo(null);
                 }
@@ -711,14 +763,17 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 .from('partners')
                 .getPublicUrl(fileName);
 
+            const upsertData: any = { id: id, image_url: publicUrl };
+            if (id === 1) upsertData.link_url = bannerLink;
+
             const { error: dbError } = await supabase
                 .from('commercial_banner')
-                .upsert({ id: id, image_url: publicUrl });
+                .upsert(upsertData);
 
             if (dbError) throw dbError;
 
             if (id === 1) {
-                setCommercialBanner(publicUrl);
+                setCommercialBanner({ id: 1, imageUrl: publicUrl, linkUrl: bannerLink });
                 alert("Banner atualizado com sucesso!");
             } else if (id === 2) {
                 setHeaderLogo(publicUrl);
@@ -727,6 +782,24 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         } catch (error: any) {
             console.error('Error uploading image:', error);
             alert(error.message || 'Erro ao salvar imagem. Tente novamente.');
+        }
+    };
+
+    const handleUpdateBannerLink = async () => {
+        if (!commercialBanner) return;
+        try {
+            const { error } = await supabase
+                .from('commercial_banner')
+                .update({ link_url: bannerLink })
+                .eq('id', 1);
+            
+            if (error) throw error;
+            
+            setCommercialBanner({ ...commercialBanner, linkUrl: bannerLink });
+            alert("Link do banner atualizado!");
+        } catch (error) {
+            console.error('Error updating banner link:', error);
+            alert("Erro ao atualizar link.");
         }
     };
 
@@ -893,16 +966,44 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         <p className="text-slate-500 mb-6">Adicione um banner de destaque que será exibido logo abaixo da faixa vermelha na página inicial. Apenas 1 imagem é permitida por vez.</p>
                         
                         {commercialBanner ? (
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex justify-center">
-                                    <img src={commercialBanner} alt="Banner Atual" className="max-w-full h-auto rounded-lg shadow-sm" style={{ maxHeight: '150px' }} />
+                                    <img src={commercialBanner.imageUrl} alt="Banner Atual" className="max-w-full h-auto rounded-lg shadow-sm" style={{ maxHeight: '150px' }} />
                                 </div>
-                                <button onClick={() => handleRemoveBanner(1)} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors">
+                                <div className="flex flex-col space-y-2">
+                                    <label className="text-sm font-bold text-slate-700">Link do Banner:</label>
+                                    <div className="flex gap-2">
+                                        <input 
+                                            type="url" 
+                                            placeholder="https://exemplo.com" 
+                                            className="flex-grow px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]"
+                                            value={bannerLink}
+                                            onChange={(e) => setBannerLink(e.target.value)}
+                                        />
+                                        <button 
+                                            onClick={handleUpdateBannerLink}
+                                            className="px-4 py-2 bg-[#279267] text-white font-bold rounded-xl hover:bg-[#1e7250] transition-colors text-sm"
+                                        >
+                                            Salvar Link
+                                        </button>
+                                    </div>
+                                </div>
+                                <button onClick={() => handleRemoveBanner(1)} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors w-full">
                                     Remover Banner Atual
                                 </button>
                             </div>
                         ) : (
                             <div className="space-y-4">
+                                <div className="flex flex-col space-y-2">
+                                    <label className="text-sm font-bold text-slate-700">Link do Banner (Opcional):</label>
+                                    <input 
+                                        type="url" 
+                                        placeholder="https://exemplo.com" 
+                                        className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]"
+                                        value={bannerLink}
+                                        onChange={(e) => setBannerLink(e.target.value)}
+                                    />
+                                </div>
                                 <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative">
                                     <input type="file" accept="image/*" onChange={(e) => handleUploadBanner(e, 1)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                                     <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
@@ -1285,6 +1386,138 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             </tbody>
                         </table>
                     </div>
+
+                    <div className="mt-12 pt-12 border-t border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-blue-100 text-blue-600 p-3 rounded-2xl">
+                                    <Share2 size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-black text-slate-900">Ranking de Compartilhamentos</h2>
+                                    <p className="text-slate-500 text-sm">Somatório de compartilhamentos por parceiro.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                <button 
+                                    onClick={() => setSharePeriod('all')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${sharePeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Todo o Período
+                                </button>
+                                <button 
+                                    onClick={() => setSharePeriod('month')}
+                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${sharePeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Mês Atual
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total de Compartilhamentos</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {shareRankingData.map((item, index) => (
+                                        <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 px-4">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {index + 1}
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-4 font-bold text-slate-900">{item.partner_name}</td>
+                                            <td className="py-4 px-4 text-center">
+                                                <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-black">
+                                                    {item.share_count}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {shareRankingData.length === 0 && (
+                                        <tr>
+                                            <td colSpan={3} className="py-20 text-center text-slate-400 font-bold">Nenhum compartilhamento registrado no período selecionado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="mt-12 pt-12 border-t border-slate-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl">
+                                        <MousePointerClick size={24} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-2xl font-black text-slate-900">Ranking de Cliques</h2>
+                                        <p className="text-slate-500 text-sm">Somatório de cliques (Instagram e WhatsApp) por parceiro.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button 
+                                        onClick={() => setClickPeriod('all')}
+                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${clickPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Todo o Período
+                                    </button>
+                                    <button 
+                                        onClick={() => setClickPeriod('month')}
+                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${clickPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Mês Atual
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-100">
+                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Instagram</th>
+                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">WhatsApp</th>
+                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {clickRankingData.map((item, index) => (
+                                            <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="py-4 px-4">
+                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {index + 1}
+                                                    </div>
+                                                </td>
+                                                <td className="py-4 px-4 font-bold text-slate-900">{item.partner_name}</td>
+                                                <td className="py-4 px-4 text-center">
+                                                    <span className="text-slate-600 font-bold">{item.instagram_count}</span>
+                                                </td>
+                                                <td className="py-4 px-4 text-center">
+                                                    <span className="text-slate-600 font-bold">{item.whatsapp_count}</span>
+                                                </td>
+                                                <td className="py-4 px-4 text-center">
+                                                    <span className="bg-purple-100 text-purple-600 px-4 py-1.5 rounded-full text-sm font-black">
+                                                        {Number(item.instagram_count) + Number(item.whatsapp_count)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {clickRankingData.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">Nenhum clique registrado no período selecionado.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -1433,7 +1666,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 const App = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [commercialBanner, setCommercialBanner] = useState<string | null>(null);
+    const [commercialBanner, setCommercialBanner] = useState<CommercialBannerData | null>(null);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
     const [loading, setLoading] = useState(true);
@@ -1498,7 +1731,13 @@ const App = () => {
             if (bannerRes.data) {
                 const mainBanner = bannerRes.data.find(b => b.id === 1);
                 const logoBanner = bannerRes.data.find(b => b.id === 2);
-                if (mainBanner) setCommercialBanner(mainBanner.image_url);
+                if (mainBanner) {
+                    setCommercialBanner({
+                        id: 1,
+                        imageUrl: mainBanner.image_url,
+                        linkUrl: mainBanner.link_url
+                    });
+                }
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
         } catch (error) {

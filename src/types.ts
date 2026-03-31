@@ -74,3 +74,9 @@ export interface BrandTheme {
   secondary: string;
   accent: string;
 }
+
+export interface CommercialBannerData {
+  id: number;
+  imageUrl: string;
+  linkUrl?: string | null;
+}

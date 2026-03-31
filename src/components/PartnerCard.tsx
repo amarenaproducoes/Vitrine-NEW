@@ -26,12 +26,17 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>('hidden');
   const [whatsapp, setWhatsapp] = useState('');
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [userIp, setUserIp] = useState<string>('unknown');
   const couponRef = useRef<HTMLDivElement>(null);
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}`;
 
   const expirationDate = new Date();
   expirationDate.setDate(expirationDate.getDate() + 7);
   const formattedDate = expirationDate.toLocaleDateString('pt-BR');
+
+  useEffect(() => {
+    getUserIP().then(setUserIp);
+  }, []);
 
   useEffect(() => {
     if (unlockStep === 'unlocked' && couponRef.current) {
@@ -86,24 +91,69 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   };
 
   const trackClick = async (destination: 'instagram' | 'whatsapp') => {
+    if (!partner.id) {
+      console.warn('Tracking skipped: Partner ID is missing');
+      return;
+    }
+
+    console.log(`Tracking ${destination} click for partner: ${partner.name} (${partner.id})`);
+
     try {
-      const ip = await getUserIP();
-      await supabase.from('partner_clicks').insert([
-        {
-          partner_id: partner.id,
-          partner_name: partner.name,
-          destination: destination,
-          ip_address: ip
+      // Get IP if still unknown
+      let currentIp = userIp;
+      if (currentIp === 'unknown') {
+        try {
+          currentIp = await getUserIP();
+          setUserIp(currentIp);
+        } catch (ipErr) {
+          console.error('Error fetching IP for tracking:', ipErr);
         }
-      ]);
-    } catch (error) {
-      console.error('Error tracking click:', error);
+      }
+
+      const clickData = {
+        partner_id: partner.id,
+        partner_name: partner.name,
+        destination: destination,
+        ip_address: currentIp
+      };
+
+      console.log('Sending click data to Supabase:', clickData);
+
+      // Fire and forget the insert
+      supabase.from('partner_clicks')
+        .insert([clickData])
+        .then(({ error, data }) => {
+          if (error) {
+            console.error(`Supabase error tracking ${destination} click:`, error);
+          } else {
+            console.log(`Successfully tracked ${destination} click`);
+          }
+        });
+    } catch (err) {
+      console.error(`Unexpected error tracking ${destination} click:`, err);
     }
   };
 
   const handleShare = async () => {
-    const shareText = `Confira os descontos de ${partner.name} no Aparece aí por aqui!`;
-    const shareUrl = window.location.origin;
+    const shareUrl = `${window.location.origin}?ref=${partner.displayId}`;
+    const shareText = `Eu já garanti o meu cupom de benefícios do ${partner.name}. Não fique de fora e venha garantir o seu também!`;
+    
+    try {
+      const ip = await getUserIP();
+      await supabase.from('partner_shares').insert([
+        {
+          partner_id: partner.id,
+          partner_name: partner.name,
+          display_id: partner.displayId,
+          whatsapp_number: whatsapp,
+          ip_address: ip
+        }
+      ]);
+    } catch (error) {
+      console.error('Error logging share:', error);
+    }
+
+    const fullText = `${shareText} ${shareUrl}`;
 
     if (navigator.share) {
       try {
@@ -116,7 +166,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
         console.error('Error sharing:', err);
       }
     } else {
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;
       window.open(whatsappUrl, '_blank');
     }
   };
@@ -135,13 +185,6 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             {partner.category}
           </span>
         </div>
-        <button 
-          onClick={handleShare}
-          className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm p-2 rounded-full text-slate-600 hover:text-[#279267] shadow-lg transition-colors z-10"
-          title="Compartilhar"
-        >
-          <Share2 size={16} />
-        </button>
       </div>
       
       <div className="p-6 flex-grow flex flex-col">
@@ -256,6 +299,17 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 <p className="text-[9px] text-slate-400 mt-1 leading-tight">
                   Este cupom é válido por 07 dias. Apresente até o dia <span className="font-bold">{formattedDate}</span> e garanta o seu benefício.
                 </p>
+
+                <div className="mt-6 pt-6 border-t border-[#279267]/20 w-full">
+                  <p className="text-xs font-bold text-slate-700 mb-3">Compartilhe para que seus amigos também tenham benefícios!</p>
+                  <button
+                    onClick={handleShare}
+                    className="w-full bg-[#25D366] text-white text-xs font-black px-4 py-3 rounded-xl hover:bg-[#128C7E] transition-all shadow-md flex items-center justify-center space-x-2 active:scale-95"
+                  >
+                    <Share2 size={16} />
+                    <span>Compartilhar com meus amigos!</span>
+                  </button>
+                </div>
               </motion.div>
             )}
           </div>
@@ -266,7 +320,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             href={partner.link}
             target="_blank" 
             rel="noopener noreferrer"
-            onClick={() => trackClick('instagram')}
+            onPointerDown={() => trackClick('instagram')}
             className="inline-flex items-center justify-center w-full bg-slate-100 group-hover:bg-[#279267] text-slate-800 group-hover:text-white py-3 px-4 rounded-xl font-bold text-sm transition-colors duration-200"
           >
             Visitar Instagram
@@ -278,7 +332,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
               href={partner.whatsappLink}
               target="_blank" 
               rel="noopener noreferrer"
-              onClick={() => trackClick('whatsapp')}
+              onPointerDown={() => trackClick('whatsapp')}
               className="inline-flex items-center justify-center w-full bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white py-3 px-4 rounded-xl font-bold text-sm transition-colors duration-200"
             >
               Chamar no Whatsapp
