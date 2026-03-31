@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
+import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick
@@ -1855,31 +1856,36 @@ const App = () => {
     }
 
     return (
-        <Router>
-            <ScrollToTop />
-            <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
-                <Header headerLogo={headerLogo} />
-                <CommercialBanner position="top" />
-                <Routes>
-                    <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
-                    <Route path="/sobre-nos" element={<AboutUsPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/admin" element={
-                        <ProtectedRoute>
-                            <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />
-                        </ProtectedRoute>
-                    } />
-                    <Route path="/admin-mensagens" element={
-                        <ProtectedRoute>
-                            <AdminMessagesPage />
-                        </ProtectedRoute>
-                    } />
-                    <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
-                </Routes>
-                <Footer />
-                <CommercialBanner position="bottom" />
-            </div>
-        </Router>
+        <GoogleReCaptchaProvider 
+            reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+            language="pt-BR"
+        >
+            <Router>
+                <ScrollToTop />
+                <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
+                    <Header headerLogo={headerLogo} />
+                    <CommercialBanner position="top" />
+                    <Routes>
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
+                        <Route path="/sobre-nos" element={<AboutUsPage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/admin" element={
+                            <ProtectedRoute>
+                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/admin-mensagens" element={
+                            <ProtectedRoute>
+                                <AdminMessagesPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
+                    </Routes>
+                    <Footer />
+                    <CommercialBanner position="bottom" />
+                </div>
+            </Router>
+        </GoogleReCaptchaProvider>
     );
 };
 

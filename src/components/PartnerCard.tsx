@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2, AlertCircle } from 'lucide-react';
 import { motion } from 'motion/react';
 import * as htmlToImage from 'html-to-image';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
@@ -16,6 +17,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const [hasConsented, setHasConsented] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [userIp, setUserIp] = useState<string>('unknown');
   const couponRef = useRef<HTMLDivElement>(null);
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}`;
@@ -85,6 +87,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
     
     setIsUnlocking(true);
     try {
+      if (executeRecaptcha) {
+        const token = await executeRecaptcha('unlock_coupon');
+        if (!token) {
+          throw new Error('ReCAPTCHA verification failed');
+        }
+      }
+
       const ip = await getUserIP();
       const { error } = await supabase
         .from('unlocked_coupons')

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Trophy, Sparkles, Phone, CheckCircle2, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { CashbackConfig } from '../types';
 
 interface RouletteModalProps {
@@ -17,6 +18,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
   const [whatsapp, setWhatsapp] = useState('');
   const [hasConsented, setHasConsented] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
+  const { executeRecaptcha } = useGoogleReCaptcha();
   const [result, setResult] = useState<CashbackConfig | null>(null);
   const [rotation, setRotation] = useState(0);
   const wheelRef = useRef<HTMLDivElement>(null);
@@ -85,6 +87,25 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
 
   const isWhatsappValid = /^\(\d{2}\) \d{5}-\d{4}$/.test(whatsapp);
   const isFormValid = isWhatsappValid && hasConsented;
+
+  const handleUnlockWheel = async () => {
+    if (!isFormValid) return;
+
+    if (executeRecaptcha) {
+      try {
+        const token = await executeRecaptcha('unlock_wheel');
+        if (token) {
+          setStep('wheel');
+        }
+      } catch (error) {
+        console.error('ReCAPTCHA error:', error);
+        // Fallback or alert
+        setStep('wheel');
+      }
+    } else {
+      setStep('wheel');
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-black/80 backdrop-blur-sm">
@@ -161,7 +182,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
                   </div>
 
                   <button 
-                    onClick={() => setStep('wheel')}
+                    onClick={handleUnlockWheel}
                     disabled={!isFormValid}
                     className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all transform flex items-center justify-center gap-2 ${isFormValid ? 'bg-[#279267] text-white hover:bg-green-700 hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
                   >
