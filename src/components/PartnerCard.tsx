@@ -218,6 +218,14 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   };
 
   const getYoutubeId = (url: string) => {
+    if (!url) return null;
+    // Handle shorts specifically
+    if (url.includes('/shorts/')) {
+      const parts = url.split('/shorts/');
+      if (parts[1]) {
+        return parts[1].split(/[?#&]/)[0];
+      }
+    }
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;

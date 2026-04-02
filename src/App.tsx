@@ -697,38 +697,58 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             };
 
             if (editingId) {
-                const { data, error } = await supabase
+                console.log('Attempting to update partner with ID:', editingId);
+                const { data: updatedData, error } = await supabase
                     .from('partners')
                     .update(partnerData)
                     .eq('id', editingId)
-                    .select()
-                    .single();
+                    .select();
 
                 if (error) throw error;
                 
-                setPartners(prev => prev.map(p => p.id === editingId ? { 
-                    ...formData, 
-                    imageUrl: finalImageUrl, 
-                    images: partnerData.images,
-                    videoUrl: partnerData.video_url || '',
-                    id: editingId, 
-                    displayId: data.display_id 
-                } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                const data = updatedData && updatedData.length > 0 ? updatedData[0] : null;
+
+                if (!data) {
+                    console.error('Update successful but no data returned. Check RLS policies.');
+                    // Fallback to local state update if DB update succeeded but select failed
+                    setPartners(prev => prev.map(p => p.id === editingId ? { 
+                        ...p,
+                        ...formData, 
+                        imageUrl: finalImageUrl, 
+                        images: partnerData.images,
+                        videoUrl: formData.videoUrl || '',
+                    } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                } else {
+                    console.log('Update response data:', data);
+                    setPartners(prev => prev.map(p => p.id === editingId ? { 
+                        ...formData, 
+                        imageUrl: finalImageUrl, 
+                        images: data.images || [],
+                        videoUrl: data.video_url || '',
+                        id: editingId, 
+                        displayId: data.display_id 
+                    } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                }
                 alert("Parceiro atualizado com sucesso!");
             } else {
-                const { data, error } = await supabase
+                console.log('Attempting to insert new partner');
+                const { data: insertedData, error } = await supabase
                     .from('partners')
                     .insert([partnerData])
-                    .select()
-                    .single();
+                    .select();
 
                 if (error) throw error;
                 
+                const data = insertedData && insertedData.length > 0 ? insertedData[0] : null;
+
+                if (!data) throw new Error("Erro ao recuperar dados após inserção.");
+
+                console.log('Insert response data:', data);
                 const newPartner: Partner = { 
                     ...formData, 
                     imageUrl: finalImageUrl, 
-                    images: partnerData.images,
-                    videoUrl: partnerData.video_url || '',
+                    images: data.images || [],
+                    videoUrl: data.video_url || '',
                     id: data.id, 
                     displayId: data.display_id 
                 };
