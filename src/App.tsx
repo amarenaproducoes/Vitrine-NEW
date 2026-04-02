@@ -160,6 +160,8 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                             description: partner.description,
                             address: partner.address,
                             imageUrl: partner.image_url,
+                            images: partner.images || [],
+                            videoUrl: partner.video_url || '',
                             link: partner.link,
                             whatsappLink: partner.whatsapp_link,
                             coupon: partner.coupon,
@@ -367,7 +369,45 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const navigate = useNavigate();
     
     // Partner Form State
-    const [formData, setFormData] = useState<{name: string, category: string, activity: string, description: string, address: string, imageUrl: string, imageFile: File | null, link: string, whatsappLink: string, coupon: string, couponDescription: string, isAuthorized: boolean, cashbackEnabled: boolean, orderIndex: number, displayId: number}>({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: 0 });
+    const [formData, setFormData] = useState<{
+        name: string, 
+        category: string, 
+        activity: string, 
+        description: string, 
+        address: string, 
+        imageUrl: string, 
+        imageFile: File | null, 
+        images: string[],
+        imageFiles: (File | null)[],
+        videoUrl: string,
+        link: string, 
+        whatsappLink: string, 
+        coupon: string, 
+        couponDescription: string, 
+        isAuthorized: boolean, 
+        cashbackEnabled: boolean, 
+        orderIndex: number, 
+        displayId: number
+    }>({ 
+        name: '', 
+        category: categories.length > 0 ? categories[0].name : '', 
+        activity: '', 
+        description: '', 
+        address: '', 
+        imageUrl: '', 
+        imageFile: null, 
+        images: ['', '', '', ''],
+        imageFiles: [null, null, null, null],
+        videoUrl: '',
+        link: '', 
+        whatsappLink: '', 
+        coupon: '', 
+        couponDescription: '', 
+        isAuthorized: true, 
+        cashbackEnabled: true, 
+        orderIndex: 0, 
+        displayId: 0 
+    });
     const [editingId, setEditingId] = useState<string | null>(null);
     const [bannerLink, setBannerLink] = useState(commercialBanner?.linkUrl || '');
     
@@ -560,11 +600,23 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         }
     };
 
+    const handleAdditionalFileChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const previewUrl = URL.createObjectURL(file);
+            const newImages = [...formData.images];
+            const newImageFiles = [...formData.imageFiles];
+            newImages[index] = previewUrl;
+            newImageFiles[index] = file;
+            setFormData(prev => ({ ...prev, images: newImages, imageFiles: newImageFiles }));
+        }
+    };
+
     const handleAddOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         
         if (!formData.imageUrl && !formData.imageFile) {
-            alert("Por favor, selecione uma imagem para o parceiro.");
+            alert("Por favor, selecione uma imagem principal para o parceiro.");
             return;
         }
 
@@ -572,7 +624,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
         try {
             let finalImageUrl = formData.imageUrl;
+            const finalImages = [...formData.images];
 
+            // Upload main image
             if (formData.imageFile) {
                 const fileExt = formData.imageFile.name.split('.').pop();
                 const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
@@ -586,7 +640,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
                 if (uploadError) {
                     logger.error('Upload error:', uploadError);
-                    throw new Error('Erro ao fazer upload da imagem. Verifique se o bucket "partners" existe e é público.');
+                    throw new Error('Erro ao fazer upload da imagem principal.');
                 }
 
                 const { data: { publicUrl } } = supabase.storage
@@ -596,58 +650,88 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 finalImageUrl = publicUrl;
             }
 
+            // Upload additional images
+            for (let i = 0; i < formData.imageFiles.length; i++) {
+                const file = formData.imageFiles[i];
+                if (file) {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}_extra_${i}.${fileExt}`;
+                    
+                    const { error: uploadError } = await supabase.storage
+                        .from('partners')
+                        .upload(fileName, file, {
+                            cacheControl: '3600',
+                            upsert: false
+                        });
+
+                    if (uploadError) {
+                        logger.error(`Upload error for extra image ${i}:`, uploadError);
+                        throw new Error(`Erro ao fazer upload da imagem adicional ${i + 1}.`);
+                    }
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('partners')
+                        .getPublicUrl(fileName);
+
+                    finalImages[i] = publicUrl;
+                }
+            }
+
+            const partnerData = {
+                name: formData.name,
+                category: formData.category,
+                activity: formData.activity,
+                description: formData.description,
+                address: formData.address,
+                image_url: finalImageUrl,
+                images: finalImages.filter(img => img && img.startsWith('http')),
+                video_url: formData.videoUrl || null,
+                link: formData.link,
+                whatsapp_link: formData.whatsappLink || null,
+                coupon: formData.coupon || null,
+                coupon_description: formData.couponDescription || null,
+                is_authorized: formData.isAuthorized,
+                cashback_enabled: formData.cashbackEnabled,
+                order_index: formData.orderIndex,
+                display_id: formData.displayId
+            };
+
             if (editingId) {
                 const { data, error } = await supabase
                     .from('partners')
-                    .update({
-                        name: formData.name,
-                        category: formData.category,
-                        activity: formData.activity,
-                        description: formData.description,
-                        address: formData.address,
-                        image_url: finalImageUrl,
-                        link: formData.link,
-                        whatsapp_link: formData.whatsappLink || null,
-                        coupon: formData.coupon || null,
-                        coupon_description: formData.couponDescription || null,
-                        is_authorized: formData.isAuthorized,
-                        cashback_enabled: formData.cashbackEnabled,
-                        order_index: formData.orderIndex,
-                        display_id: formData.displayId
-                    })
+                    .update(partnerData)
                     .eq('id', editingId)
                     .select()
                     .single();
 
                 if (error) throw error;
                 
-                setPartners(prev => prev.map(p => p.id === editingId ? { ...formData, imageUrl: finalImageUrl, id: editingId, displayId: data.display_id } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                setPartners(prev => prev.map(p => p.id === editingId ? { 
+                    ...formData, 
+                    imageUrl: finalImageUrl, 
+                    images: partnerData.images,
+                    videoUrl: partnerData.video_url || '',
+                    id: editingId, 
+                    displayId: data.display_id 
+                } : p).sort((a, b) => a.orderIndex - b.orderIndex));
                 alert("Parceiro atualizado com sucesso!");
             } else {
                 const { data, error } = await supabase
                     .from('partners')
-                    .insert([{
-                        name: formData.name,
-                        category: formData.category,
-                        activity: formData.activity,
-                        description: formData.description,
-                        address: formData.address,
-                        image_url: finalImageUrl,
-                        link: formData.link,
-                        whatsapp_link: formData.whatsappLink || null,
-                        coupon: formData.coupon || null,
-                        coupon_description: formData.couponDescription || null,
-                        is_authorized: formData.isAuthorized,
-                        cashback_enabled: formData.cashbackEnabled,
-                        order_index: formData.orderIndex,
-                        display_id: formData.displayId
-                    }])
+                    .insert([partnerData])
                     .select()
                     .single();
 
                 if (error) throw error;
                 
-                const newPartner: Partner = { ...formData, imageUrl: finalImageUrl, id: data.id, displayId: data.display_id };
+                const newPartner: Partner = { 
+                    ...formData, 
+                    imageUrl: finalImageUrl, 
+                    images: partnerData.images,
+                    videoUrl: partnerData.video_url || '',
+                    id: data.id, 
+                    displayId: data.display_id 
+                };
                 setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
                 alert("Parceiro adicionado com sucesso!");
             }
@@ -662,7 +746,26 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
     const resetForm = () => {
         const nextId = getNextAvailableDisplayId(partners);
-        setFormData({ name: '', category: categories.length > 0 ? categories[0].name : '', activity: '', description: '', address: '', imageUrl: '', imageFile: null, link: '', whatsappLink: '', coupon: '', couponDescription: '', isAuthorized: true, cashbackEnabled: true, orderIndex: 0, displayId: nextId });
+        setFormData({ 
+            name: '', 
+            category: categories.length > 0 ? categories[0].name : '', 
+            activity: '', 
+            description: '', 
+            address: '', 
+            imageUrl: '', 
+            imageFile: null, 
+            images: ['', '', '', ''],
+            imageFiles: [null, null, null, null],
+            videoUrl: '',
+            link: '', 
+            whatsappLink: '', 
+            coupon: '', 
+            couponDescription: '', 
+            isAuthorized: true, 
+            cashbackEnabled: true, 
+            orderIndex: 0, 
+            displayId: nextId 
+        });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
@@ -676,6 +779,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             address: partner.address,
             imageUrl: partner.imageUrl,
             imageFile: null,
+            images: partner.images ? [...partner.images, '', '', '', ''].slice(0, 4) : ['', '', '', ''],
+            imageFiles: [null, null, null, null],
+            videoUrl: partner.videoUrl || '',
             link: partner.link,
             whatsappLink: partner.whatsappLink || '',
             coupon: partner.coupon || '',
@@ -933,6 +1039,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     const handleLogout = async () => {
+        localStorage.removeItem('dev_bypass');
         await supabase.auth.signOut();
         navigate('/login');
     };
@@ -1124,11 +1231,23 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Cupom de Desconto (Opcional)" value={formData.coupon} onChange={e => setFormData({...formData, coupon: e.target.value})} />
                                     <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="O que o cliente ganha com o cupom? (Opcional)" value={formData.couponDescription} onChange={e => setFormData({...formData, couponDescription: e.target.value})} />
                                     
+                                    <div className="flex flex-col space-y-1">
+                                        <label htmlFor="videoUrl" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Vídeo do YouTube Shorts (URL)</label>
+                                        <input 
+                                            type="url" 
+                                            id="videoUrl"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
+                                            placeholder="https://youtube.com/shorts/..." 
+                                            value={formData.videoUrl} 
+                                            onChange={e => setFormData({...formData, videoUrl: e.target.value})} 
+                                        />
+                                    </div>
+
                                     <div className="space-y-2">
-                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Foto do Anunciante</label>
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Foto Principal (Vertical Recomendada)</label>
                                         <div 
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden aspect-video bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
+                                            className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden aspect-[9/16] bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
                                         >
                                             {formData.imageUrl ? (
                                                 <>
@@ -1151,6 +1270,60 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                             accept="image/*" 
                                             onChange={handleFileChange} 
                                         />
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Imagens Adicionais (Até 4)</label>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            {[0, 1, 2, 3].map((idx) => (
+                                                <div key={idx} className="space-y-1">
+                                                    <div 
+                                                        onClick={() => {
+                                                            const input = document.getElementById(`extra-file-${idx}`) as HTMLInputElement;
+                                                            input?.click();
+                                                        }}
+                                                        className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden aspect-[9/16] bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
+                                                    >
+                                                        {formData.images[idx] ? (
+                                                            <>
+                                                                <img src={formData.images[idx]} alt={`Extra ${idx + 1}`} referrerPolicy="no-referrer" className="w-full h-full object-cover bg-white" />
+                                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                                                    <Upload className="text-white" size={24} />
+                                                                </div>
+                                                            </>
+                                                        ) : (
+                                                            <div className="text-center p-2">
+                                                                <Plus className="mx-auto text-slate-300 mb-1" size={24} />
+                                                                <p className="text-[10px] font-bold text-slate-400">Extra {idx + 1}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <input 
+                                                        type="file" 
+                                                        id={`extra-file-${idx}`}
+                                                        className="hidden" 
+                                                        accept="image/*" 
+                                                        onChange={(e) => handleAdditionalFileChange(e, idx)} 
+                                                    />
+                                                    {formData.images[idx] && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                const newImages = [...formData.images];
+                                                                const newImageFiles = [...formData.imageFiles];
+                                                                newImages[idx] = '';
+                                                                newImageFiles[idx] = null;
+                                                                setFormData(prev => ({ ...prev, images: newImages, imageFiles: newImageFiles }));
+                                                            }}
+                                                            className="w-full py-1 text-[10px] font-bold text-red-500 hover:text-red-700"
+                                                        >
+                                                            Remover
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <button disabled={isSubmitting} className="w-full bg-slate-900 text-white font-black py-4 rounded-xl hover:bg-[#279267] transition-all flex items-center justify-center space-x-2 shadow-lg active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
@@ -1799,6 +1972,8 @@ const App = () => {
                     description: p.description,
                     address: p.address,
                     imageUrl: p.image_url,
+                    images: p.images || [],
+                    videoUrl: p.video_url || '',
                     link: p.link,
                     whatsappLink: p.whatsapp_link,
                     coupon: p.coupon,

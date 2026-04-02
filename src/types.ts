@@ -11,6 +11,8 @@ export interface Partner {
   description: string;
   address: string;
   imageUrl: string;
+  images?: string[];
+  videoUrl?: string;
   link: string;
   whatsappLink?: string;
   coupon?: string;

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2, AlertCircle } from 'lucide-react';
-import { motion } from 'motion/react';
+import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2, AlertCircle, ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import * as htmlToImage from 'html-to-image';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { Link } from 'react-router-dom';
@@ -22,6 +22,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
   const [userIp, setUserIp] = useState<string>('unknown');
+  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const couponRef = useRef<HTMLDivElement>(null);
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}`;
 
@@ -215,16 +217,125 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
     }
   };
 
+  const getYoutubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const videoId = partner.videoUrl ? getYoutubeId(partner.videoUrl) : null;
+  const mediaItems = [];
+  
+  if (videoId) {
+    mediaItems.push({
+      type: 'video',
+      id: videoId,
+      thumbnail: `https://img.youtube.com/vi/${videoId}/0.jpg`,
+      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
+    });
+  }
+  
+  mediaItems.push({ type: 'image', url: partner.imageUrl });
+  if (partner.images && partner.images.length > 0) {
+    partner.images.forEach(img => {
+      if (img) mediaItems.push({ type: 'image', url: img });
+    });
+  }
+
+  const nextMedia = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsVideoPlaying(false);
+    setCurrentMediaIndex((prev) => (prev + 1) % mediaItems.length);
+  };
+
+  const prevMedia = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setIsVideoPlaying(false);
+    setCurrentMediaIndex((prev) => (prev - 1 + mediaItems.length) % mediaItems.length);
+  };
+
   return (
     <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col h-full">
-      <div className="relative overflow-hidden block aspect-[4/3]">
-        <img 
-          src={partner.imageUrl} 
-          alt={partner.name}
-          referrerPolicy="no-referrer"
-          className="w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-500 bg-white"
-        />
-        <div className="absolute top-4 left-4">
+      <div className="relative overflow-hidden block aspect-[9/16] bg-slate-100">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={currentMediaIndex}
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3 }}
+            className="w-full h-full"
+          >
+            {mediaItems[currentMediaIndex].type === 'video' ? (
+              <div className="relative w-full h-full group/video">
+                {!isVideoPlaying ? (
+                  <div 
+                    className="relative w-full h-full cursor-pointer"
+                    onClick={() => setIsVideoPlaying(true)}
+                  >
+                    <img 
+                      src={mediaItems[currentMediaIndex].thumbnail} 
+                      alt={partner.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/video:bg-black/40 transition-colors">
+                      <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-2xl transform group-hover/video:scale-110 transition-transform">
+                        <Play className="text-[#279267] fill-[#279267] ml-1" size={32} />
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <iframe
+                    src={mediaItems[currentMediaIndex].embedUrl}
+                    title="YouTube video player"
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    className="w-full h-full"
+                  ></iframe>
+                )}
+              </div>
+            ) : (
+              <img 
+                src={mediaItems[currentMediaIndex].url} 
+                alt={`${partner.name} - ${currentMediaIndex}`}
+                referrerPolicy="no-referrer"
+                className="w-full h-full object-cover bg-white"
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
+
+        {mediaItems.length > 1 && (
+          <>
+            <button 
+              onClick={prevMedia}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-all z-10"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <button 
+              onClick={nextMedia}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-black/20 hover:bg-black/40 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-all z-10"
+            >
+              <ChevronRight size={20} />
+            </button>
+            
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+              {mediaItems.map((_, idx) => (
+                <div 
+                  key={idx}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentMediaIndex ? 'bg-white w-4' : 'bg-white/50'}`}
+                />
+              ))}
+            </div>
+          </>
+        )}
+
+        <div className="absolute top-4 left-4 z-10">
           <span className="bg-[#279267] text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-lg">
             {partner.category}
           </span>

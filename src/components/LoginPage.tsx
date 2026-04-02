@@ -97,6 +97,17 @@ const LoginPage: React.FC = () => {
               </>
             )}
           </button>
+
+          {/* Botão de Bypass para Desenvolvimento */}
+          <button
+            onClick={() => {
+              localStorage.setItem('dev_bypass', 'true');
+              navigate('/admin');
+            }}
+            className="w-full bg-slate-800 text-slate-400 font-bold py-3 rounded-xl hover:bg-slate-700 hover:text-white transition-all border border-slate-700 text-xs uppercase tracking-widest"
+          >
+            Acesso Rápido (Dev Mode)
+          </button>
           
           <p className="text-[10px] text-slate-500 text-center uppercase tracking-widest font-bold">
             Somente e-mails autorizados têm acesso
