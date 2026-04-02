@@ -3,9 +3,11 @@ import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Ph
 import { motion } from 'motion/react';
 import * as htmlToImage from 'html-to-image';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import DOMPurify from 'dompurify';
 import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
+import { logger } from '../lib/logger';
 
 interface PartnerCardProps {
   partner: Partner;
@@ -73,7 +75,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           link.download = `cupom-${partner.name.toLowerCase().replace(/\s+/g, '-')}.png`;
           link.click();
         } catch (err) {
-          console.error('Error generating coupon image:', err);
+          logger.error('Error generating coupon image:', err);
         } finally {
           setIsGeneratingImage(false);
         }
@@ -85,6 +87,15 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const handleUnlock = async () => {
     if (!isFormValid) return;
     
+    // Rate Limiting: Check for local cooldown (1 minute)
+    const lastUnlock = localStorage.getItem(`last_unlock_${partner.id}`);
+    const now = Date.now();
+    if (lastUnlock && now - parseInt(lastUnlock) < 60000) {
+      const remaining = Math.ceil((60000 - (now - parseInt(lastUnlock))) / 1000);
+      alert(`Aguarde ${remaining} segundos para tentar novamente.`);
+      return;
+    }
+
     setIsUnlocking(true);
     try {
       if (executeRecaptcha) {
@@ -109,9 +120,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
         ]);
 
       if (error) throw error;
+      
+      // Save unlock time for rate limiting
+      localStorage.setItem(`last_unlock_${partner.id}`, Date.now().toString());
+      
       setUnlockStep('unlocked');
     } catch (error) {
-      console.error('Error unlocking coupon:', error);
+      logger.error('Error unlocking coupon:', error);
       alert('Ocorreu um erro ao liberar o cupom. Tente novamente.');
     } finally {
       setIsUnlocking(false);
@@ -120,11 +135,11 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
 
   const trackClick = async (destination: 'instagram' | 'whatsapp') => {
     if (!partner.id) {
-      console.warn('Tracking skipped: Partner ID is missing');
+      logger.warn('Tracking skipped: Partner ID is missing');
       return;
     }
 
-    console.log(`Tracking ${destination} click for partner: ${partner.name} (${partner.id})`);
+    logger.log(`Tracking ${destination} click for partner: ${partner.name} (${partner.id})`);
 
     try {
       // Get IP if still unknown
@@ -134,7 +149,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           currentIp = await getUserIP();
           setUserIp(currentIp);
         } catch (ipErr) {
-          console.error('Error fetching IP for tracking:', ipErr);
+          logger.error('Error fetching IP for tracking:', ipErr);
         }
       }
 
@@ -145,20 +160,20 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
         ip_address: currentIp
       };
 
-      console.log('Sending click data to Supabase:', clickData);
+      logger.sensitive('Sending click data to Supabase', clickData);
 
       // Fire and forget the insert
       supabase.from('partner_clicks')
         .insert([clickData])
         .then(({ error, data }) => {
           if (error) {
-            console.error(`Supabase error tracking ${destination} click:`, error);
+            logger.error(`Supabase error tracking ${destination} click:`, error);
           } else {
-            console.log(`Successfully tracked ${destination} click`);
+            logger.log(`Successfully tracked ${destination} click`);
           }
         });
     } catch (err) {
-      console.error(`Unexpected error tracking ${destination} click:`, err);
+      logger.error(`Unexpected error tracking ${destination} click:`, err);
     }
   };
 
@@ -178,7 +193,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
         }
       ]);
     } catch (error) {
-      console.error('Error logging share:', error);
+      logger.error('Error logging share:', error);
     }
 
     const fullText = `${shareText} ${shareUrl}`;
@@ -191,7 +206,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           url: shareUrl,
         });
       } catch (err) {
-        console.error('Error sharing:', err);
+        logger.error('Error sharing:', err);
       }
     } else {
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(fullText)}`;

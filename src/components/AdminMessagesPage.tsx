@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Lead } from '../types';
 import { Filter, MessageSquare, Calendar, User, Phone, Tag, CheckSquare, Square, LogOut, Settings } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import { logger } from '../lib/logger';
 
 const AdminMessagesPage = () => {
     const [leads, setLeads] = useState<Lead[]>([]);
@@ -39,7 +40,7 @@ const AdminMessagesPage = () => {
                 setLeads(formattedLeads);
             }
         } catch (error) {
-            console.error('Error fetching leads:', error);
+            logger.error('Error fetching leads:', error);
         } finally {
             setLoading(false);
         }
@@ -67,7 +68,7 @@ const AdminMessagesPage = () => {
                 throw error;
             }
         } catch (error) {
-            console.error('Error updating lead status:', error);
+            logger.error('Error updating lead status:', error);
             alert('Erro ao atualizar o status do contato.');
         }
     };

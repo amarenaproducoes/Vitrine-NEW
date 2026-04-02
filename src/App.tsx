@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import DOMPurify from 'dompurify';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick
@@ -26,6 +27,7 @@ import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData } from './types';
 import { supabase } from './lib/supabase';
 import { getUserIP } from './lib/ip';
+import { logger } from './lib/logger';
 import Editor, { 
     Toolbar, 
     BtnBold, 
@@ -172,7 +174,7 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                 }
             }
         } catch (error) {
-            console.error('Error handling ref access:', error);
+            logger.error('Error handling ref access:', error);
         }
     };
 
@@ -187,7 +189,7 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                 ip_address: ip
             });
         } catch (error) {
-            console.error('Error logging cashback:', error);
+            logger.error('Error logging cashback:', error);
         }
     };
 
@@ -471,7 +473,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             
             setClickRankingData(sortedClickRanking);
         } catch (error) {
-            console.error('Error fetching ranking:', error);
+            logger.error('Error fetching ranking:', error);
         }
     };
 
@@ -506,7 +508,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 setCashbackRankingData(sortedRanking);
             }
         } catch (error) {
-            console.error('Error fetching cashback:', error);
+            logger.error('Error fetching cashback:', error);
         }
     };
 
@@ -516,7 +518,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             if (error) throw error;
             setCashbackConfigs(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c));
         } catch (error) {
-            console.error('Error updating cashback config:', error);
+            logger.error('Error updating cashback config:', error);
         }
     };
 
@@ -530,7 +532,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             if (aboutRes.data) {
                 setAboutConfig({
                     id: aboutRes.data.id,
-                    history: aboutRes.data.history,
+                    history: DOMPurify.sanitize(aboutRes.data.history),
                     logoUrl: aboutRes.data.logo_url
                 });
             }
@@ -544,7 +546,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 })));
             }
         } catch (error) {
-            console.error('Error fetching admin data:', error);
+            logger.error('Error fetching admin data:', error);
         }
     };
 
@@ -581,7 +583,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     });
 
                 if (uploadError) {
-                    console.error('Upload error:', uploadError);
+                    logger.error('Upload error:', uploadError);
                     throw new Error('Erro ao fazer upload da imagem. Verifique se o bucket "partners" existe e é público.');
                 }
 
@@ -649,7 +651,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             }
             resetForm();
         } catch (error: any) {
-            console.error('Error saving partner:', error);
+            logger.error('Error saving partner:', error);
             alert(error.message || 'Erro ao salvar parceiro. Tente novamente.');
         } finally {
             setIsSubmitting(false);
@@ -709,7 +711,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             }
             alert("Categoria adicionada com sucesso!");
         } catch (error) {
-            console.error('Error adding category:', error);
+            logger.error('Error adding category:', error);
             alert('Erro ao adicionar categoria. Pode já existir.');
         }
     };
@@ -728,7 +730,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 setPartners(partners.filter(p => p.id !== deleteConfirm.id)); 
                 if (editingId === deleteConfirm.id) resetForm();
             } catch (error) {
-                console.error('Error deleting partner:', error);
+                logger.error('Error deleting partner:', error);
             }
         } else if (deleteConfirm.type === 'category') {
             try {
@@ -736,7 +738,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 if (error) throw error;
                 setCategories(categories.filter(c => c.id !== deleteConfirm.id));
             } catch (error) {
-                console.error('Error deleting category:', error);
+                logger.error('Error deleting category:', error);
             }
         } else if (deleteConfirm.type === 'banner') {
             try {
@@ -754,7 +756,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     setHeaderLogo(null);
                 }
             } catch (error) {
-                console.error('Error removing banner:', error);
+                logger.error('Error removing banner:', error);
             }
         } else if (deleteConfirm.type === 'case') {
             try {
@@ -766,7 +768,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     setEditingCaseId(null);
                 }
             } catch (error) {
-                console.error('Error deleting success case:', error);
+                logger.error('Error deleting success case:', error);
             }
         }
         setDeleteConfirm(null);
@@ -788,7 +790,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 });
 
             if (uploadError) {
-                console.error('Upload error:', uploadError);
+                logger.error('Upload error:', uploadError);
                 throw new Error('Erro ao fazer upload da imagem. Verifique se o bucket "partners" existe.');
             }
 
@@ -813,7 +815,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 alert("Logotipo do cabeçalho atualizado com sucesso!");
             }
         } catch (error: any) {
-            console.error('Error uploading image:', error);
+            logger.error('Error uploading image:', error);
             alert(error.message || 'Erro ao salvar imagem. Tente novamente.');
         }
     };
@@ -831,7 +833,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             setCommercialBanner({ ...commercialBanner, linkUrl: bannerLink });
             alert("Link do banner atualizado!");
         } catch (error) {
-            console.error('Error updating banner link:', error);
+            logger.error('Error updating banner link:', error);
             alert("Erro ao atualizar link.");
         }
     };
@@ -856,7 +858,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             const { error } = await supabase.from('about_config').upsert({
                 id: 1,
-                history: aboutConfig.history,
+                history: DOMPurify.sanitize(aboutConfig.history),
                 logo_url: finalLogoUrl
             });
             if (error) throw error;
@@ -864,7 +866,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             setAboutLogoFile(null);
             alert("Configurações de 'Sobre Nós' atualizadas!");
         } catch (error) {
-            console.error('Error updating about:', error);
+            logger.error('Error updating about:', error);
             alert('Erro ao atualizar configurações.');
         } finally {
             setIsSubmitting(false);
@@ -921,7 +923,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             setCaseFormData({ companyName: '', description: '', logoUrl: '', logoFile: null, storeImageUrl: '', storeFile: null });
             setEditingCaseId(null);
         } catch (error) {
-            console.error('Error saving case:', error);
+            logger.error('Error saving case:', error);
             alert('Erro ao salvar case.');
         } finally {
             setIsSubmitting(false);
@@ -1745,7 +1747,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                 try {
                                                     await supabase.from('success_cases').delete().eq('id', deleteConfirm.id);
                                                     setSuccessCases(successCases.filter(c => c.id !== deleteConfirm.id));
-                                                } catch (error) { console.error(error); }
+                                                } catch (error) { logger.error(error); }
                                                 setDeleteConfirm(null);
                                             } else {
                                                 executeDelete();
@@ -1841,7 +1843,7 @@ const App = () => {
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
         } catch (error) {
-            console.error('Error fetching data:', error);
+            logger.error('Error fetching data:', error);
         } finally {
             setLoading(false);
         }

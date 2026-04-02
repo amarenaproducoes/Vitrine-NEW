@@ -37,7 +37,11 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  if (!user) {
+  if (!user || user.email !== 'reo2000.renato@gmail.com') {
+    if (user) {
+      // Se estiver logado mas com o e-mail errado, desloga e manda pro login
+      supabase.auth.signOut();
+    }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

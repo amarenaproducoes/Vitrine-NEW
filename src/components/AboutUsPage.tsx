@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import DOMPurify from 'dompurify';
 import { supabase } from '../lib/supabase';
 import { SuccessCase, AboutConfig } from '../types';
 import { Trophy, History, Building2, Star } from 'lucide-react';
+import { logger } from '../lib/logger';
 
 const AboutUsPage: React.FC = () => {
   const [aboutConfig, setAboutConfig] = useState<AboutConfig | null>(null);
@@ -22,14 +24,14 @@ const AboutUsPage: React.FC = () => {
       if (aboutRes.data) {
         setAboutConfig({
           id: aboutRes.data.id,
-          history: aboutRes.data.history,
+          history: DOMPurify.sanitize(aboutRes.data.history),
           logoUrl: aboutRes.data.logo_url
         });
       } else {
         // Default content if not found
         setAboutConfig({
           id: 1,
-          history: "A 'Aparece aí por aqui' nasceu da visão de transformar espaços comuns em oportunidades extraordinárias de conexão. Iniciamos nossa jornada com o propósito de democratizar o acesso à publicidade de alto impacto para pequenos e médios empreendedores locais.\n\nAtravés de uma rede inteligente de telas estrategicamente posicionadas em estabelecimentos de alto fluxo e veículos de aplicativo, criamos um ecossistema onde marcas ganham vida e consumidores descobrem o melhor da sua região. Nossa história é construída diariamente por parcerias sólidas e resultados reais para nossos clientes.",
+          history: DOMPurify.sanitize("A 'Aparece aí por aqui' nasceu da visão de transformar espaços comuns em oportunidades extraordinárias de conexão. Iniciamos nossa jornada com o propósito de democratizar o acesso à publicidade de alto impacto para pequenos e médios empreendedores locais.\n\nAtravés de uma rede inteligente de telas estrategicamente posicionadas em estabelecimentos de alto fluxo e veículos de aplicativo, criamos um ecossistema onde marcas ganham vida e consumidores descobrem o melhor da sua região. Nossa história é construída diariamente por parcerias sólidas e resultados reais para nossos clientes."),
           logoUrl: null
         });
       }
@@ -69,7 +71,7 @@ const AboutUsPage: React.FC = () => {
         ]);
       }
     } catch (error) {
-      console.error('Error fetching about data:', error);
+      logger.error('Error fetching about data:', error);
     } finally {
       setLoading(false);
     }

@@ -4,6 +4,7 @@ import { X, Trophy, Sparkles, Phone, CheckCircle2, AlertCircle } from 'lucide-re
 import confetti from 'canvas-confetti';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { CashbackConfig } from '../types';
+import { logger } from '../lib/logger';
 
 interface RouletteModalProps {
   isOpen: boolean;
@@ -54,6 +55,9 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
       setResult(selected);
       onWin(selected.value, whatsapp);
       
+      // Save spin time for rate limiting
+      localStorage.setItem('last_roulette_spin', Date.now().toString());
+      
       confetti({
         particleCount: 150,
         spread: 70,
@@ -91,6 +95,15 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
   const handleUnlockWheel = async () => {
     if (!isFormValid) return;
 
+    // Rate Limiting: Check for local cooldown (5 minutes)
+    const lastSpin = localStorage.getItem('last_roulette_spin');
+    const now = Date.now();
+    if (lastSpin && now - parseInt(lastSpin) < 300000) {
+      const remaining = Math.ceil((300000 - (now - parseInt(lastSpin))) / 60000);
+      alert(`Aguarde ${remaining} minuto(s) para girar a roleta novamente.`);
+      return;
+    }
+
     if (executeRecaptcha) {
       try {
         const token = await executeRecaptcha('unlock_wheel');
@@ -98,7 +111,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
           setStep('wheel');
         }
       } catch (error) {
-        console.error('ReCAPTCHA error:', error);
+        logger.error('ReCAPTCHA error:', error);
         // Fallback or alert
         setStep('wheel');
       }

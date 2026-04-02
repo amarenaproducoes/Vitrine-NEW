@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Send, CheckCircle2 } from 'lucide-react';
+import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
+import { logger } from '../lib/logger';
 
 interface LeadFormProps {
   type: 'anunciante' | 'motorista' | 'comerciante' | 'contato';
@@ -24,6 +26,7 @@ const formatWhatsApp = (value: string) => {
 const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [formData, setFormData] = useState({ fullName: '', whatsapp: '', message: '' });
+  const { executeRecaptcha } = useGoogleReCaptcha();
 
   const isWhatsAppValid = formData.whatsapp.replace(/\D/g, '').length === 11;
   let isFormValid = formData.fullName.trim().length > 0 && isWhatsAppValid;
@@ -37,6 +40,18 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
     setStatus('loading');
     
     try {
+      if (executeRecaptcha) {
+        try {
+          const token = await executeRecaptcha('lead_submission');
+          if (!token) {
+            throw new Error('ReCAPTCHA verification failed');
+          }
+        } catch (recaptchaErr) {
+          logger.error('ReCAPTCHA error:', recaptchaErr);
+          // We continue if it's just a connection error, but log it
+        }
+      }
+
       const ip = await getUserIP();
       const { error } = await supabase
         .from('leads')
@@ -55,7 +70,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
       setStatus('success');
       setFormData({ fullName: '', whatsapp: '', message: '' });
     } catch (error) {
-      console.error('Error saving lead:', error);
+      logger.error('Error saving lead:', error);
       setStatus('error');
       alert('Ocorreu um erro ao enviar seus dados. Tente novamente.');
     }

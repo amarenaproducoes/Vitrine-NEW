@@ -1,10 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
+import { logger } from "../lib/logger";
 
 export class AgencyAssistant {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
 
   async getAdvice(userInput: string) {
@@ -19,7 +20,7 @@ export class AgencyAssistant {
       });
       return response.text;
     } catch (error) {
-      console.error("Gemini Error:", error);
+      logger.error("Gemini Error:", error);
       return "Olá! Sou o assistente da 'Aparece aí por aqui'. Como posso ajudar você a dar mais visibilidade ao seu negócio hoje?";
     }
   }
