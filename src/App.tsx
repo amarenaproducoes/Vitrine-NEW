@@ -18,6 +18,8 @@ import PartnerCard from './components/PartnerCard';
 import LeadForm from './components/LeadForm';
 import AdminMessagesPage from './components/AdminMessagesPage';
 import AboutUsPage from './components/AboutUsPage';
+import PrivacyPolicyPage from './components/PrivacyPolicyPage';
+import TermsOfUsePage from './components/TermsOfUsePage';
 import RouletteModal from './components/RouletteModal';
 import WelcomeModal from './components/WelcomeModal';
 import LoginPage from './components/LoginPage';
@@ -1871,6 +1873,8 @@ const App = () => {
                         <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/login" element={<LoginPage />} />
+                        <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
+                        <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/admin" element={
                             <ProtectedRoute>
                                 <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />

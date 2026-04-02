@@ -3,6 +3,7 @@ import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Ph
 import { motion } from 'motion/react';
 import * as htmlToImage from 'html-to-image';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import { Link } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
@@ -310,7 +311,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex gap-2">
                   <AlertCircle className="text-amber-600 w-4 h-4 shrink-0 mt-0.5" />
                   <p className="text-[9px] leading-relaxed text-amber-800 font-medium">
-                    <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos sobre promoções e benefícios locais.
+                    <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos sobre promoções e benefícios locais, conforme nossa <Link to="/politica-de-privacidade" className="underline font-bold hover:text-[#279267]">Política de Privacidade</Link> e <Link to="/termos-de-uso" className="underline font-bold hover:text-[#279267]">Termos de Uso</Link>.
                   </p>
                 </div>
 
@@ -327,7 +328,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                     </div>
                   </div>
                   <span className="text-[10px] text-slate-600 font-medium leading-tight">
-                    Estou ciente e autorizo a coleta e uso dos meus dados para fins publicitários.
+                    Estou ciente e autorizo a coleta e uso dos meus dados conforme a Política de Privacidade e Termos de Uso.
                   </span>
                 </label>
 

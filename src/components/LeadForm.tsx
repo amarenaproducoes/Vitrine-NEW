@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Send, CheckCircle2 } from 'lucide-react';
+import { Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
@@ -26,10 +27,11 @@ const formatWhatsApp = (value: string) => {
 const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [formData, setFormData] = useState({ fullName: '', whatsapp: '', message: '' });
+  const [hasConsented, setHasConsented] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
 
   const isWhatsAppValid = formData.whatsapp.replace(/\D/g, '').length === 11;
-  let isFormValid = formData.fullName.trim().length > 0 && isWhatsAppValid;
+  let isFormValid = formData.fullName.trim().length > 0 && isWhatsAppValid && hasConsented;
   
   if (type === 'anunciante' || type === 'comerciante') {
     isFormValid = isFormValid && formData.message.trim().length > 0;
@@ -139,6 +141,30 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             onChange={(e) => setFormData({...formData, whatsapp: formatWhatsApp(e.target.value)})}
           />
         </div>
+
+        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
+          <AlertCircle className="text-amber-600 w-5 h-5 shrink-0 mt-0.5" />
+          <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
+            <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos sobre promoções e benefícios locais, conforme nossa <Link to="/politica-de-privacidade" className="underline font-bold hover:text-[#279267]">Política de Privacidade</Link> e <Link to="/termos-de-uso" className="underline font-bold hover:text-[#279267]">Termos de Uso</Link>.
+          </p>
+        </div>
+
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <div className="relative mt-1">
+            <input 
+              type="checkbox"
+              checked={hasConsented}
+              onChange={(e) => setHasConsented(e.target.checked)}
+              className="sr-only"
+            />
+            <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${hasConsented ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+              {hasConsented && <CheckCircle2 className="text-white w-4 h-4" />}
+            </div>
+          </div>
+          <span className="text-xs text-slate-600 font-medium leading-tight">
+            Estou ciente e autorizo a coleta e uso dos meus dados conforme a Política de Privacidade e Termos de Uso.
+          </span>
+        </label>
 
         {type === 'contato' && (
           <div>
