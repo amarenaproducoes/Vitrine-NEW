@@ -696,6 +696,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 display_id: formData.displayId
             };
 
+            console.log('FULL DATA BEING SENT TO SUPABASE:');
+            console.dir(partnerData);
+
             if (editingId) {
                 console.log('Attempting to update partner with ID:', editingId);
                 const { data: updatedData, error } = await supabase
@@ -704,22 +707,30 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     .eq('id', editingId)
                     .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase Update Error:', error);
+                    alert(`Erro ao atualizar no banco de dados: ${error.message}`);
+                    throw error;
+                }
                 
                 const data = updatedData && updatedData.length > 0 ? updatedData[0] : null;
 
                 if (!data) {
-                    console.error('Update successful but no data returned. Check RLS policies.');
-                    // Fallback to local state update if DB update succeeded but select failed
+                    console.log('Update successful. Using local data for state update (RLS might be restricting immediate select).');
+                    console.log('Fallback videoUrl:', formData.videoUrl);
+                    // Fallback to local state update if DB update succeeded but select failed to return data
                     setPartners(prev => prev.map(p => p.id === editingId ? { 
                         ...p,
                         ...formData, 
                         imageUrl: finalImageUrl, 
                         images: partnerData.images,
                         videoUrl: formData.videoUrl || '',
+                        id: editingId, 
+                        displayId: partnerData.display_id || p.displayId || 0
                     } : p).sort((a, b) => a.orderIndex - b.orderIndex));
                 } else {
                     console.log('Update response data:', data);
+                    console.log('DB returned video_url:', data.video_url);
                     setPartners(prev => prev.map(p => p.id === editingId ? { 
                         ...formData, 
                         imageUrl: finalImageUrl, 
@@ -737,23 +748,38 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     .insert([partnerData])
                     .select();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase Insert Error:', error);
+                    alert(`Erro ao salvar no banco de dados: ${error.message}`);
+                    throw error;
+                }
                 
                 const data = insertedData && insertedData.length > 0 ? insertedData[0] : null;
-
-                if (!data) throw new Error("Erro ao recuperar dados após inserção.");
-
-                console.log('Insert response data:', data);
-                const newPartner: Partner = { 
-                    ...formData, 
-                    imageUrl: finalImageUrl, 
-                    images: data.images || [],
-                    videoUrl: data.video_url || '',
-                    id: data.id, 
-                    displayId: data.display_id 
-                };
-                setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
-                alert("Parceiro adicionado com sucesso!");
+                
+                if (!data) {
+                    console.log('Insert successful. Using local data for state update.');
+                    const newPartner: Partner = {
+                        ...formData,
+                        imageUrl: finalImageUrl,
+                        images: partnerData.images,
+                        videoUrl: formData.videoUrl || '',
+                        id: 'temp-' + Date.now(), // Fallback ID if DB didn't return one
+                        displayId: partnerData.display_id || formData.displayId || 0
+                    };
+                    setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
+                } else {
+                    console.log('Insert response data:', data);
+                    const newPartner: Partner = { 
+                        ...formData, 
+                        imageUrl: finalImageUrl, 
+                        images: data.images || [],
+                        videoUrl: data.video_url || '',
+                        id: data.id, 
+                        displayId: data.display_id 
+                    };
+                    setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
+                }
+                alert("Parceiro salvo com sucesso!");
             }
             resetForm();
         } catch (error: any) {
@@ -791,6 +817,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     const handleEdit = (partner: Partner) => {
+        console.log('Editing partner:', partner);
+        console.log('Partner videoUrl from DB:', partner.videoUrl);
         setFormData({
             name: partner.name,
             category: partner.category,
@@ -854,7 +882,10 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         if (deleteConfirm.type === 'partner') {
             try {
                 const { error } = await supabase.from('partners').delete().eq('id', deleteConfirm.id);
-                if (error) throw error;
+                if (error) {
+                    alert(`Erro ao excluir: ${error.message}`);
+                    return;
+                }
                 setPartners(partners.filter(p => p.id !== deleteConfirm.id)); 
                 if (editingId === deleteConfirm.id) resetForm();
             } catch (error) {
@@ -863,7 +894,10 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         } else if (deleteConfirm.type === 'category') {
             try {
                 const { error } = await supabase.from('categories').delete().eq('id', deleteConfirm.id);
-                if (error) throw error;
+                if (error) {
+                    alert(`Erro ao excluir categoria: ${error.message}`);
+                    return;
+                }
                 setCategories(categories.filter(c => c.id !== deleteConfirm.id));
             } catch (error) {
                 logger.error('Error deleting category:', error);
@@ -875,7 +909,10 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     .delete()
                     .eq('id', parseInt(deleteConfirm.id));
                     
-                if (error) throw error;
+                if (error) {
+                    alert(`Erro ao excluir banner: ${error.message}`);
+                    return;
+                }
                 
                 if (deleteConfirm.id === '1') {
                     setCommercialBanner(null);
@@ -1267,7 +1304,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                         <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest">Foto Principal (Vertical Recomendada)</label>
                                         <div 
                                             onClick={() => fileInputRef.current?.click()}
-                                            className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden aspect-[9/16] bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
+                                            className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden w-32 h-32 mx-auto bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
                                         >
                                             {formData.imageUrl ? (
                                                 <>
@@ -1302,7 +1339,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                             const input = document.getElementById(`extra-file-${idx}`) as HTMLInputElement;
                                                             input?.click();
                                                         }}
-                                                        className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden aspect-[9/16] bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
+                                                        className="relative cursor-pointer group border-2 border-dashed border-slate-200 rounded-xl overflow-hidden w-20 h-20 mx-auto bg-slate-50 flex flex-col items-center justify-center transition-all hover:border-[#279267] hover:bg-green-50"
                                                     >
                                                         {formData.images[idx] ? (
                                                             <>
@@ -1984,6 +2021,10 @@ const App = () => {
             if (categoriesRes.error) throw categoriesRes.error;
 
             if (partnersRes.data) {
+                if (partnersRes.data.length > 0) {
+                    console.log('Database Columns detected:', Object.keys(partnersRes.data[0]));
+                }
+                console.log('Fetched partners from DB:', partnersRes.data.map(p => ({ id: p.id, name: p.name, video_url: p.video_url })));
                 const mappedPartners: Partner[] = partnersRes.data.map(p => ({
                     id: p.id,
                     name: p.name,

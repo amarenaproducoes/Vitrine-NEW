@@ -219,16 +219,21 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
 
   const getYoutubeId = (url: string) => {
     if (!url) return null;
+    console.log('Extracting YouTube ID from:', url);
     // Handle shorts specifically
     if (url.includes('/shorts/')) {
       const parts = url.split('/shorts/');
       if (parts[1]) {
-        return parts[1].split(/[?#&]/)[0];
+        const id = parts[1].split(/[?#&]/)[0];
+        console.log('Extracted Shorts ID:', id);
+        return id;
       }
     }
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=|shorts\/)([^#&?]*).*/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
+    const id = (match && match[2].length === 11) ? match[2] : null;
+    console.log('Extracted Video ID:', id);
+    return id;
   };
 
   const videoId = partner.videoUrl ? getYoutubeId(partner.videoUrl) : null;
@@ -239,7 +244,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
       type: 'video',
       id: videoId,
       thumbnail: `https://img.youtube.com/vi/${videoId}/0.jpg`,
-      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`
+      embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&enablejsapi=1&mute=1`
     });
   }
   
@@ -300,9 +305,10 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                     src={mediaItems[currentMediaIndex].embedUrl}
                     title="YouTube video player"
                     frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
                     allowFullScreen
                     className="w-full h-full"
+                    loading="eager"
                   ></iframe>
                 )}
               </div>
