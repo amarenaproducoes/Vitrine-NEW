@@ -83,3 +83,8 @@ export interface CommercialBannerData {
   imageUrl: string;
   linkUrl?: string | null;
 }
+
+export interface FeaturedCoupon {
+  slot_id: number;
+  partner_id: string | null;
+}

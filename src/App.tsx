@@ -106,7 +106,7 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }: { partners: Partner[], categories: Category[], commercialBanner: CommercialBannerData | null, featuredPartner: Partner | null }) => {
+const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, featuredCoupons }: { partners: Partner[], categories: Category[], commercialBanner: CommercialBannerData | null, featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[] }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
@@ -280,7 +280,62 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                 </div>
             </section>
 
-            <section className="py-20 bg-gray-50">
+            <section className="py-12 bg-white border-b border-slate-100">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="flex items-center space-x-2 mb-8">
+                        <div className="bg-[#c54b4b] text-white p-2 rounded-lg shadow-lg shadow-red-500/20">
+                            <Trophy size={18} />
+                        </div>
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Destaques da Semana</h2>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {[0, 1, 2, 3, 4, 5].map((idx) => {
+                            const coupon = featuredCoupons.find(c => c.slot_id === idx + 1);
+                            const partner = partners.find(p => p.id === coupon?.partner_id);
+                            
+                            if (!partner) return null;
+
+                            return (
+                                <button 
+                                    key={idx}
+                                    onClick={() => {
+                                        setSearchTerm(partner.name);
+                                        // Aguarda a busca ser aplicada e desce direto até o card do parceiro
+                                        setTimeout(() => {
+                                            const cardElement = document.getElementById(`partner-card-${partner.id}`);
+                                            if (cardElement) {
+                                                const offset = 100; // Altura do header fixo
+                                                const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
+                                                const offsetPosition = elementPosition - offset;
+
+                                                window.scrollTo({
+                                                    top: offsetPosition,
+                                                    behavior: 'smooth'
+                                                });
+                                            }
+                                        }, 300);
+                                    }}
+                                    className="flex items-center p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-[#279267] hover:bg-green-50 transition-all group text-left"
+                                >
+                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-slate-200 flex-shrink-0 mr-4">
+                                        <img src={partner.imageUrl} alt={partner.name} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-grow min-w-0">
+                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#279267] transition-colors leading-tight mb-1">{partner.name}</h4>
+                                        <p className="text-[9px] sm:text-[10px] font-black text-[#c54b4b] uppercase tracking-wider leading-tight">
+                                            {partner.couponDescription || "Confira o benefício exclusivo"}
+                                        </p>
+                                    </div>
+                                    <ChevronRight size={18} className="text-slate-300 group-hover:text-[#279267] transition-colors ml-2 flex-shrink-0" />
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </section>
+
+            <section id="results-grid" className="py-20 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {filteredPartners.length > 0 ? filteredPartners.map((partner) => (<PartnerCard key={partner.id} partner={partner} />)) : (
@@ -295,22 +350,30 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
                     </div>
 
                     {featuredPartner && (
-                        <div className="mt-16 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden">
+                        <div 
+                            onClick={() => {
+                                setSearchTerm(featuredPartner.name);
+                                const element = document.getElementById('results-grid');
+                                if (element) element.scrollIntoView({ behavior: 'smooth' });
+                            }}
+                            className="mt-16 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden cursor-pointer hover:bg-slate-800 transition-all group"
+                        >
                             <div className="flex items-center space-x-4 w-full md:w-auto">
-                                <div className="bg-amber-400 p-3 rounded-2xl shadow-lg shadow-amber-400/20 flex-shrink-0">
+                                <div className="bg-amber-400 p-3 rounded-2xl shadow-lg shadow-amber-400/20 flex-shrink-0 group-hover:scale-110 transition-transform">
                                     <Trophy className="text-white w-6 h-6" />
                                 </div>
                                 <div className="min-w-0">
-                                    <h4 className="text-white font-black uppercase tracking-tight text-xs sm:text-sm">Parceiro da Semana</h4>
+                                    <h4 className="text-white font-black uppercase tracking-tight text-xs sm:text-sm group-hover:text-amber-400 transition-colors">Parceiro da Semana</h4>
                                     <p className="text-[9px] sm:text-xs text-slate-400 font-bold uppercase tracking-widest">O mais acessado nos últimos 7 dias</p>
                                 </div>
                             </div>
                             <div className="flex items-center space-x-4 bg-slate-800/50 p-3 rounded-2xl border border-slate-700 w-full md:w-auto md:pr-6 min-w-0">
-                                <img src={featuredPartner.imageUrl} alt={featuredPartner.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0" />
+                                <img src={featuredPartner.imageUrl} alt={featuredPartner.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-white/10" />
                                 <div className="min-w-0">
-                                    <p className="text-white font-bold truncate">{featuredPartner.name}</p>
-                                    <p className="text-[#279267] text-[10px] font-black uppercase tracking-widest truncate">{featuredPartner.category}</p>
+                                    <p className="text-white font-bold text-sm sm:text-base group-hover:text-amber-400 transition-colors leading-tight">{featuredPartner.name}</p>
+                                    <p className="text-[#279267] text-[10px] font-black uppercase tracking-widest leading-tight mt-1">{featuredPartner.category}</p>
                                 </div>
+                                <ChevronRight className="text-slate-500 ml-auto group-hover:text-amber-400 transition-colors flex-shrink-0" size={20} />
                             </div>
                         </div>
                     )}
@@ -364,8 +427,8 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner }
     );
 };
 
-const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: CommercialBannerData | null, setCommercialBanner: React.Dispatch<React.SetStateAction<CommercialBannerData | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>> }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback'>('partners');
+const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: CommercialBannerData | null, setCommercialBanner: React.Dispatch<React.SetStateAction<CommercialBannerData | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>> }) => {
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured'>('partners');
     const navigate = useNavigate();
     
     // Partner Form State
@@ -1102,34 +1165,35 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-4 py-8 md:py-16 overflow-x-hidden">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 md:py-16">
             <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
                 <div className="flex items-center space-x-3">
-                    <div className="bg-slate-900 text-white p-2 sm:p-3 rounded-2xl shadow-xl flex-shrink-0">
-                        <Plus size={24} className="sm:w-8 sm:h-8" />
+                    <div className="bg-slate-900 text-white p-2 rounded-xl shadow-xl flex-shrink-0">
+                        <Plus size={20} className="sm:w-8 sm:h-8" />
                     </div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-tight">
+                    <h1 className="text-lg sm:text-2xl md:text-4xl font-black text-slate-900 leading-tight">
                         Painel de Controle
                     </h1>
                 </div>
                 
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <div className="flex bg-white p-1 rounded-2xl shadow-sm border border-slate-100 overflow-x-auto no-scrollbar whitespace-nowrap w-full sm:w-auto">
-                        <button onClick={() => setActiveTab('partners')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
-                        <button onClick={() => setActiveTab('about')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
-                        <button onClick={() => setActiveTab('cases')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
-                        <button onClick={() => setActiveTab('ranking')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
-                        <button onClick={() => setActiveTab('cashback')} className={`px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
-                        <Link to="/admin-mensagens" className="px-4 sm:px-6 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex-shrink-0 text-slate-500 hover:text-slate-900 flex items-center">
-                            <MessageSquare size={14} className="mr-2" />
+                    <div className="flex flex-wrap bg-white p-1 rounded-2xl shadow-sm border border-slate-100 w-full sm:w-auto justify-center sm:justify-start">
+                        <button onClick={() => setActiveTab('partners')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
+                        <button onClick={() => setActiveTab('about')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
+                        <button onClick={() => setActiveTab('cases')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
+                        <button onClick={() => setActiveTab('ranking')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
+                        <button onClick={() => setActiveTab('cashback')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
+                        <button onClick={() => setActiveTab('featured')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'featured' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Destaques</button>
+                        <Link to="/admin-mensagens" className="px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                            <MessageSquare size={12} className="mr-1 sm:mr-2" />
                             Mensagens
                         </Link>
                     </div>
                     <button 
                         onClick={handleLogout}
-                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20 text-sm"
+                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20 text-xs w-full sm:w-auto"
                     >
-                        <LogOut size={18} />
+                        <LogOut size={16} />
                         <span>Sair</span>
                     </button>
                 </div>
@@ -1137,9 +1201,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             {activeTab === 'partners' && (
                 <>
-                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
-                        <h2 className="text-2xl font-black text-slate-900 mb-4">Logotipo do Cabeçalho</h2>
-                        <p className="text-slate-500 mb-6">Adicione o logotipo que será exibido no cabeçalho do site. Apenas 1 imagem é permitida por vez.</p>
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
+                        <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-3 sm:mb-4">Logotipo do Cabeçalho</h2>
+                        <p className="text-slate-500 text-xs sm:text-base mb-4 sm:mb-6">Adicione o logotipo que será exibido no cabeçalho do site. Apenas 1 imagem é permitida por vez.</p>
                         
                         {headerLogo ? (
                             <div className="space-y-4">
@@ -1162,9 +1226,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         )}
                     </div>
 
-                    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 mb-12">
-                        <h2 className="text-2xl font-black text-slate-900 mb-4">Banner Publicitário Principal</h2>
-                        <p className="text-slate-500 mb-6">Adicione um banner de destaque que será exibido logo abaixo da faixa vermelha na página inicial. Apenas 1 imagem é permitida por vez.</p>
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
+                        <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-3 sm:mb-4">Banner Publicitário Principal</h2>
+                        <p className="text-slate-500 text-xs sm:text-base mb-4 sm:mb-6">Adicione um banner de destaque que será exibido logo abaixo da faixa vermelha na página inicial. Apenas 1 imagem é permitida por vez.</p>
                         
                         {commercialBanner ? (
                             <div className="space-y-6">
@@ -1215,11 +1279,11 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         )}
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-12">
                         <div className="lg:col-span-1">
-                            <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100 sticky top-28">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h2 className="text-xl font-black flex items-center text-[#279267]">
+                            <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 sticky top-28">
+                                <div className="flex justify-between items-center mb-4 sm:mb-6">
+                                    <h2 className="text-lg sm:text-xl font-black flex items-center text-[#279267]">
                                         {editingId ? "Alterar Dados" : "Novo Parceiro"}
                                     </h2>
                                     {editingId && (
@@ -1434,8 +1498,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <div key={p.id} className={`bg-white p-4 rounded-2xl shadow-sm border transition-all flex flex-col sm:flex-row items-center sm:items-start space-y-4 sm:space-y-0 sm:space-x-4 ${editingId === p.id ? 'border-[#279267] ring-2 ring-green-100 ring-offset-2' : 'border-slate-100'}`}>
                                         <img src={p.imageUrl} alt={p.name} referrerPolicy="no-referrer" className="w-16 h-16 rounded-xl object-cover shadow-inner bg-white flex-shrink-0" />
                                         <div className="flex-grow min-w-0 text-center sm:text-left">
-                                            <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
-                                            <p className="text-[10px] font-black text-[#279267] uppercase">{p.category}</p>
+                                            <h4 className="font-bold text-slate-900 text-sm sm:text-base break-words">{p.name}</h4>
+                                            <p className="text-[9px] sm:text-[10px] font-black text-[#279267] uppercase">{p.category}</p>
                                         </div>
                                         <div className="flex space-x-1">
                                             <button 
@@ -1471,9 +1535,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                 <Editor 
                                     value={aboutConfig.history} 
                                     onChange={e => setAboutConfig({...aboutConfig, history: e.target.value})} 
-                                    containerProps={{ style: { minHeight: '300px', border: 'none' } }}
+                                    containerProps={{ style: { minHeight: '300px', border: 'none', width: '100%' } }}
                                 >
-                                    <Toolbar>
+                                    <Toolbar style={{ display: 'flex', flexWrap: 'wrap' }}>
                                         <BtnUndo />
                                         <BtnRedo />
                                         <Separator />
@@ -1598,6 +1662,55 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             </div>
                         ))}
                         {successCases.length === 0 && <div className="text-center py-20 text-slate-400 font-bold">Nenhum case de sucesso cadastrado.</div>}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'featured' && (
+                <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                    <div className="flex items-center space-x-3 mb-6 sm:mb-8">
+                        <div className="bg-[#c54b4b] text-white p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                            <Trophy size={20} className="sm:w-6 sm:h-6" />
+                        </div>
+                        <div>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">Destaques da Semana</h2>
+                            <p className="text-slate-500 text-xs sm:text-sm">Selecione os 6 parceiros que aparecerão em destaque na página inicial.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {[1, 2, 3, 4, 5, 6].map((slotId) => (
+                            <div key={slotId} className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-3">Slot #{slotId}</label>
+                                <select 
+                                    className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none focus:border-[#279267] font-bold text-slate-700"
+                                    value={featuredCoupons.find(c => c.slot_id === slotId)?.partner_id || ""}
+                                    onChange={async (e) => {
+                                        const partnerId = e.target.value || null;
+                                        try {
+                                            const { error } = await supabase
+                                                .from('featured_coupons')
+                                                .upsert({ slot_id: slotId, partner_id: partnerId });
+                                            
+                                            if (error) throw error;
+                                            
+                                            setFeaturedCoupons(prev => {
+                                                const filtered = prev.filter(c => c.slot_id !== slotId);
+                                                return [...filtered, { slot_id: slotId, partner_id: partnerId }].sort((a, b) => a.slot_id - b.slot_id);
+                                            });
+                                        } catch (error) {
+                                            logger.error('Error updating featured coupon:', error);
+                                            alert("Erro ao salvar destaque.");
+                                        }
+                                    }}
+                                >
+                                    <option value="">-- Selecionar Parceiro --</option>
+                                    {partners.map(p => (
+                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        ))}
                     </div>
                 </div>
             )}
@@ -2003,6 +2116,7 @@ const App = () => {
     const [commercialBanner, setCommercialBanner] = useState<CommercialBannerData | null>(null);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
+    const [featuredCoupons, setFeaturedCoupons] = useState<FeaturedCoupon[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -2011,14 +2125,18 @@ const App = () => {
 
     const fetchData = async () => {
         try {
-            const [partnersRes, categoriesRes, bannerRes] = await Promise.all([
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes] = await Promise.all([
                 supabase.from('partners').select('*').order('order_index', { ascending: true }),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
-                supabase.from('commercial_banner').select('*').in('id', [1, 2])
+                supabase.from('commercial_banner').select('*').in('id', [1, 2]),
+                supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true })
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
             if (categoriesRes.error) throw categoriesRes.error;
+            if (featuredCouponsRes.error) {
+                console.error('Error fetching featured coupons:', featuredCouponsRes.error);
+            }
 
             if (partnersRes.data) {
                 if (partnersRes.data.length > 0) {
@@ -2068,6 +2186,10 @@ const App = () => {
                 setCategories(categoriesRes.data);
             }
 
+            if (featuredCouponsRes.data) {
+                setFeaturedCoupons(featuredCouponsRes.data);
+            }
+
             if (bannerRes.data) {
                 const mainBanner = bannerRes.data.find(b => b.id === 1);
                 const logoBanner = bannerRes.data.find(b => b.id === 2);
@@ -2106,14 +2228,14 @@ const App = () => {
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
-                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/admin" element={
                             <ProtectedRoute>
-                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} />
+                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} featuredCoupons={featuredCoupons} setFeaturedCoupons={setFeaturedCoupons} />
                             </ProtectedRoute>
                         } />
                         <Route path="/admin-mensagens" element={

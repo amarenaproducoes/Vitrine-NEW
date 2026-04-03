@@ -270,7 +270,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   };
 
   return (
-    <div className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col h-full">
+    <div id={`partner-card-${partner.id}`} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col h-full">
       <div className="relative overflow-hidden block aspect-[9/16] bg-slate-100">
         <AnimatePresence mode="wait">
           <motion.div
@@ -410,7 +410,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 <div className="text-center">
                   <span className="text-slate-700 font-bold text-xs mb-1 block">Para liberar o seu benefício, digite o seu Whatsapp e ganhe:</span>
                   {partner.couponDescription && (
-                    <span className="text-[#279267] font-black text-sm mb-3 block bg-white px-2 py-1.5 rounded-md border border-green-100 shadow-sm w-full">
+                    <span className="text-[#279267] font-black text-xs mb-3 block bg-white px-2 py-1.5 rounded-md border border-green-100 shadow-sm w-full">
                       {partner.couponDescription}
                     </span>
                   )}
@@ -492,7 +492,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 </div>
 
                 {partner.couponDescription && (
-                  <p className="text-xs text-slate-700 font-medium mb-2">{partner.couponDescription}</p>
+                  <p className="text-[10px] text-slate-700 font-medium mb-2">{partner.couponDescription}</p>
                 )}
                 <div className="w-full py-2.5 bg-white rounded-lg border-2 border-[#279267] mb-1 select-all shadow-sm">
                   <span className="text-lg font-mono font-black text-slate-800 tracking-wider">{partner.coupon}</span>
