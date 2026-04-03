@@ -8,7 +8,7 @@ import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } f
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import DOMPurify from 'dompurify';
 import { 
-    Store, Car, Megaphone, Sparkles, ChevronRight, Plus, Trash2, 
+    Store, Car, Megaphone, Sparkles, ChevronRight, ChevronLeft, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick
 } from 'lucide-react';
 
@@ -27,6 +27,14 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData } from './types';
+
+interface FeaturedCoupon {
+    id?: string;
+    slot_id: number;
+    partner_id: string | null;
+    created_at?: string;
+}
+
 import { supabase } from './lib/supabase';
 import { getUserIP } from './lib/ip';
 import { logger } from './lib/logger';
@@ -106,7 +114,87 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, featuredCoupons }: { partners: Partner[], categories: Category[], commercialBanner: CommercialBannerData | null, featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[] }) => {
+const BannerCarousel = ({ banners }: { banners: CommercialBannerData[] }) => {
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isPaused, setIsPaused] = useState(false);
+
+    useEffect(() => {
+        if (banners.length <= 1 || isPaused) return;
+
+        const timer = setInterval(() => {
+            setCurrentIndex((prev) => (prev + 1) % banners.length);
+        }, 5000);
+
+        return () => clearInterval(timer);
+    }, [banners.length, isPaused]);
+
+    if (banners.length === 0) return null;
+
+    const nextBanner = () => {
+        setCurrentIndex((prev) => (prev + 1) % banners.length);
+        setIsPaused(true);
+        setTimeout(() => setIsPaused(false), 10000); // Resume after 10s of inactivity
+    };
+
+    const prevBanner = () => {
+        setCurrentIndex((prev) => (prev - 1 + banners.length) % banners.length);
+        setIsPaused(true);
+        setTimeout(() => setIsPaused(false), 10000);
+    };
+
+    return (
+        <div className="w-full relative overflow-hidden bg-slate-900 border-b border-slate-800 group">
+            <div 
+                className="flex transition-transform duration-700 ease-in-out" 
+                style={{ transform: `translateX(-${currentIndex * 100}%)` }}
+            >
+                {banners.map((banner) => (
+                    <div key={banner.id} className="w-full flex-shrink-0">
+                        {banner.linkUrl ? (
+                            <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                            </a>
+                        ) : (
+                            <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                        )}
+                    </div>
+                ))}
+            </div>
+
+            {banners.length > 1 && (
+                <>
+                    <button 
+                        onClick={prevBanner}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                        <ChevronLeft size={24} />
+                    </button>
+                    <button 
+                        onClick={nextBanner}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                    >
+                        <ChevronRight size={24} />
+                    </button>
+                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+                        {banners.map((_, i) => (
+                            <button 
+                                key={i} 
+                                onClick={() => {
+                                    setCurrentIndex(i);
+                                    setIsPaused(true);
+                                    setTimeout(() => setIsPaused(false), 10000);
+                                }}
+                                className={`w-2 h-2 rounded-full transition-all ${i === currentIndex ? 'bg-white w-4' : 'bg-white/40'}`}
+                            />
+                        ))}
+                    </div>
+                </>
+            )}
+        </div>
+    );
+};
+
+const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[] }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
@@ -228,17 +316,7 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, 
                     />
                 )}
             </AnimatePresence>
-            {commercialBanner && (
-                <div className="w-full block bg-slate-900 border-b border-slate-800">
-                    {commercialBanner.linkUrl ? (
-                        <a href={commercialBanner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
-                            <img src={commercialBanner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
-                        </a>
-                    ) : (
-                        <img src={commercialBanner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
-                    )}
-                </div>
-            )}
+            <BannerCarousel banners={commercialBanners} />
             <section id="vitrine" className="relative overflow-hidden bg-slate-900 pt-16 pb-24 md:pt-24 md:pb-32">
                 <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-[#279267]/10 rounded-full blur-[120px]"></div>
                 <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c54b4b]/10 rounded-full blur-[120px]"></div>
@@ -286,7 +364,7 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, 
                         <div className="bg-[#c54b4b] text-white p-2 rounded-lg shadow-lg shadow-red-500/20">
                             <Trophy size={18} />
                         </div>
-                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Destaques da Semana</h2>
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cupons em Destaque da Semana</h2>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -322,8 +400,8 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, 
                                         <img src={partner.imageUrl} alt={partner.name} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-grow min-w-0">
-                                        <h4 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#279267] transition-colors leading-tight mb-1">{partner.name}</h4>
-                                        <p className="text-[9px] sm:text-[10px] font-black text-[#c54b4b] uppercase tracking-wider leading-tight">
+                                        <h4 className="text-[11px] sm:text-sm font-bold text-slate-900 group-hover:text-[#279267] transition-colors leading-tight mb-1 break-words">{partner.name}</h4>
+                                        <p className="text-[9px] sm:text-[10px] font-black text-[#c54b4b] uppercase tracking-wider leading-tight break-words">
                                             {partner.couponDescription || "Confira o benefício exclusivo"}
                                         </p>
                                     </div>
@@ -369,8 +447,8 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, 
                             </div>
                             <div className="flex items-center space-x-4 bg-slate-800/50 p-3 rounded-2xl border border-slate-700 w-full md:w-auto md:pr-6 min-w-0">
                                 <img src={featuredPartner.imageUrl} alt={featuredPartner.name} className="w-12 h-12 rounded-xl object-cover flex-shrink-0 border border-white/10" />
-                                <div className="min-w-0">
-                                    <p className="text-white font-bold text-sm sm:text-base group-hover:text-amber-400 transition-colors leading-tight">{featuredPartner.name}</p>
+                                <div className="min-w-0 flex-grow">
+                                    <p className="text-white font-bold text-sm sm:text-base group-hover:text-amber-400 transition-colors leading-tight break-words">{featuredPartner.name}</p>
                                     <p className="text-[#279267] text-[10px] font-black uppercase tracking-widest leading-tight mt-1">{featuredPartner.category}</p>
                                 </div>
                                 <ChevronRight className="text-slate-500 ml-auto group-hover:text-amber-400 transition-colors flex-shrink-0" size={20} />
@@ -427,7 +505,7 @@ const LandingPage = ({ partners, categories, commercialBanner, featuredPartner, 
     );
 };
 
-const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanner, setCommercialBanner, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanner: CommercialBannerData | null, setCommercialBanner: React.Dispatch<React.SetStateAction<CommercialBannerData | null>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>> }) => {
+const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanners, setCommercialBanners, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanners: CommercialBannerData[], setCommercialBanners: React.Dispatch<React.SetStateAction<CommercialBannerData[]>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>> }) => {
     const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured'>('partners');
     const navigate = useNavigate();
     
@@ -472,7 +550,11 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         displayId: 0 
     });
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [bannerLink, setBannerLink] = useState(commercialBanner?.linkUrl || '');
+    const [bannerLinks, setBannerLinks] = useState<{[key: number]: string}>({
+        1: commercialBanners.find(b => b.id === 1)?.linkUrl || '',
+        3: commercialBanners.find(b => b.id === 3)?.linkUrl || '',
+        4: commercialBanners.find(b => b.id === 4)?.linkUrl || ''
+    });
     
     // About Us State
     const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null });
@@ -503,10 +585,14 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const caseStoreInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        if (commercialBanner?.linkUrl) {
-            setBannerLink(commercialBanner.linkUrl);
-        }
-    }, [commercialBanner]);
+        const newLinks = { ...bannerLinks };
+        commercialBanners.forEach(b => {
+            if ([1, 3, 4].includes(b.id)) {
+                newLinks[b.id] = b.linkUrl || '';
+            }
+        });
+        setBannerLinks(newLinks);
+    }, [commercialBanners]);
 
     const getNextAvailableDisplayId = (currentPartners: Partner[]) => {
         const usedIds = currentPartners.map(p => p.displayId).filter(id => id > 0);
@@ -977,9 +1063,10 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     return;
                 }
                 
-                if (deleteConfirm.id === '1') {
-                    setCommercialBanner(null);
-                    setBannerLink('');
+                if (deleteConfirm.id === '1' || deleteConfirm.id === '3' || deleteConfirm.id === '4') {
+                    const idNum = parseInt(deleteConfirm.id);
+                    setCommercialBanners(prev => prev.filter(b => b.id !== idNum));
+                    setBannerLinks(prev => ({ ...prev, [idNum]: '' }));
                 } else if (deleteConfirm.id === '2') {
                     setHeaderLogo(null);
                 }
@@ -1027,7 +1114,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 .getPublicUrl(fileName);
 
             const upsertData: any = { id: id, image_url: publicUrl };
-            if (id === 1) upsertData.link_url = bannerLink;
+            if ([1, 3, 4].includes(id)) upsertData.link_url = bannerLinks[id] || '';
 
             const { error: dbError } = await supabase
                 .from('commercial_banner')
@@ -1035,8 +1122,15 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             if (dbError) throw dbError;
 
-            if (id === 1) {
-                setCommercialBanner({ id: 1, imageUrl: publicUrl, linkUrl: bannerLink });
+            if ([1, 3, 4].includes(id)) {
+                const newBanner = { id: id, imageUrl: publicUrl, linkUrl: bannerLinks[id] || '' };
+                setCommercialBanners(prev => {
+                    const filtered = prev.filter(b => b.id !== id);
+                    return [...filtered, newBanner].sort((a, b) => {
+                        const order = { 1: 0, 3: 1, 4: 2 };
+                        return (order[a.id as keyof typeof order] || 0) - (order[b.id as keyof typeof order] || 0);
+                    });
+                });
                 alert("Banner atualizado com sucesso!");
             } else if (id === 2) {
                 setHeaderLogo(publicUrl);
@@ -1048,17 +1142,16 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         }
     };
 
-    const handleUpdateBannerLink = async () => {
-        if (!commercialBanner) return;
+    const handleUpdateBannerLink = async (id: number) => {
         try {
             const { error } = await supabase
                 .from('commercial_banner')
-                .update({ link_url: bannerLink })
-                .eq('id', 1);
+                .update({ link_url: bannerLinks[id] || '' })
+                .eq('id', id);
             
             if (error) throw error;
             
-            setCommercialBanner({ ...commercialBanner, linkUrl: bannerLink });
+            setCommercialBanners(prev => prev.map(b => b.id === id ? { ...b, linkUrl: bannerLinks[id] || '' } : b));
             alert("Link do banner atualizado!");
         } catch (error) {
             logger.error('Error updating banner link:', error);
@@ -1227,56 +1320,66 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     </div>
 
                     <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
-                        <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-3 sm:mb-4">Banner Publicitário Principal</h2>
-                        <p className="text-slate-500 text-xs sm:text-base mb-4 sm:mb-6">Adicione um banner de destaque que será exibido logo abaixo da faixa vermelha na página inicial. Apenas 1 imagem é permitida por vez.</p>
+                        <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-3 sm:mb-4">Carrossel de Banners Principal</h2>
+                        <p className="text-slate-500 text-xs sm:text-base mb-4 sm:mb-6">Adicione até 3 banners que serão exibidos em um carrossel rotativo na página inicial.</p>
                         
-                        {commercialBanner ? (
-                            <div className="space-y-6">
-                                <div className="border border-slate-200 rounded-xl p-4 bg-slate-50 flex justify-center">
-                                    <img src={commercialBanner.imageUrl} alt="Banner Atual" className="max-w-full h-auto rounded-lg shadow-sm" style={{ maxHeight: '150px' }} />
-                                </div>
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-sm font-bold text-slate-700">Link do Banner:</label>
-                                    <div className="flex gap-2">
-                                        <input 
-                                            type="url" 
-                                            placeholder="https://exemplo.com" 
-                                            className="flex-grow px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]"
-                                            value={bannerLink}
-                                            onChange={(e) => setBannerLink(e.target.value)}
-                                        />
-                                        <button 
-                                            onClick={handleUpdateBannerLink}
-                                            className="px-4 py-2 bg-[#279267] text-white font-bold rounded-xl hover:bg-[#1e7250] transition-colors text-sm"
-                                        >
-                                            Salvar Link
-                                        </button>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            {[1, 3, 4].map((id, index) => {
+                                const banner = commercialBanners.find(b => b.id === id);
+                                return (
+                                    <div key={id} className="space-y-4 p-4 border border-slate-100 rounded-2xl bg-slate-50/50">
+                                        <h3 className="font-black text-slate-900 uppercase tracking-tight text-sm">Banner {index + 1}</h3>
+                                        {banner ? (
+                                            <div className="space-y-4">
+                                                <div className="border border-slate-200 rounded-xl p-2 bg-white flex justify-center overflow-hidden h-32">
+                                                    <img src={banner.imageUrl} alt={`Banner ${index + 1}`} className="max-w-full h-full object-contain rounded-lg shadow-sm" />
+                                                </div>
+                                                <div className="flex flex-col space-y-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Link do Banner:</label>
+                                                    <div className="flex gap-2">
+                                                        <input 
+                                                            type="url" 
+                                                            placeholder="https://exemplo.com" 
+                                                            className="flex-grow px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-xs"
+                                                            value={bannerLinks[id] || ''}
+                                                            onChange={(e) => setBannerLinks(prev => ({ ...prev, [id]: e.target.value }))}
+                                                        />
+                                                        <button 
+                                                            onClick={() => handleUpdateBannerLink(id)}
+                                                            className="px-3 py-2 bg-[#279267] text-white font-bold rounded-lg hover:bg-[#1e7250] transition-colors text-[10px] uppercase"
+                                                        >
+                                                            Salvar
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleRemoveBanner(id)} className="w-full py-2 bg-[#c54b4b]/10 text-[#c54b4b] font-bold rounded-lg hover:bg-[#c54b4b] hover:text-white transition-all text-xs uppercase">
+                                                    Remover
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-4">
+                                                <div className="flex flex-col space-y-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Link do Banner (Opcional):</label>
+                                                    <input 
+                                                        type="url" 
+                                                        placeholder="https://exemplo.com" 
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-xs"
+                                                        value={bannerLinks[id] || ''}
+                                                        onChange={(e) => setBannerLinks(prev => ({ ...prev, [id]: e.target.value }))}
+                                                    />
+                                                </div>
+                                                <div className="border-2 border-dashed border-slate-300 rounded-xl p-6 text-center bg-white hover:bg-slate-100 transition-colors cursor-pointer relative">
+                                                    <input type="file" accept="image/*" onChange={(e) => handleUploadBanner(e, id)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                    <Upload className="mx-auto h-8 w-8 text-slate-400 mb-2" />
+                                                    <p className="text-slate-600 font-medium text-xs">Clique ou arraste</p>
+                                                    <p className="text-[#c54b4b] font-bold mt-1 text-[10px]">2275 x 563 Pixels</p>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
-                                </div>
-                                <button onClick={() => handleRemoveBanner(1)} className="px-6 py-3 bg-[#c54b4b] text-white font-bold rounded-xl hover:bg-red-700 transition-colors w-full">
-                                    Remover Banner Atual
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="space-y-4">
-                                <div className="flex flex-col space-y-2">
-                                    <label className="text-sm font-bold text-slate-700">Link do Banner (Opcional):</label>
-                                    <input 
-                                        type="url" 
-                                        placeholder="https://exemplo.com" 
-                                        className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]"
-                                        value={bannerLink}
-                                        onChange={(e) => setBannerLink(e.target.value)}
-                                    />
-                                </div>
-                                <div className="border-2 border-dashed border-slate-300 rounded-2xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors cursor-pointer relative">
-                                    <input type="file" accept="image/*" onChange={(e) => handleUploadBanner(e, 1)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                    <Upload className="mx-auto h-12 w-12 text-slate-400 mb-4" />
-                                    <p className="text-slate-600 font-medium">Clique ou arraste uma imagem aqui</p>
-                                    <p className="text-[#c54b4b] font-bold mt-2 text-sm">Formato obrigatório: 2275 x 563 Pixels</p>
-                                </div>
-                            </div>
-                        )}
+                                );
+                            })}
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-12">
@@ -2113,7 +2216,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 const App = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const [commercialBanner, setCommercialBanner] = useState<CommercialBannerData | null>(null);
+    const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
     const [featuredCoupons, setFeaturedCoupons] = useState<FeaturedCoupon[]>([]);
@@ -2123,26 +2226,47 @@ const App = () => {
         fetchData();
     }, []);
 
+    useEffect(() => {
+        if (!loading && partners.length > 0) {
+            fetchFeaturedPartner();
+        }
+    }, [loading, partners.length]);
+
+    const fetchFeaturedPartner = async () => {
+        try {
+            const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            const { data: accessLogs } = await supabase
+                .from('partner_access_logs')
+                .select('partner_id')
+                .gte('created_at', sevenDaysAgo);
+
+            if (accessLogs && accessLogs.length > 0) {
+                const counts: { [key: string]: number } = {};
+                accessLogs.forEach(log => {
+                    counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
+                });
+                const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                const topPartner = partners.find(p => p.id === topPartnerId);
+                if (topPartner) setFeaturedPartner(topPartner);
+            }
+        } catch (error) {
+            logger.error('Error fetching featured partner:', error);
+        }
+    };
+
     const fetchData = async () => {
         try {
             const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes] = await Promise.all([
                 supabase.from('partners').select('*').order('order_index', { ascending: true }),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
-                supabase.from('commercial_banner').select('*').in('id', [1, 2]),
+                supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true })
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
             if (categoriesRes.error) throw categoriesRes.error;
-            if (featuredCouponsRes.error) {
-                console.error('Error fetching featured coupons:', featuredCouponsRes.error);
-            }
-
+            
             if (partnersRes.data) {
-                if (partnersRes.data.length > 0) {
-                    console.log('Database Columns detected:', Object.keys(partnersRes.data[0]));
-                }
-                console.log('Fetched partners from DB:', partnersRes.data.map(p => ({ id: p.id, name: p.name, video_url: p.video_url })));
                 const mappedPartners: Partner[] = partnersRes.data.map(p => ({
                     id: p.id,
                     name: p.name,
@@ -2163,23 +2287,6 @@ const App = () => {
                     displayId: p.display_id || 0
                 }));
                 setPartners(mappedPartners);
-
-                // Fetch featured partner (most accesses in last 7 days)
-                const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-                const { data: accessLogs } = await supabase
-                    .from('partner_access_logs')
-                    .select('partner_id')
-                    .gte('created_at', sevenDaysAgo);
-
-                if (accessLogs && accessLogs.length > 0) {
-                    const counts: { [key: string]: number } = {};
-                    accessLogs.forEach(log => {
-                        counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
-                    });
-                    const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-                    const topPartner = mappedPartners.find(p => p.id === topPartnerId);
-                    if (topPartner) setFeaturedPartner(topPartner);
-                }
             }
 
             if (categoriesRes.data) {
@@ -2191,15 +2298,22 @@ const App = () => {
             }
 
             if (bannerRes.data) {
-                const mainBanner = bannerRes.data.find(b => b.id === 1);
-                const logoBanner = bannerRes.data.find(b => b.id === 2);
-                if (mainBanner) {
-                    setCommercialBanner({
-                        id: 1,
-                        imageUrl: mainBanner.image_url,
-                        linkUrl: mainBanner.link_url
+                const carouselBanners = bannerRes.data
+                    .filter(b => [1, 3, 4].includes(b.id))
+                    .map(b => ({
+                        id: b.id,
+                        imageUrl: b.image_url,
+                        linkUrl: b.link_url
+                    }))
+                    .sort((a, b) => {
+                        // Maintain order: 1, 3, 4
+                        const order = { 1: 0, 3: 1, 4: 2 };
+                        return (order[a.id as keyof typeof order] || 0) - (order[b.id as keyof typeof order] || 0);
                     });
-                }
+                
+                setCommercialBanners(carouselBanners);
+                
+                const logoBanner = bannerRes.data.find(b => b.id === 2);
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
         } catch (error) {
@@ -2228,14 +2342,14 @@ const App = () => {
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
-                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} />} />
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/admin" element={
                             <ProtectedRoute>
-                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanner={commercialBanner} setCommercialBanner={setCommercialBanner} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} featuredCoupons={featuredCoupons} setFeaturedCoupons={setFeaturedCoupons} />
+                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanners={commercialBanners} setCommercialBanners={setCommercialBanners} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} featuredCoupons={featuredCoupons} setFeaturedCoupons={setFeaturedCoupons} />
                             </ProtectedRoute>
                         } />
                         <Route path="/admin-mensagens" element={
@@ -2243,7 +2357,7 @@ const App = () => {
                                 <AdminMessagesPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanner={commercialBanner} featuredPartner={featuredPartner} />} />
+                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} />} />
                     </Routes>
                     <Footer />
                     <CommercialBanner position="bottom" />
