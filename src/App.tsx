@@ -55,6 +55,24 @@ import Editor, {
     BtnRedo
 } from 'react-simple-wysiwyg';
 
+import ReactGA from 'react-ga4';
+
+const GA_MEASUREMENT_ID = 'G-9F6ST94BVG';
+
+// Inicializa o GA4 fora do componente para garantir que rode apenas uma vez
+ReactGA.initialize(GA_MEASUREMENT_ID);
+
+const AnalyticsTracker = () => {
+    const location = useLocation();
+
+    useEffect(() => {
+        // Envia o evento de pageview sempre que a rota mudar
+        ReactGA.send({ hitType: "pageview", page: location.pathname + location.search + location.hash });
+    }, [location]);
+
+    return null;
+};
+
 const ScrollToTop = () => {
     const { pathname, hash } = useLocation();
     useEffect(() => { 
@@ -143,58 +161,62 @@ const BannerCarousel = ({ banners }: { banners: CommercialBannerData[] }) => {
     };
 
     return (
-        <div className="w-full relative overflow-hidden bg-slate-900 border-b border-slate-800 group">
-            <div 
-                className="flex transition-transform duration-700 ease-in-out" 
-                style={{ transform: `translateX(-${currentIndex * 100}%)` }}
-            >
-                {banners.map((banner) => (
-                    <div key={banner.id} className="w-full flex-shrink-0">
-                        {banner.linkUrl ? (
-                            <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
-                                <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
-                            </a>
-                        ) : (
-                            <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            {banners.length > 1 && (
-                <>
-                    <button 
-                        onClick={prevBanner}
-                        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+        <div className="w-full bg-slate-900 py-6 md:py-8 group">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="relative overflow-hidden rounded-2xl md:rounded-[2rem] shadow-2xl border border-slate-800">
+                    <div 
+                        className="flex transition-transform duration-700 ease-in-out" 
+                        style={{ transform: `translateX(-${currentIndex * 100}%)` }}
                     >
-                        <ChevronLeft size={24} />
-                    </button>
-                    <button 
-                        onClick={nextBanner}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                    >
-                        <ChevronRight size={24} />
-                    </button>
-                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
-                        {banners.map((_, i) => (
-                            <button 
-                                key={i} 
-                                onClick={() => {
-                                    setCurrentIndex(i);
-                                    setIsPaused(true);
-                                    setTimeout(() => setIsPaused(false), 10000);
-                                }}
-                                className={`w-2 h-2 rounded-full transition-all ${i === currentIndex ? 'bg-white w-4' : 'bg-white/40'}`}
-                            />
+                        {banners.map((banner) => (
+                            <div key={banner.id} className="w-full flex-shrink-0">
+                                {banner.linkUrl ? (
+                                    <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
+                                        <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                                    </a>
+                                ) : (
+                                    <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                                )}
+                            </div>
                         ))}
                     </div>
-                </>
-            )}
+
+                    {banners.length > 1 && (
+                        <>
+                            <button 
+                                onClick={prevBanner}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            >
+                                <ChevronLeft size={24} />
+                            </button>
+                            <button 
+                                onClick={nextBanner}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/20 hover:bg-black/40 text-white p-2 rounded-full backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                            >
+                                <ChevronRight size={24} />
+                            </button>
+                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2 z-10">
+                                {banners.map((_, i) => (
+                                    <button 
+                                        key={i} 
+                                        onClick={() => {
+                                            setCurrentIndex(i);
+                                            setIsPaused(true);
+                                            setTimeout(() => setIsPaused(false), 10000);
+                                        }}
+                                        className={`w-2 h-2 rounded-full transition-all ${i === currentIndex ? 'bg-white w-4' : 'bg-white/40'}`}
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[] }) => {
+const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
@@ -304,6 +326,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                             setShowRoulette(true);
                         }}
                         storeName={roulettePartner.name}
+                        logoUrl={headerLogo}
                     />
                 )}
                 {showRoulette && roulettePartner && (
@@ -317,13 +340,13 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 )}
             </AnimatePresence>
             <BannerCarousel banners={commercialBanners} />
-            <section id="vitrine" className="relative overflow-hidden bg-slate-900 pt-16 pb-24 md:pt-24 md:pb-32">
+            <section id="vitrine" className="relative overflow-hidden bg-slate-900 pt-8 pb-10 md:pt-10 md:pb-12">
                 <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-[#279267]/10 rounded-full blur-[120px]"></div>
                 <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c54b4b]/10 rounded-full blur-[120px]"></div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                    <div className="inline-flex items-center space-x-2 bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-full text-[#279267] text-xs font-bold uppercase tracking-widest mb-8 border border-slate-700/50"><Sparkles size={14} /><span>Sua marca em todo lugar</span></div>
-                    <h1 className="text-4xl md:text-7xl font-black text-white mb-6 leading-tight">Vitrine <span className="text-[#279267] italic">Exclusiva</span></h1>
-                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-medium">Confira abaixo nossos parceiros que já estão brilhando nas telas do nosso circuito de divulgação.</p>
+                    <div className="inline-flex items-center space-x-2 bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-full text-[#279267] text-xs font-bold uppercase tracking-widest mb-6 border border-slate-700/50"><Sparkles size={14} /><span>Garanta cupons de benefícios nas lojas da região!</span></div>
+                    <h1 className="text-4xl md:text-7xl font-black text-white mb-4 leading-tight">Cupons <span className="text-[#279267] italic">Exclusivos</span></h1>
+                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-medium">Confira abaixo os benefícios e descontos exclusivos que os nossos parceiros prepararam para vocês! Aproveitem e garantam já!</p>
                 </div>
             </section>
 
@@ -358,7 +381,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section className="py-12 bg-white border-b border-slate-100">
+            <section className="py-6 bg-white border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center space-x-2 mb-8">
                         <div className="bg-[#c54b4b] text-white p-2 rounded-lg shadow-lg shadow-red-500/20">
@@ -413,7 +436,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section id="results-grid" className="py-20 bg-gray-50">
+            <section id="results-grid" className="py-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                         {filteredPartners.length > 0 ? filteredPartners.map((partner) => (<PartnerCard key={partner.id} partner={partner} />)) : (
@@ -434,7 +457,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                 const element = document.getElementById('results-grid');
                                 if (element) element.scrollIntoView({ behavior: 'smooth' });
                             }}
-                            className="mt-16 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden cursor-pointer hover:bg-slate-800 transition-all group"
+                            className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden cursor-pointer hover:bg-slate-800 transition-all group"
                         >
                             <div className="flex items-center space-x-4 w-full md:w-auto">
                                 <div className="bg-amber-400 p-3 rounded-2xl shadow-lg shadow-amber-400/20 flex-shrink-0 group-hover:scale-110 transition-transform">
@@ -458,7 +481,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section id="anuncie" className="py-24 bg-white border-t border-slate-100">
+            <section id="anuncie" className="py-10 bg-white border-t border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:flex lg:items-center lg:gap-16">
                     <div className="lg:w-1/2 mb-16 lg:mb-0">
                         <div className="inline-flex items-center space-x-2 text-[#c54b4b] font-bold text-xs uppercase tracking-widest mb-4">
@@ -483,8 +506,8 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section id="parceria" className="py-24 bg-slate-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-16">
+            <section id="parceria" className="py-10 bg-slate-50">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8">
                     <h2 className="text-4xl font-black text-slate-900 mb-4">Seja nosso parceiro estratégico</h2>
                     <p className="text-slate-600 max-w-2xl mx-auto">Temos oportunidades para quem deseja monetizar seu veículo ou seu estabelecimento comercial.</p>
                 </div>
@@ -496,7 +519,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section id="contato" className="py-24 bg-white border-t border-slate-100">
+            <section id="contato" className="py-10 bg-white border-t border-slate-100">
                 <div className="max-w-3xl mx-auto px-4">
                     <LeadForm type="contato" title="Fale Conosco" subtitle="Dúvidas, sugestões ou suporte? Estamos prontos para te atender via WhatsApp." />
                 </div>
@@ -2337,12 +2360,13 @@ const App = () => {
             language="pt-BR"
         >
             <Router>
+                <AnalyticsTracker />
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
-                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} />} />
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
@@ -2357,9 +2381,9 @@ const App = () => {
                                 <AdminMessagesPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} />} />
+                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} />} />
                     </Routes>
-                    <Footer />
+                    <Footer logoUrl={headerLogo} />
                     <CommercialBanner position="bottom" />
                 </div>
             </Router>

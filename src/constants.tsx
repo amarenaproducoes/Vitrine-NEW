@@ -2,7 +2,7 @@ import { Partner } from './types';
 
 export const BRAND_INFO = {
   name: "Aparece aí por aqui",
-  instagram: "@apareceai.porqui",
+  instagram: "@apareceai.poraqui",
   whatsapp: "(11) 93301-4850",
   email: "contato@apareceaporaqui.com.br"
 };

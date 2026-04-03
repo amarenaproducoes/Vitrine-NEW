@@ -4,33 +4,53 @@ import { Link } from 'react-router-dom';
 import { BRAND_INFO } from '../constants';
 import { Partner } from '../types';
 
-const Footer: React.FC = () => {
+interface FooterProps {
+  logoUrl?: string | null;
+}
+
+const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
   return (
-    <footer className="bg-slate-900 text-slate-400 pt-20 pb-10 border-t border-slate-800">
+    <footer className="bg-slate-900 text-slate-400 pt-12 pb-8 border-t border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-10">
           <div className="col-span-1 lg:col-span-1">
             <div className="flex items-center space-x-3 mb-6">
-              <div className="bg-[#279267] p-2 rounded-lg">
-                <Megaphone className="text-white w-5 h-5" />
-              </div>
-              <div className="leading-none">
-                <span className="text-[#279267] font-extrabold text-lg tracking-tight uppercase block">
-                  Aparece aí
-                </span>
-                <span className="text-[#c54b4b] text-[10px] font-bold tracking-widest uppercase">
-                  por aqui
-                </span>
-              </div>
+              {logoUrl ? (
+                <img src={logoUrl} alt="Logo" className="h-12 w-auto object-contain" />
+              ) : (
+                <>
+                  <div className="bg-[#279267] p-2 rounded-lg">
+                    <Megaphone className="text-white w-5 h-5" />
+                  </div>
+                  <div className="leading-none">
+                    <span className="text-[#279267] font-extrabold text-lg tracking-tight uppercase block">
+                      Aparece aí
+                    </span>
+                    <span className="text-[#c54b4b] text-[10px] font-bold tracking-widest uppercase">
+                      por aqui
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
             <p className="text-sm leading-relaxed mb-6">
               Conectamos sua marca ao seu público através de telas estratégicas em estabelecimentos de alto fluxo.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#279267] hover:text-white transition-all">
+              <a 
+                href="https://www.instagram.com/apareceai.poraqui" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#279267] hover:text-white transition-all"
+              >
                 <Instagram size={20} />
               </a>
-              <a href="#" className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#279267] hover:text-white transition-all">
+              <a 
+                href="https://wa.me/5511933014850?text=Ol%C3%A1!%20Eu%20vim%20pelo%20site%20VITRINE%20-%20APARECE%20AI%20POR%20AQUI.%20Poderia%20me%20ajudar%3F" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center hover:bg-[#279267] hover:text-white transition-all"
+              >
                 <Phone size={20} />
               </a>
             </div>
@@ -39,10 +59,10 @@ const Footer: React.FC = () => {
           <div>
             <h4 className="text-white font-bold mb-6">Navegação</h4>
             <ul className="space-y-4 text-sm">
-              <li><Link to="/" className="hover:text-[#279267] transition-colors">Vitrine de Parceiros</Link></li>
-              <li><Link to="/anuncie" className="hover:text-[#279267] transition-colors">Anuncie Conosco</Link></li>
-              <li><Link to="/parceria" className="hover:text-[#279267] transition-colors">Seja um Parceiro</Link></li>
-              <li><Link to="/contato" className="hover:text-[#279267] transition-colors">Fale com a gente</Link></li>
+              <li><a href="/#vitrine" onClick={(e) => { const el = document.getElementById('vitrine'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Vitrine de Parceiros</a></li>
+              <li><a href="/#anuncie" onClick={(e) => { const el = document.getElementById('anuncie'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Anuncie Conosco</a></li>
+              <li><a href="/#parceria" onClick={(e) => { const el = document.getElementById('parceria'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Seja um Parceiro</a></li>
+              <li><a href="/#contato" onClick={(e) => { const el = document.getElementById('contato'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Fale com a gente</a></li>
             </ul>
           </div>
 
@@ -51,11 +71,25 @@ const Footer: React.FC = () => {
             <ul className="space-y-4 text-sm">
               <li className="flex items-start space-x-3">
                 <Instagram size={18} className="text-[#c54b4b] mt-1" />
-                <span>{BRAND_INFO.instagram}</span>
+                <a 
+                  href="https://www.instagram.com/apareceai.poraqui" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#279267] transition-colors"
+                >
+                  {BRAND_INFO.instagram}
+                </a>
               </li>
               <li className="flex items-start space-x-3">
                 <Phone size={18} className="text-[#c54b4b] mt-1" />
-                <span>{BRAND_INFO.whatsapp}</span>
+                <a 
+                  href="https://wa.me/5511933014850?text=Ol%C3%A1!%20Eu%20vim%20pelo%20site%20VITRINE%20-%20APARECE%20AI%20POR%20AQUI.%20Poderia%20me%20ajudar%3F" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="hover:text-[#279267] transition-colors"
+                >
+                  {BRAND_INFO.whatsapp}
+                </a>
               </li>
               <li className="flex items-start space-x-3">
                 <Mail size={18} className="text-[#c54b4b] mt-1" />
@@ -65,8 +99,15 @@ const Footer: React.FC = () => {
           </div>
 
           <div className="col-span-1">
-            <Link 
-              to="/anuncie" 
+            <a 
+              href="/#anuncie" 
+              onClick={(e) => {
+                const element = document.getElementById('anuncie');
+                if (element) {
+                  e.preventDefault();
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
               className="bg-[#279267] text-white p-8 rounded-3xl flex flex-col items-start justify-between group transition-all hover:bg-[#1e7452] shadow-xl shadow-[#279267]/20 h-full min-h-[160px]"
             >
               <div className="flex justify-between w-full items-start">
@@ -78,7 +119,7 @@ const Footer: React.FC = () => {
               <p className="text-green-50 text-xs font-bold uppercase tracking-widest mt-4">
                 Clique aqui e anuncie
               </p>
-            </Link>
+            </a>
           </div>
         </div>
 
