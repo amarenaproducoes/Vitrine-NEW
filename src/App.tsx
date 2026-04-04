@@ -56,11 +56,21 @@ import Editor, {
 } from 'react-simple-wysiwyg';
 
 import ReactGA from 'react-ga4';
+import OneSignal from 'react-onesignal';
 
 const GA_MEASUREMENT_ID = 'G-9F6ST94BVG';
 
 // Inicializa o GA4 fora do componente para garantir que rode apenas uma vez
 ReactGA.initialize(GA_MEASUREMENT_ID);
+
+const parseCashbackValue = (label: string | null | undefined, fallbackValue: number): number => {
+    if (!label) return fallbackValue;
+    const match = label.match(/[\d,.-]+/);
+    if (!match) return fallbackValue;
+    const cleaned = match[0].replace(/\./g, '').replace(',', '.');
+    const parsed = parseFloat(cleaned);
+    return isNaN(parsed) ? fallbackValue : parsed;
+};
 
 const AnalyticsTracker = () => {
     const location = useLocation();
@@ -69,6 +79,43 @@ const AnalyticsTracker = () => {
         // Envia o evento de pageview sempre que a rota mudar
         ReactGA.send({ hitType: "pageview", page: location.pathname + location.search + location.hash });
     }, [location]);
+
+    useEffect(() => {
+        const initOneSignal = async () => {
+            const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
+            if (appId) {
+                try {
+                    await OneSignal.init({
+                        appId: appId,
+                        allowLocalhostAsSecureOrigin: true,
+                        notifyButton: {
+                            enable: true,
+                            prenotify: true,
+                            showCredit: false,
+                            text: {
+                                'tip.state.unsubscribed': 'Inscreva-se para notificações',
+                                'tip.state.subscribed': 'Você está inscrito',
+                                'tip.state.blocked': 'Notificações bloqueadas',
+                                'message.prenotify': 'Clique para receber novidades!',
+                                'message.action.subscribed': 'Obrigado por se inscrever!',
+                                'message.action.resubscribed': 'Você está inscrito novamente',
+                                'message.action.unsubscribed': 'Você não receberá mais notificações',
+                                'message.action.subscribing': 'Inscrevendo...',
+                                'dialog.main.title': 'Gerenciar Notificações',
+                                'dialog.main.button.subscribe': 'INSCREVER-SE',
+                                'dialog.main.button.unsubscribe': 'CANCELAR INSCRIÇÃO',
+                                'dialog.blocked.title': 'Desbloquear Notificações',
+                                'dialog.blocked.message': 'Siga estas instruções para permitir notificações:'
+                            }
+                        },
+                    });
+                } catch (error) {
+                    console.error('OneSignal Init Error:', error);
+                }
+            }
+        };
+        initOneSignal();
+    }, []);
 
     return null;
 };
@@ -810,7 +857,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             if (logs) setCashbackLogs(logs);
 
             // Fetch Ranking
-            let query = supabase.from('cashback_logs').select('store_name, cashback_value, created_at');
+            let query = supabase.from('cashback_logs').select('store_name, cashback_value, cashback_label, created_at');
             
             if (cashbackRankingPeriod === 'month') {
                 const now = new Date();
@@ -823,7 +870,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             if (allLogs) {
                 const ranking: { [key: string]: number } = {};
                 allLogs.forEach(log => {
-                    ranking[log.store_name] = (ranking[log.store_name] || 0) + Number(log.cashback_value);
+                    const value = parseCashbackValue(log.cashback_label, Number(log.cashback_value));
+                    ranking[log.store_name] = (ranking[log.store_name] || 0) + value;
                 });
 
                 const sortedRanking = Object.entries(ranking)
@@ -2361,7 +2409,9 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                             <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{log.store_name}</td>
                                             <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-[#279267]">{log.whatsapp}</td>
                                             <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                <span className="text-[#279267] font-black text-[11px] sm:text-base">R$ {log.cashback_value.toFixed(2)}</span>
+                                                <span className="text-[#279267] font-black text-[11px] sm:text-base">
+                                                    {log.cashback_label ? log.cashback_label : `R$ ${parseCashbackValue(log.cashback_label, log.cashback_value).toFixed(2)}`}
+                                                </span>
                                             </td>
                                             <td className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-mono text-slate-400">{log.ip_address}</td>
                                         </tr>

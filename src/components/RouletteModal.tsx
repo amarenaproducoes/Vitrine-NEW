@@ -139,11 +139,24 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
     // Save/Update customer name
     try {
       const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      
+      let onesignalId = null;
+      try {
+        if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
+          onesignalId = window.OneSignal.User.PushSubscription.id;
+          window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
+          window.OneSignal.User.addTag("name", customerName.trim());
+        }
+      } catch (e) {
+        console.error("OneSignal tag error", e);
+      }
+
       const { error } = await supabase
         .from('customers')
         .upsert({ 
           whatsapp: cleanWhatsapp, 
           name: customerName.trim(),
+          onesignal_id: onesignalId,
           updated_at: new Date().toISOString()
         }, { onConflict: 'whatsapp' });
       

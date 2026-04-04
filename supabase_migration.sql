@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS partner_shares (
   customer_name TEXT
 );
 
+ALTER TABLE partner_shares ADD COLUMN IF NOT EXISTS customer_name TEXT;
+
 ALTER TABLE partner_shares ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public inserts on partner_shares" ON partner_shares FOR INSERT WITH CHECK (true);
@@ -115,9 +117,13 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS customers (
   whatsapp TEXT PRIMARY KEY,
   name TEXT,
+  onesignal_id TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+-- Ensure onesignal_id exists if table was already created
+ALTER TABLE customers ADD COLUMN IF NOT EXISTS onesignal_id TEXT;
 
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public inserts on customers" ON customers FOR INSERT WITH CHECK (true);
@@ -146,6 +152,9 @@ CREATE TABLE IF NOT EXISTS cashback_logs (
   ip_address TEXT
 );
 
+ALTER TABLE cashback_logs ADD COLUMN IF NOT EXISTS cashback_label TEXT;
+ALTER TABLE cashback_logs ADD COLUMN IF NOT EXISTS customer_name TEXT;
+
 ALTER TABLE cashback_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public inserts on cashback_logs" ON cashback_logs FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public select on cashback_logs" ON cashback_logs FOR SELECT USING (true);
@@ -162,6 +171,8 @@ CREATE TABLE IF NOT EXISTS unlocked_coupons (
   customer_name TEXT,
   ip_address TEXT
 );
+
+ALTER TABLE unlocked_coupons ADD COLUMN IF NOT EXISTS customer_name TEXT;
 
 ALTER TABLE unlocked_coupons ENABLE ROW LEVEL SECURITY;
 
