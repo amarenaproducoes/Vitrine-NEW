@@ -8,6 +8,7 @@ import { logger } from '../lib/logger';
 const AdminMessagesPage = () => {
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [activeFilter, setActiveFilter] = useState<string>('Todos');
     const navigate = useNavigate();
 
@@ -39,8 +40,9 @@ const AdminMessagesPage = () => {
                 }));
                 setLeads(formattedLeads);
             }
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Error fetching leads:', error);
+            setErrorMsg(error.message || JSON.stringify(error));
         } finally {
             setLoading(false);
         }
@@ -139,6 +141,13 @@ const AdminMessagesPage = () => {
                     ))}
                 </div>
             </section>
+
+            {errorMsg && (
+                <div className="mb-8 bg-red-50 p-4 rounded-2xl border border-red-200 text-red-700">
+                    <h3 className="font-bold mb-2">Erro ao carregar mensagens:</h3>
+                    <p className="font-mono text-sm">{errorMsg}</p>
+                </div>
+            )}
 
             <div className="bg-white rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
                 {filteredLeads.length > 0 ? (

@@ -14,14 +14,17 @@ interface LeadFormProps {
 
 const formatWhatsApp = (value: string) => {
   const v = value.replace(/\D/g, '').slice(0, 11);
-  if (v.length >= 3 && v.length <= 7) {
-    return `(${v.slice(0, 2)}) ${v.slice(2)}`;
-  } else if (v.length > 7) {
-    return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
-  } else if (v.length > 0) {
-    return `(${v}`;
+  let formatted = v;
+  if (v.length > 0) {
+    formatted = `(${v.slice(0, 2)}`;
+    if (v.length > 2) {
+      formatted += `) ${v.slice(2, 7)}`;
+    }
+    if (v.length > 7) {
+      formatted += `-${v.slice(7, 11)}`;
+    }
   }
-  return '';
+  return formatted;
 };
 
 const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
@@ -31,6 +34,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const { executeRecaptcha } = useGoogleReCaptcha();
 
   const isWhatsAppValid = formData.whatsapp.replace(/\D/g, '').length === 11;
+
   let isFormValid = formData.fullName.trim().length > 0 && isWhatsAppValid && hasConsented;
   
   if (type === 'anunciante' || type === 'comerciante') {
@@ -39,22 +43,53 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isFormValid) {
+      if (!isWhatsAppValid) alert('Por favor, insira um WhatsApp válido.');
+      else if (formData.fullName.trim().length === 0) alert('Por favor, insira seu nome completo.');
+      else if (!hasConsented) alert('Você precisa aceitar os termos para continuar.');
+      else if ((type === 'anunciante' || type === 'comerciante') && formData.message.trim().length === 0) alert('Por favor, insira o nome da empresa.');
+      return;
+    }
+
     setStatus('loading');
     
     try {
-      if (executeRecaptcha) {
+      if (executeRecaptcha && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
         try {
           const token = await executeRecaptcha('lead_submission');
           if (!token) {
-            throw new Error('ReCAPTCHA verification failed');
+            logger.warn('ReCAPTCHA verification failed, but continuing...');
           }
         } catch (recaptchaErr) {
           logger.error('ReCAPTCHA error:', recaptchaErr);
-          // We continue if it's just a connection error, but log it
+          // We continue if it's just a connection error
         }
       }
 
       const ip = await getUserIP();
+      
+      // Save/Update customer name
+      try {
+        const cleanWhatsapp = formData.whatsapp.replace(/\D/g, '');
+        await supabase
+          .from('customers')
+          .upsert({ 
+            whatsapp: cleanWhatsapp, 
+            name: formData.fullName.trim(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'whatsapp' });
+
+        // Update name in all previous logs for this WhatsApp to ensure consistency
+        await Promise.all([
+          supabase.from('cashback_logs').update({ customer_name: formData.fullName.trim() }).eq('whatsapp', cleanWhatsapp),
+          supabase.from('unlocked_coupons').update({ customer_name: formData.fullName.trim() }).eq('whatsapp', cleanWhatsapp),
+          supabase.from('partner_shares').update({ customer_name: formData.fullName.trim() }).eq('whatsapp_number', cleanWhatsapp)
+        ]);
+      } catch (error) {
+        logger.error('Error saving customer name in LeadForm:', error);
+      }
+
       const { error } = await supabase
         .from('leads')
         .insert([
@@ -182,8 +217,8 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
         )}
 
         <button
-          disabled={status === 'loading' || !isFormValid}
-          className="w-full bg-[#279267] hover:bg-[#1e7452] text-white font-black py-4 rounded-xl shadow-lg shadow-[#279267]/30 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`w-full bg-[#279267] hover:bg-[#1e7452] text-white font-black py-4 rounded-xl shadow-lg shadow-[#279267]/30 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 ${!isFormValid ? 'opacity-50' : ''}`}
+          disabled={status === 'loading'}
         >
           {status === 'loading' ? (
             <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>

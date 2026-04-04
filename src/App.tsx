@@ -111,7 +111,7 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
     const adMessages = [
         "📢 ANUNCIE AQUI! SUA MARCA VISTA POR MILHARES DIARIAMENTE",
         "🚀 IMPULSIONE SEU NEGÓCIO NO NOSSO CIRCUITO DE TVs",
-        "✨ APAREÇA AÍ POR AQUI • O MELHOR ESPAÇO PUBLICITÁRIO DA REGIÃO",
+        "✨ APARECE AÍ POR AQUI • O MELHOR ESPAÇO PUBLICITÁRIO DA REGIÃO",
         "💰 PREÇOS ESPECIAIS PARA NOVOS ANUNCIANTES • CONSULTE-NOS",
         "📺 SUA MARCA EM DESTAQUE EM ESTABELECIMENTOS DE ALTO FLUXO"
     ];
@@ -292,16 +292,28 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
         }
     };
 
-    const handleWin = async (value: number, whatsapp: string) => {
+    const fetchCashbackConfigs = async () => {
+        try {
+            const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
+            if (configs) setCashbackConfigs(configs);
+        } catch (error) {
+            logger.error('Error fetching cashback configs in LandingPage:', error);
+        }
+    };
+
+    const handleWin = async (value: number, whatsapp: string, name: string, label: string) => {
         if (!roulettePartner) return;
         try {
             const ip = await getUserIP();
             await supabase.from('cashback_logs').insert({
                 store_name: roulettePartner.name,
                 cashback_value: value,
+                cashback_label: label,
                 whatsapp: whatsapp,
+                customer_name: name,
                 ip_address: ip
             });
+            fetchCashbackConfigs();
         } catch (error) {
             logger.error('Error logging cashback:', error);
         }
@@ -529,8 +541,69 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
 };
 
 const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanners, setCommercialBanners, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanners: CommercialBannerData[], setCommercialBanners: React.Dispatch<React.SetStateAction<CommercialBannerData[]>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>> }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured'>('partners');
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons'>('partners');
     const navigate = useNavigate();
+    
+    // Coupon Mass Edit State
+    const [couponEdits, setCouponEdits] = useState<{[key: string]: { orderIndex: number, coupon: string, couponDescription: string }}>({});
+
+    const handleSaveCoupons = async () => {
+        setIsSubmitting(true);
+        try {
+            const updates = Object.entries(couponEdits).map(([id, edit]) => ({
+                id,
+                order_index: edit.orderIndex,
+                coupon: edit.coupon,
+                coupon_description: edit.couponDescription
+            }));
+
+            for (const update of updates) {
+                const { error } = await supabase.from('partners').update({
+                    order_index: update.order_index,
+                    coupon: update.coupon,
+                    coupon_description: update.coupon_description
+                }).eq('id', update.id);
+                if (error) throw error;
+            }
+
+            setPartners(prev => prev.map(p => {
+                if (couponEdits[p.id]) {
+                    return {
+                        ...p,
+                        orderIndex: couponEdits[p.id].orderIndex,
+                        coupon: couponEdits[p.id].coupon,
+                        couponDescription: couponEdits[p.id].couponDescription
+                    };
+                }
+                return p;
+            }).sort((a, b) => a.orderIndex - b.orderIndex));
+
+            setCouponEdits({});
+            alert("Cupons e sequências atualizados com sucesso!");
+        } catch (error: any) {
+            logger.error('Error saving coupons:', error);
+            alert(`Erro ao salvar: ${error.message}`);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCouponChange = (partnerId: string, field: 'orderIndex' | 'coupon' | 'couponDescription', value: any) => {
+        setCouponEdits(prev => {
+            const existing = prev[partnerId] || { 
+                orderIndex: partners.find(p => p.id === partnerId)?.orderIndex || 0,
+                coupon: partners.find(p => p.id === partnerId)?.coupon || '',
+                couponDescription: partners.find(p => p.id === partnerId)?.couponDescription || ''
+            };
+            return {
+                ...prev,
+                [partnerId]: {
+                    ...existing,
+                    [field]: value
+                }
+            };
+        });
+    };
     
     // Partner Form State
     const [formData, setFormData] = useState<{
@@ -598,6 +671,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     const [cashbackRankingPeriod, setCashbackRankingPeriod] = useState<'all' | 'month'>('all');
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
+    const [customerRankingData, setCustomerRankingData] = useState<any[]>([]);
+    const [customerRankingPeriod, setCustomerRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
 
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -630,7 +705,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         fetchAdminData();
         if (activeTab === 'ranking') fetchRanking();
         if (activeTab === 'cashback') fetchCashbackConfigs();
-    }, [activeTab, sharePeriod, clickPeriod, cashbackRankingPeriod]);
+    }, [activeTab, sharePeriod, clickPeriod, cashbackRankingPeriod, customerRankingPeriod]);
 
     useEffect(() => {
         if (!editingId && formData.displayId === 0 && partners.length > 0) {
@@ -686,12 +761,48 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             });
             
             setClickRankingData(sortedClickRanking);
+
+            // Fetch Customer Ranking (based on Unlocked Coupons)
+            const { data: allUnlockedCoupons } = await supabase.from('unlocked_coupons').select('whatsapp, customer_name, created_at');
+            if (allUnlockedCoupons) {
+                const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+                const rankingMap: { [key: string]: { name: string, all: number, current: number, prev: number } } = {};
+
+                allUnlockedCoupons.forEach(coupon => {
+                    const couponDate = new Date(coupon.created_at);
+                    if (!rankingMap[coupon.whatsapp]) {
+                        rankingMap[coupon.whatsapp] = { name: coupon.customer_name || 'Sem Nome', all: 0, current: 0, prev: 0 };
+                    }
+                    
+                    rankingMap[coupon.whatsapp].all++;
+                    if (couponDate >= firstDayCurrentMonth) {
+                        rankingMap[coupon.whatsapp].current++;
+                    } else if (couponDate >= firstDayPrevMonth && couponDate <= lastDayPrevMonth) {
+                        rankingMap[coupon.whatsapp].prev++;
+                    }
+                });
+
+                const sortedCustomerRanking = Object.entries(rankingMap)
+                    .map(([whatsapp, stats]) => ({
+                        whatsapp,
+                        name: stats.name,
+                        count: customerRankingPeriod === 'all' ? stats.all : 
+                               customerRankingPeriod === 'month' ? stats.current : stats.prev
+                    }))
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 20);
+
+                setCustomerRankingData(sortedCustomerRanking);
+            }
         } catch (error) {
             logger.error('Error fetching ranking:', error);
         }
     };
 
-    const fetchCashbackConfigs = async () => {
+    async function fetchCashbackConfigs() {
         try {
             const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
             const { data: logs } = await supabase.from('cashback_logs').select('*').order('created_at', { ascending: false }).limit(50);
@@ -724,7 +835,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         } catch (error) {
             logger.error('Error fetching cashback:', error);
         }
-    };
+    }
 
     const handleUpdateCashbackConfig = async (id: number, field: string, value: any) => {
         try {
@@ -1281,37 +1392,40 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     };
 
     return (
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-8 md:py-16">
-            <div className="flex flex-col md:flex-row md:items-center justify-between mb-10 gap-6">
-                <div className="flex items-center space-x-3">
-                    <div className="bg-slate-900 text-white p-2 rounded-xl shadow-xl flex-shrink-0">
-                        <Plus size={20} className="sm:w-8 sm:h-8" />
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4 md:py-16">
+            <div className="sticky top-20 md:top-24 z-30 bg-gray-50/95 backdrop-blur-sm -mx-2 px-2 sm:-mx-4 sm:px-4 pt-2 pb-6 mb-6 border-b border-slate-200/50">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-3">
+                        <div className="bg-slate-900 text-white p-1.5 rounded-lg shadow-lg flex-shrink-0">
+                            <Plus size={16} className="sm:w-6 sm:h-6" />
+                        </div>
+                        <h1 className="text-base sm:text-xl md:text-3xl font-black text-slate-900 leading-tight">
+                            Painel de Controle
+                        </h1>
                     </div>
-                    <h1 className="text-lg sm:text-2xl md:text-4xl font-black text-slate-900 leading-tight">
-                        Painel de Controle
-                    </h1>
-                </div>
-                
-                <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <div className="flex flex-wrap bg-white p-1 rounded-2xl shadow-sm border border-slate-100 w-full sm:w-auto justify-center sm:justify-start">
-                        <button onClick={() => setActiveTab('partners')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
-                        <button onClick={() => setActiveTab('about')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
-                        <button onClick={() => setActiveTab('cases')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
-                        <button onClick={() => setActiveTab('ranking')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
-                        <button onClick={() => setActiveTab('cashback')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
-                        <button onClick={() => setActiveTab('featured')} className={`px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all ${activeTab === 'featured' ? 'bg-[#279267] text-white shadow-lg' : 'text-slate-500 hover:text-slate-900'}`}>Destaques</button>
-                        <Link to="/admin-mensagens" className="px-3 sm:px-6 py-2 rounded-xl text-[10px] sm:text-sm font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
-                            <MessageSquare size={12} className="mr-1 sm:mr-2" />
-                            Mensagens
-                        </Link>
+                    
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                        <div className="flex flex-wrap bg-white p-1 rounded-xl shadow-sm border border-slate-100 w-full sm:w-auto justify-center sm:justify-start overflow-x-auto no-scrollbar">
+                            <button onClick={() => setActiveTab('partners')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'partners' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Parceiros</button>
+                            <button onClick={() => setActiveTab('about')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'about' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Sobre Nós</button>
+                            <button onClick={() => setActiveTab('cases')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'cases' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cases</button>
+                            <button onClick={() => setActiveTab('ranking')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
+                            <button onClick={() => setActiveTab('cashback')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
+                            <button onClick={() => setActiveTab('featured')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'featured' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Destaques</button>
+                            <button onClick={() => setActiveTab('coupons')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'coupons' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons/Sequência</button>
+                            <Link to="/admin-mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                                <MessageSquare size={10} className="mr-1" />
+                                Mensagens
+                            </Link>
+                        </div>
+                        <button 
+                            onClick={handleLogout}
+                            className="flex items-center justify-center space-x-2 px-3 py-1.5 bg-red-500/10 text-red-500 font-bold rounded-lg hover:bg-red-500 hover:text-white transition-all border border-red-500/20 text-[10px] w-full sm:w-auto"
+                        >
+                            <LogOut size={14} />
+                            <span>Sair</span>
+                        </button>
                     </div>
-                    <button 
-                        onClick={handleLogout}
-                        className="flex items-center justify-center space-x-2 px-4 py-2 bg-red-500/10 text-red-500 font-bold rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20 text-xs w-full sm:w-auto"
-                    >
-                        <LogOut size={16} />
-                        <span>Sair</span>
-                    </button>
                 </div>
             </div>
 
@@ -1842,104 +1956,104 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             )}
 
             {activeTab === 'ranking' && (
-                <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
-                    <div className="flex items-center space-x-3 mb-8">
-                        <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
-                            <Trophy size={24} />
+                <div className="bg-white p-2 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
+                    <div className="flex items-center space-x-3 mb-6 sm:mb-8 px-2 sm:px-0">
+                        <div className="bg-amber-100 text-amber-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                            <Trophy size={20} className="sm:w-6 sm:h-6" />
                         </div>
                         <div>
-                            <h2 className="text-2xl font-black text-slate-900">Ranking de Parceiros</h2>
-                            <p className="text-slate-500 text-sm">Top 10 parceiros mais acessados no mês atual.</p>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Parceiros</h2>
+                            <p className="text-slate-500 text-[10px] sm:text-sm">Top 10 parceiros mais acessados no mês atual.</p>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                        <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-full">
                             <thead>
                                 <tr className="border-b border-slate-100">
-                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">ID QR Code</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Acessos (Mês)</th>
-                                    <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Acessos (7 dias)</th>
+                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">ID QR</th>
+                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Mês</th>
+                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">7 dias</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rankingData.map((item, index) => (
                                     <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                        <td className="py-4 px-4">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                        <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                 {index + 1}
                                             </div>
                                         </td>
-                                        <td className="py-4 px-4 font-bold text-slate-900">{item.name}</td>
-                                        <td className="py-4 px-4 text-center font-mono text-slate-500">{item.display_id || '-'}</td>
-                                        <td className="py-4 px-4 text-center">
-                                            <span className="bg-green-100 text-[#279267] px-3 py-1 rounded-full text-sm font-bold">
+                                        <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base truncate max-w-[120px] sm:max-w-none">{item.name}</td>
+                                        <td className="py-3 sm:py-4 px-2 sm:px-4 text-center font-mono text-slate-500 text-[10px] sm:text-sm">{item.display_id || '-'}</td>
+                                        <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                            <span className="bg-green-100 text-[#279267] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
                                                 {item.monthCount}
                                             </span>
                                         </td>
-                                        <td className="py-4 px-4 text-center text-slate-400 text-sm font-medium">
+                                        <td className="py-3 sm:py-4 px-2 sm:px-4 text-center text-slate-400 text-[10px] sm:text-sm font-medium">
                                             {item.weekCount}
                                         </td>
                                     </tr>
                                 ))}
                                 {rankingData.length === 0 && (
                                     <tr>
-                                        <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">Nenhum dado de acesso registrado este mês.</td>
+                                        <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum dado de acesso registrado este mês.</td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
                     </div>
 
-                    <div className="mt-12 pt-12 border-t border-slate-100">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
                             <div className="flex items-center space-x-3">
-                                <div className="bg-blue-100 text-blue-600 p-3 rounded-2xl">
-                                    <Share2 size={24} />
+                                <div className="bg-blue-100 text-blue-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                    <Share2 size={20} className="sm:w-6 sm:h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-black text-slate-900">Ranking de Compartilhamentos</h2>
-                                    <p className="text-slate-500 text-sm">Somatório de compartilhamentos por parceiro.</p>
+                                    <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Compartilhamentos</h2>
+                                    <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de compartilhamentos por parceiro.</p>
                                 </div>
                             </div>
-                            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit">
                                 <button 
                                     onClick={() => setSharePeriod('all')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${sharePeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Todo o Período
+                                    Tudo
                                 </button>
                                 <button 
                                     onClick={() => setSharePeriod('month')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${sharePeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Mês Atual
+                                    Mês
                                 </button>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                            <table className="w-full text-left border-collapse min-w-[400px] sm:min-w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100">
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total de Compartilhamentos</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {shareRankingData.map((item, index) => (
                                         <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                            <td className="py-4 px-4">
-                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                     {index + 1}
                                                 </div>
                                             </td>
-                                            <td className="py-4 px-4 font-bold text-slate-900">{item.partner_name}</td>
-                                            <td className="py-4 px-4 text-center">
-                                                <span className="bg-blue-100 text-blue-600 px-4 py-1.5 rounded-full text-sm font-black">
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                <span className="bg-blue-100 text-blue-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
                                                     {item.share_count}
                                                 </span>
                                             </td>
@@ -1947,68 +2061,138 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     ))}
                                     {shareRankingData.length === 0 && (
                                         <tr>
-                                            <td colSpan={3} className="py-20 text-center text-slate-400 font-bold">Nenhum compartilhamento registrado no período selecionado.</td>
+                                            <td colSpan={3} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum compartilhamento registrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
 
-                        <div className="mt-12 pt-12 border-t border-slate-100">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                        <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
                                 <div className="flex items-center space-x-3">
-                                    <div className="bg-purple-100 text-purple-600 p-3 rounded-2xl">
-                                        <MousePointerClick size={24} />
+                                    <div className="bg-green-100 text-[#279267] p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                        <MousePointerClick size={20} className="sm:w-6 sm:h-6" />
                                     </div>
                                     <div>
-                                        <h2 className="text-2xl font-black text-slate-900">Ranking de Cliques</h2>
-                                        <p className="text-slate-500 text-sm">Somatório de cliques (Instagram e WhatsApp) por parceiro.</p>
+                                        <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Clientes (Cupons)</h2>
+                                        <p className="text-slate-500 text-[10px] sm:text-sm">Clientes que mais desbloquearam cupons.</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
                                     <button 
-                                        onClick={() => setClickPeriod('all')}
-                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${clickPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        onClick={() => setCustomerRankingPeriod('all')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
-                                        Todo o Período
+                                        Tudo
                                     </button>
                                     <button 
-                                        onClick={() => setClickPeriod('month')}
-                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${clickPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        onClick={() => setCustomerRankingPeriod('month')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
-                                        Mês Atual
+                                        Mês
+                                    </button>
+                                    <button 
+                                        onClick={() => setCustomerRankingPeriod('prev_month')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Anterior
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
+                            <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                                <table className="w-full text-left border-collapse min-w-[450px] sm:min-w-full">
                                     <thead>
                                         <tr className="border-b border-slate-100">
-                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
-                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
-                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Instagram</th>
-                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">WhatsApp</th>
-                                            <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">WhatsApp</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {customerRankingData.map((item, index) => (
+                                            <tr key={item.whatsapp} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {index + 1}
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-slate-500 font-mono text-[10px] sm:text-sm">{item.whatsapp}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                    <span className="bg-green-100 text-[#279267] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
+                                                        {item.count}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {customerRankingData.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum cupom liberado.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-purple-100 text-purple-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                        <MousePointerClick size={20} className="sm:w-6 sm:h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Cliques</h2>
+                                        <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de cliques (Instagram e WhatsApp) por parceiro.</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit">
+                                    <button 
+                                        onClick={() => setClickPeriod('all')}
+                                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Tudo
+                                    </button>
+                                    <button 
+                                        onClick={() => setClickPeriod('month')}
+                                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Mês
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                                <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-full">
+                                    <thead>
+                                        <tr className="border-b border-slate-100">
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">IG</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">WPP</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {clickRankingData.map((item, index) => (
                                             <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                                <td className="py-4 px-4">
-                                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
                                                         {index + 1}
                                                     </div>
                                                 </td>
-                                                <td className="py-4 px-4 font-bold text-slate-900">{item.partner_name}</td>
-                                                <td className="py-4 px-4 text-center">
-                                                    <span className="text-slate-600 font-bold">{item.instagram_count}</span>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                    <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.instagram_count}</span>
                                                 </td>
-                                                <td className="py-4 px-4 text-center">
-                                                    <span className="text-slate-600 font-bold">{item.whatsapp_count}</span>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                    <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.whatsapp_count}</span>
                                                 </td>
-                                                <td className="py-4 px-4 text-center">
-                                                    <span className="bg-purple-100 text-purple-600 px-4 py-1.5 rounded-full text-sm font-black">
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                    <span className="bg-purple-100 text-purple-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
                                                         {Number(item.instagram_count) + Number(item.whatsapp_count)}
                                                     </span>
                                                 </td>
@@ -2016,7 +2200,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                         ))}
                                         {clickRankingData.length === 0 && (
                                             <tr>
-                                                <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">Nenhum clique registrado no período selecionado.</td>
+                                                <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum clique registrado.</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -2028,104 +2212,100 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             )}
 
             {activeTab === 'cashback' && (
-                <div className="space-y-8">
-                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
-                        <div className="flex items-center space-x-3 mb-8">
-                            <div className="bg-green-100 text-[#279267] p-3 rounded-2xl">
-                                <Settings size={24} />
+                <div className="space-y-6 sm:space-y-8">
+                    <div className="bg-white p-2 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-6 sm:mb-8 px-2 sm:px-0">
+                            <div className="bg-green-100 text-[#279267] p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                <Settings size={20} className="sm:w-6 sm:h-6" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900">Configuração de Cashback</h2>
-                                <p className="text-slate-500 text-sm">Defina os valores e as probabilidades da roleta.</p>
+                                <h2 className="text-lg sm:text-2xl font-black text-slate-900">Configuração de Cashback</h2>
+                                <p className="text-slate-500 text-[10px] sm:text-sm">Defina os valores e as probabilidades da roleta.</p>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 px-2 sm:px-0">
                             {cashbackConfigs.map((config) => (
-                                <div key={config.id} className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-4">
+                                <div key={config.id} className="p-4 sm:p-6 bg-slate-50 rounded-xl sm:rounded-2xl border border-slate-200 space-y-3 sm:space-y-4">
                                     <div className="flex justify-between items-center">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Opção {config.id}</span>
-                                        <div className="bg-white p-2 rounded-lg shadow-sm">
-                                            <DollarSign size={16} className="text-[#279267]" />
+                                        <span className="text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Opção {config.id}</span>
+                                        <div className="bg-white p-1.5 sm:p-2 rounded-lg shadow-sm">
+                                            <DollarSign size={14} className="text-[#279267] sm:w-4 sm:h-4" />
                                         </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Rótulo (Ex: R$ 5,00)</label>
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase ml-1">Rótulo</label>
                                         <input 
                                             type="text"
                                             value={config.label}
                                             onChange={(e) => handleUpdateCashbackConfig(config.id, 'label', e.target.value)}
-                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900"
+                                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-white border border-slate-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900 text-xs sm:text-base"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Valor Numérico</label>
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase ml-1">Valor</label>
                                         <input 
                                             type="number"
                                             value={config.value}
                                             onChange={(e) => handleUpdateCashbackConfig(config.id, 'value', parseFloat(e.target.value))}
-                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900"
+                                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-white border border-slate-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900 text-xs sm:text-base"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Probabilidade (%)</label>
+                                    <div className="space-y-1.5 sm:space-y-2">
+                                        <label className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase ml-1">Prob. (%)</label>
                                         <input 
                                             type="number"
                                             value={config.probability}
                                             onChange={(e) => handleUpdateCashbackConfig(config.id, 'probability', parseFloat(e.target.value))}
-                                            className="w-full px-4 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900"
+                                            className="w-full px-3 sm:px-4 py-1.5 sm:py-2 bg-white border border-slate-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-[#279267] outline-none font-bold text-slate-900 text-xs sm:text-base"
                                         />
                                     </div>
                                 </div>
                             ))}
                         </div>
-                        <div className="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start space-x-3 text-amber-700 text-xs">
-                            <Info size={16} className="shrink-0 mt-0.5" />
-                            <p><strong>Dica:</strong> A soma das probabilidades não precisa ser exatamente 100%. O sistema utiliza pesos relativos para determinar o vencedor.</p>
-                        </div>
                     </div>
 
-                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                    <div className="bg-white p-2 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
                             <div className="flex items-center space-x-3">
-                                <div className="bg-amber-100 text-amber-600 p-3 rounded-2xl">
-                                    <Trophy size={24} />
+                                <div className="bg-amber-100 text-amber-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                    <Trophy size={20} className="sm:w-6 sm:h-6" />
                                 </div>
                                 <div>
-                                    <h2 className="text-2xl font-black text-slate-900">Ranking de Cashback</h2>
-                                    <p className="text-slate-500 text-sm">Somatório de valores ganhos por parceiro.</p>
+                                    <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Cashback</h2>
+                                    <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de valores ganhos por parceiro.</p>
                                 </div>
                             </div>
-                            <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit">
                                 <button 
                                     onClick={() => setCashbackRankingPeriod('all')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${cashbackRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Todo o Período
+                                    Tudo
                                 </button>
                                 <button 
                                     onClick={() => setCashbackRankingPeriod('month')}
-                                    className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${cashbackRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    Mês Atual
+                                    Mês
                                 </button>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                            <table className="w-full text-left border-collapse min-w-[400px] sm:min-w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100">
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total Cashback</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Total</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {cashbackRankingData.map((item, index) => (
                                         <tr key={item.name} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                            <td className="py-4 px-4">
-                                                <span className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-black ${
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                <span className={`w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full text-[10px] sm:text-xs font-black ${
                                                     index === 0 ? 'bg-yellow-100 text-yellow-700' : 
                                                     index === 1 ? 'bg-slate-200 text-slate-700' : 
                                                     index === 2 ? 'bg-amber-100 text-amber-700' : 
@@ -2134,15 +2314,15 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                     {index + 1}º
                                                 </span>
                                             </td>
-                                            <td className="py-4 px-4 font-bold text-slate-900">{item.name}</td>
-                                            <td className="py-4 px-4 text-right">
-                                                <span className="text-[#279267] font-black">R$ {item.total.toFixed(2)}</span>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-right">
+                                                <span className="text-[#279267] font-black text-[11px] sm:text-base">R$ {item.total.toFixed(2)}</span>
                                             </td>
                                         </tr>
                                     ))}
                                     {cashbackRankingData.length === 0 && (
                                         <tr>
-                                            <td colSpan={3} className="py-20 text-center text-slate-400 font-bold">Nenhum cashback registrado no período selecionado.</td>
+                                            <td colSpan={3} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum cashback registrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
@@ -2150,50 +2330,141 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         </div>
                     </div>
 
-                    <div className="bg-white p-4 sm:p-8 rounded-3xl shadow-xl border border-slate-100">
-                        <div className="flex items-center space-x-3 mb-8">
-                            <div className="bg-slate-100 text-slate-600 p-3 rounded-2xl">
-                                <History size={24} />
+                    <div className="bg-white p-2 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-6 sm:mb-8 px-2 sm:px-0">
+                            <div className="bg-slate-100 text-slate-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                <History size={20} className="sm:w-6 sm:h-6" />
                             </div>
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900">Logs de Cashback</h2>
-                                <p className="text-slate-500 text-sm">Histórico recente de prêmios concedidos.</p>
+                                <h2 className="text-lg sm:text-2xl font-black text-slate-900">Logs de Cashback</h2>
+                                <p className="text-slate-500 text-[10px] sm:text-sm">Histórico recente de prêmios concedidos.</p>
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                            <table className="w-full text-left border-collapse min-w-[600px] sm:min-w-full">
                                 <thead>
                                     <tr className="border-b border-slate-100">
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Data/Hora</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loja</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">WhatsApp</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Valor</th>
-                                        <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase tracking-widest">IP do Cliente</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Data/Hora</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Loja</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">WhatsApp</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Valor</th>
+                                        <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">IP</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {cashbackLogs.map((log) => (
                                         <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                            <td className="py-4 px-4 text-sm text-slate-500">
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm text-slate-500">
                                                 {new Date(log.created_at).toLocaleString('pt-BR')}
                                             </td>
-                                            <td className="py-4 px-4 font-bold text-slate-900">{log.store_name}</td>
-                                            <td className="py-4 px-4 text-sm font-bold text-[#279267]">{log.whatsapp}</td>
-                                            <td className="py-4 px-4">
-                                                <span className="text-[#279267] font-black">R$ {log.cashback_value.toFixed(2)}</span>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{log.store_name}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-[#279267]">{log.whatsapp}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                <span className="text-[#279267] font-black text-[11px] sm:text-base">R$ {log.cashback_value.toFixed(2)}</span>
                                             </td>
-                                            <td className="py-4 px-4 text-xs font-mono text-slate-400">{log.ip_address}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-mono text-slate-400">{log.ip_address}</td>
                                         </tr>
                                     ))}
                                     {cashbackLogs.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} className="py-20 text-center text-slate-400 font-bold">Nenhum log de cashback registrado ainda.</td>
+                                            <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum log registrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'coupons' && (
+                <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                        <div>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-2">Gestão de Cupons e Sequência</h2>
+                            <p className="text-slate-500 text-xs sm:text-base">Altere a sequência de exibição, o código do cupom e a descrição do benefício em massa.</p>
+                        </div>
+                        <button 
+                            onClick={handleSaveCoupons}
+                            disabled={isSubmitting}
+                            className="w-full md:w-auto px-6 py-3 bg-[#279267] text-white font-bold rounded-xl hover:bg-[#1e7250] transition-colors shadow-lg shadow-[#279267]/20 flex items-center justify-center space-x-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                        >
+                            {isSubmitting ? (
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                            ) : (
+                                <>
+                                    <Edit2 size={18} />
+                                    <span>Salvar Alterações</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Parceiro</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-32">Sequência</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Código do Cupom</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Descrição do Benefício</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {partners.map((partner) => {
+                                    const currentEdit = couponEdits[partner.id] || {
+                                        orderIndex: partner.orderIndex,
+                                        coupon: partner.coupon || '',
+                                        couponDescription: partner.couponDescription || ''
+                                    };
+                                    return (
+                                        <tr key={partner.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-4">
+                                                <div className="flex items-center space-x-3">
+                                                    <img src={partner.imageUrl} alt={partner.name} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                                                    <div>
+                                                        <p className="font-bold text-slate-900 text-sm">{partner.name}</p>
+                                                        <p className="text-[10px] font-black text-[#279267] uppercase tracking-widest">{partner.category}</p>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="p-4">
+                                                <input 
+                                                    type="number" 
+                                                    value={currentEdit.orderIndex}
+                                                    onChange={(e) => handleCouponChange(partner.id, 'orderIndex', parseInt(e.target.value) || 0)}
+                                                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                />
+                                            </td>
+                                            <td className="p-4">
+                                                <input 
+                                                    type="text" 
+                                                    value={currentEdit.coupon}
+                                                    placeholder="Ex: PROMO10"
+                                                    onChange={(e) => handleCouponChange(partner.id, 'coupon', e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                />
+                                            </td>
+                                            <td className="p-4">
+                                                <input 
+                                                    type="text" 
+                                                    value={currentEdit.couponDescription}
+                                                    placeholder="Ex: 10% de desconto"
+                                                    onChange={(e) => handleCouponChange(partner.id, 'couponDescription', e.target.value)}
+                                                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                />
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                                {partners.length === 0 && (
+                                    <tr>
+                                        <td colSpan={4} className="py-12 text-center text-slate-400 font-bold">Nenhum parceiro cadastrado.</td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             )}

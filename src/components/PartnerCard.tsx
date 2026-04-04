@@ -17,6 +17,8 @@ interface PartnerCardProps {
 const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>('hidden');
   const [whatsapp, setWhatsapp] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [isSearchingName, setIsSearchingName] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
@@ -28,27 +30,61 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}`;
 
   const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      let formatted = numbers;
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
+    let formatted = numbers;
+    if (numbers.length > 0) {
+      formatted = `(${numbers.slice(0, 2)}`;
       if (numbers.length > 2) {
-        formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+        formatted += `) ${numbers.slice(2, 7)}`;
       }
       if (numbers.length > 7) {
-        formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+        formatted += `-${numbers.slice(7, 11)}`;
       }
-      return formatted;
     }
-    return whatsapp;
+    return formatted;
   };
 
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatWhatsApp(e.target.value);
     setWhatsapp(formatted);
+    
+    const cleanWhatsapp = formatted.replace(/\D/g, '');
+    // Clear name and stop searching if WhatsApp changes
+    setCustomerName('');
+    setIsSearchingName(false);
   };
 
-  const isWhatsappValid = /^\(\d{2}\) \d{5}-\d{4}$/.test(whatsapp);
-  const isFormValid = isWhatsappValid && hasConsented;
+  const isWhatsappValid = whatsapp.replace(/\D/g, '').length === 11;
+  const isFormValid = isWhatsappValid && customerName.trim().length > 0 && hasConsented;
+
+  useEffect(() => {
+    const searchName = async () => {
+      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      // Only query if WhatsApp is complete (11 digits)
+      if (cleanWhatsapp.length === 11) {
+        setIsSearchingName(true);
+        try {
+          const { data } = await supabase
+            .from('customers')
+            .select('name')
+            .eq('whatsapp', cleanWhatsapp)
+            .maybeSingle();
+          
+          if (data?.name) {
+            setCustomerName(data.name);
+          } else {
+            // If not found, ensure name is empty for new registration
+            setCustomerName('');
+          }
+        } catch (error) {
+          logger.error('Error searching customer name in PartnerCard:', error);
+        } finally {
+          setIsSearchingName(false);
+        }
+      }
+    };
+    searchName();
+  }, [whatsapp]);
 
   const expirationDate = new Date();
   expirationDate.setDate(expirationDate.getDate() + 7);
@@ -88,7 +124,12 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   }, [unlockStep, partner.name]);
 
   const handleUnlock = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      if (!isWhatsappValid) alert('Por favor, insira um WhatsApp válido.');
+      else if (customerName.trim().length === 0) alert('Por favor, insira seu nome completo.');
+      else if (!hasConsented) alert('Você precisa aceitar os termos para continuar.');
+      return;
+    }
     
     // Rate Limiting: Check for local cooldown (1 minute)
     const lastUnlock = localStorage.getItem(`last_unlock_${partner.id}`);
@@ -101,14 +142,39 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
 
     setIsUnlocking(true);
     try {
-      if (executeRecaptcha) {
-        const token = await executeRecaptcha('unlock_coupon');
-        if (!token) {
-          throw new Error('ReCAPTCHA verification failed');
+      // ReCAPTCHA with fallback
+      let recaptchaToken = 'skipped';
+      if (executeRecaptcha && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
+        try {
+          recaptchaToken = await executeRecaptcha('unlock_coupon');
+        } catch (reErr) {
+          logger.error('ReCAPTCHA error, continuing anyway:', reErr);
         }
       }
 
       const ip = await getUserIP();
+      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+
+      // Save/Update customer name
+      try {
+        await supabase
+          .from('customers')
+          .upsert({ 
+            whatsapp: cleanWhatsapp, 
+            name: customerName.trim(),
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'whatsapp' });
+
+        // Update name in all previous logs to ensure consistency
+        await Promise.all([
+          supabase.from('cashback_logs').update({ customer_name: customerName.trim() }).eq('whatsapp', cleanWhatsapp),
+          supabase.from('unlocked_coupons').update({ customer_name: customerName.trim() }).eq('whatsapp', cleanWhatsapp),
+          supabase.from('partner_shares').update({ customer_name: customerName.trim() }).eq('whatsapp_number', cleanWhatsapp)
+        ]);
+      } catch (error) {
+        logger.error('Error saving customer name in PartnerCard:', error);
+      }
+
       const { error } = await supabase
         .from('unlocked_coupons')
         .insert([
@@ -117,7 +183,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             partner_name: partner.name,
             coupon_code: partner.coupon,
             coupon_description: partner.couponDescription,
-            whatsapp: whatsapp,
+            whatsapp: cleanWhatsapp, // Use clean number for consistency
+            customer_name: customerName.trim(),
             ip_address: ip
           }
         ]);
@@ -130,7 +197,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
       setUnlockStep('unlocked');
     } catch (error) {
       logger.error('Error unlocking coupon:', error);
-      alert('Ocorreu um erro ao liberar o cupom. Tente novamente.');
+      alert('Ocorreu um erro ao liberar o cupom. Verifique sua conexão e tente novamente.');
     } finally {
       setIsUnlocking(false);
     }
@@ -191,7 +258,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           partner_id: partner.id,
           partner_name: partner.name,
           display_id: partner.displayId,
-          whatsapp_number: whatsapp,
+          whatsapp_number: whatsapp.replace(/\D/g, ''),
+          customer_name: customerName.trim(),
           ip_address: ip
         }
       ]);
@@ -433,6 +501,29 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                   </div>
                 </div>
 
+                {isWhatsappValid && (
+                  <div className="w-full animate-in slide-in-from-top-2 duration-300">
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                      Seu Nome Completo
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Digite seu nome..."
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        className={`w-full px-4 py-2.5 text-base rounded-xl border border-slate-200 focus:outline-none focus:border-[#279267] bg-white font-bold transition-all ${isSearchingName ? 'opacity-50' : ''}`}
+                        disabled={isSearchingName}
+                      />
+                      {isSearchingName && (
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                          <div className="w-4 h-4 border-2 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex gap-2">
                   <AlertCircle className="text-amber-600 w-4 h-4 shrink-0 mt-0.5" />
                   <p className="text-[9px] leading-relaxed text-amber-800 font-medium">
@@ -459,8 +550,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
 
                 <button
                   onClick={handleUnlock}
-                  className={`w-full py-3.5 rounded-xl font-black text-xs shadow-md transition-all flex items-center justify-center ${isFormValid ? 'bg-[#279267] text-white hover:bg-[#1e7452]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
-                  disabled={!isFormValid || isUnlocking}
+                  className={`w-full py-3.5 rounded-xl font-black text-xs shadow-md transition-all flex items-center justify-center ${isFormValid ? 'bg-[#279267] text-white hover:bg-[#1e7452]' : 'bg-slate-100 text-slate-400'}`}
+                  disabled={isUnlocking}
                 >
                   {isUnlocking ? (
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>

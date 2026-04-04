@@ -6,18 +6,21 @@ import confetti from 'canvas-confetti';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { CashbackConfig } from '../types';
 import { logger } from '../lib/logger';
+import { supabase } from '../lib/supabase';
 
 interface RouletteModalProps {
   isOpen: boolean;
   onClose: () => void;
   storeName: string;
   configs: CashbackConfig[];
-  onWin: (value: number, whatsapp: string) => void;
+  onWin: (value: number, whatsapp: string, name: string, label: string) => void;
 }
 
 const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeName, configs, onWin }) => {
   const [step, setStep] = useState<'form' | 'wheel'>('form');
   const [whatsapp, setWhatsapp] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [isSearchingName, setIsSearchingName] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
@@ -54,7 +57,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
     setTimeout(() => {
       setIsSpinning(false);
       setResult(selected);
-      onWin(selected.value, whatsapp);
+      onWin(selected.value, whatsapp, customerName, selected.label);
       
       // Save spin time for rate limiting
       localStorage.setItem('last_roulette_spin', Date.now().toString());
@@ -69,32 +72,92 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
   };
 
   const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, '');
-    if (numbers.length <= 11) {
-      let formatted = numbers;
+    const numbers = value.replace(/\D/g, '').slice(0, 11);
+    let formatted = numbers;
+    if (numbers.length > 0) {
+      formatted = `(${numbers.slice(0, 2)}`;
       if (numbers.length > 2) {
-        formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+        formatted += `) ${numbers.slice(2, 7)}`;
       }
       if (numbers.length > 7) {
-        formatted = `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+        formatted += `-${numbers.slice(7, 11)}`;
       }
-      return formatted;
     }
-    return whatsapp;
+    return formatted;
   };
 
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatWhatsApp(e.target.value);
     setWhatsapp(formatted);
+    
+    const cleanWhatsapp = formatted.replace(/\D/g, '');
+    // Clear name and stop searching if WhatsApp changes
+    setCustomerName('');
+    setIsSearchingName(false);
   };
+
+  useEffect(() => {
+    const searchName = async () => {
+      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      if (cleanWhatsapp.length === 11) {
+        setIsSearchingName(true);
+        try {
+          const { data, error } = await supabase
+            .from('customers')
+            .select('name')
+            .eq('whatsapp', cleanWhatsapp)
+            .maybeSingle();
+          
+          if (data?.name) {
+            setCustomerName(data.name);
+          } else {
+            setCustomerName('');
+          }
+        } catch (error) {
+          logger.error('Error searching customer name:', error);
+        } finally {
+          setIsSearchingName(false);
+        }
+      }
+    };
+    searchName();
+  }, [whatsapp]);
 
   if (!isOpen) return null;
 
-  const isWhatsappValid = /^\(\d{2}\) \d{5}-\d{4}$/.test(whatsapp);
-  const isFormValid = isWhatsappValid && hasConsented;
+  const isWhatsappValid = whatsapp.replace(/\D/g, '').length === 11;
+  const isFormValid = isWhatsappValid && customerName.trim().length > 0 && hasConsented;
 
   const handleUnlockWheel = async () => {
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      if (!isWhatsappValid) alert('Por favor, insira um WhatsApp válido.');
+      else if (customerName.trim().length === 0) alert('Por favor, insira seu nome completo.');
+      else if (!hasConsented) alert('Você precisa aceitar os termos para continuar.');
+      return;
+    }
+
+    // Save/Update customer name
+    try {
+      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const { error } = await supabase
+        .from('customers')
+        .upsert({ 
+          whatsapp: cleanWhatsapp, 
+          name: customerName.trim(),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'whatsapp' });
+      
+      if (error) throw error;
+
+      // Update name in all previous logs for this WhatsApp to ensure consistency
+      await Promise.all([
+        supabase.from('cashback_logs').update({ customer_name: customerName.trim() }).eq('whatsapp', cleanWhatsapp),
+        supabase.from('unlocked_coupons').update({ customer_name: customerName.trim() }).eq('whatsapp', cleanWhatsapp),
+        supabase.from('partner_shares').update({ customer_name: customerName.trim() }).eq('whatsapp_number', cleanWhatsapp)
+      ]);
+    } catch (error) {
+      logger.error('Error saving customer name:', error);
+    }
 
     // Rate Limiting: Check for local cooldown (5 minutes)
     const lastSpin = localStorage.getItem('last_roulette_spin');
@@ -105,16 +168,17 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
       return;
     }
 
-    if (executeRecaptcha) {
+    if (executeRecaptcha && import.meta.env.VITE_RECAPTCHA_SITE_KEY) {
       try {
         const token = await executeRecaptcha('unlock_wheel');
         if (token) {
           setStep('wheel');
+        } else {
+          setStep('wheel'); // Fallback
         }
       } catch (error) {
         logger.error('ReCAPTCHA error:', error);
-        // Fallback or alert
-        setStep('wheel');
+        setStep('wheel'); // Fallback
       }
     } else {
       setStep('wheel');
@@ -170,6 +234,34 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
                       </div>
                     </div>
 
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ 
+                        opacity: isWhatsappValid ? 1 : 0,
+                        height: isWhatsappValid ? 'auto' : 0
+                      }}
+                      className="overflow-hidden"
+                    >
+                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                        Seu Nome Completo
+                      </label>
+                      <div className="relative">
+                        <input 
+                          type="text"
+                          placeholder="Digite seu nome e sobrenome..."
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          disabled={isSearchingName}
+                          className={`w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#279267] focus:bg-white outline-none transition-all font-bold text-slate-900 ${isSearchingName ? 'opacity-50' : ''}`}
+                        />
+                        {isSearchingName && (
+                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                            <div className="w-4 h-4 border-2 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+
                     <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
                       <AlertCircle className="text-amber-600 w-5 h-5 shrink-0" />
                       <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
@@ -197,8 +289,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
 
                   <button 
                     onClick={handleUnlockWheel}
-                    disabled={!isFormValid}
-                    className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all transform flex items-center justify-center gap-2 ${isFormValid ? 'bg-[#279267] text-white hover:bg-green-700 hover:scale-[1.02]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'}`}
+                    className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all transform flex items-center justify-center gap-2 ${isFormValid ? 'bg-[#279267] text-white hover:bg-green-700 hover:scale-[1.02]' : 'bg-slate-100 text-slate-400'}`}
                   >
                     LIBERAR ROLETA
                   </button>

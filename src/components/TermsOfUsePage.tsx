@@ -39,7 +39,7 @@ const TermsOfUsePage: React.FC = () => {
                 A plataforma <strong>Aparece aí por aqui</strong> é de propriedade e operada por [NOME DO PROPRIETÁRIO/EMPRESA], com sede em [CIDADE/ESTADO], inscrita no CNPJ sob o nº [00.000.000/0000-00].
               </p>
               <p>
-                Para qualquer dúvida ou solicitação, entre em contato através do e-mail: <a href="mailto:reo2000.renato@gmail.com" className="text-[#279267] font-bold hover:underline">reo2000.renato@gmail.com</a>.
+                Para qualquer dúvida ou solicitação, entre em contato através do e-mail: <a href="mailto:contato@apareceaiporaqui.com.br" className="text-[#279267] font-bold hover:underline">contato@apareceaiporaqui.com.br</a>.
               </p>
             </section>
 

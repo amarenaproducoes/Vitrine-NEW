@@ -63,14 +63,21 @@ const PrivacyPolicyPage: React.FC = () => {
             <section>
               <div className="flex items-center space-x-3 mb-4">
                 <FileText className="text-[#279267]" size={24} />
-                <h2 className="text-xl font-bold text-slate-900">3. Métodos de Coleta</h2>
+                <h2 className="text-xl font-bold text-slate-900">3. Métodos de Coleta e Ferramentas de Terceiros</h2>
               </div>
               <p className="mb-4">Os dados são coletados das seguintes formas:</p>
-              <ul className="list-disc pl-6 space-y-2">
+              <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Formulários Diretos:</strong> Quando você preenche seus dados para anunciar, ser parceiro ou resgatar um cupom/cashback.</li>
                 <li><strong>Cookies e Tecnologias de Rastreamento:</strong> Para melhorar a navegação e segurança (como o reCAPTCHA).</li>
                 <li><strong>Logs de Servidor:</strong> Coleta automática de IP e dados de acesso para fins de segurança e prevenção de fraudes.</li>
               </ul>
+              <p className="mb-4"><strong>Google Analytics:</strong></p>
+              <p>
+                Utilizamos o Google Analytics (GA4) para entender como os usuários interagem com nosso site e melhorar a experiência de navegação. 
+                O GA4 coleta dados de forma anônima, utilizando cookies para registrar informações como páginas visitadas, tempo de permanência e localização aproximada. 
+                <strong>Não armazenamos nem processamos seu endereço IP de forma identificável através desta ferramenta.</strong> 
+                Você pode desativar o rastreamento do Google Analytics instalando o <a href="https://tools.google.com/dlpage/gaoptout" target="_blank" rel="noopener noreferrer" className="text-[#279267] font-bold hover:underline">Complemento do navegador para desativação do Google Analytics</a>.
+              </p>
             </section>
 
             <section>
@@ -135,13 +142,13 @@ const PrivacyPolicyPage: React.FC = () => {
               <h2 className="text-lg font-bold text-slate-900 mb-2">Contato do Encarregado de Dados</h2>
               <p className="text-sm">
                 Para exercer seus direitos ou tirar dúvidas sobre esta política, entre em contato através do e-mail:<br />
-                <a href="mailto:reo2000.renato@gmail.com" className="text-[#279267] font-bold hover:underline">reo2000.renato@gmail.com</a>
+                <a href="mailto:contato@apareceaiporaqui.com.br" className="text-[#279267] font-bold hover:underline">contato@apareceaiporaqui.com.br</a>
               </p>
             </section>
 
             <div className="pt-8 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-400">
-                Última atualização: 02 de Abril de 2026.<br />
+                Última atualização: 03 de Abril de 2026.<br />
                 Aparece aí por aqui - Todos os direitos reservados.
               </p>
             </div>
