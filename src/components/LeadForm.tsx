@@ -31,6 +31,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [formData, setFormData] = useState({ fullName: '', whatsapp: '', message: '' });
   const [hasConsented, setHasConsented] = useState(false);
+  const [hasOneSignalId, setHasOneSignalId] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
 
   const isWhatsAppValid = formData.whatsapp.replace(/\D/g, '').length === 11;
@@ -40,6 +41,35 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   if (type === 'anunciante' || type === 'comerciante') {
     isFormValid = isFormValid && formData.message.trim().length > 0;
   }
+
+  React.useEffect(() => {
+    const searchName = async () => {
+      const cleanWhatsapp = formData.whatsapp.replace(/\D/g, '');
+      if (cleanWhatsapp.length === 11) {
+        try {
+          const { data } = await supabase
+            .from('customers')
+            .select('name, onesignal_id')
+            .eq('whatsapp', cleanWhatsapp)
+            .maybeSingle();
+          
+          if (data?.name) {
+            setFormData(prev => ({ ...prev, fullName: data.name }));
+            if (data.onesignal_id) {
+              setHasOneSignalId(true);
+            }
+          } else {
+            setHasOneSignalId(false);
+          }
+        } catch (error) {
+          logger.error('Error searching customer name in LeadForm:', error);
+        }
+      } else {
+        setHasOneSignalId(false);
+      }
+    };
+    searchName();
+  }, [formData.whatsapp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,11 +102,41 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
       // Save/Update customer name
       try {
         const cleanWhatsapp = formData.whatsapp.replace(/\D/g, '');
+        
+        let onesignalId = null;
+        try {
+          if (window.OneSignal) {
+            // Add tags immediately so they are queued
+            window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
+            window.OneSignal.User.addTag("name", formData.fullName.trim());
+
+            // Trigger native prompt if not already subscribed, with a 5-second timeout
+            if (!hasOneSignalId) {
+              await Promise.race([
+                window.OneSignal.Notifications.requestPermission(),
+                new Promise(resolve => setTimeout(resolve, 5000))
+              ]);
+            }
+            
+            // Try to get the ID, wait up to 2 seconds if permission is granted but ID is not yet available
+            for (let i = 0; i < 10; i++) {
+              if (window.OneSignal.User && window.OneSignal.User.PushSubscription && window.OneSignal.User.PushSubscription.id) {
+                onesignalId = window.OneSignal.User.PushSubscription.id;
+                break;
+              }
+              await new Promise(resolve => setTimeout(resolve, 200));
+            }
+          }
+        } catch (e) {
+          console.error("OneSignal tag error", e);
+        }
+
         await supabase
           .from('customers')
           .upsert({ 
             whatsapp: cleanWhatsapp, 
             name: formData.fullName.trim(),
+            ...(onesignalId ? { onesignal_id: onesignalId } : {}),
             updated_at: new Date().toISOString()
           }, { onConflict: 'whatsapp' });
 
@@ -175,6 +235,12 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             value={formData.whatsapp}
             onChange={(e) => setFormData({...formData, whatsapp: formatWhatsApp(e.target.value)})}
           />
+          {hasOneSignalId && (
+            <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
+              <CheckCircle2 className="w-4 h-4" />
+              <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
+            </div>
+          )}
         </div>
 
         <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
@@ -197,7 +263,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             </div>
           </div>
           <span className="text-xs text-slate-600 font-medium leading-tight">
-            Estou ciente e autorizo a coleta e uso dos meus dados conforme a Política de Privacidade e Termos de Uso.
+            Estou ciente e autorizo a coleta e uso dos meus dados, bem como o recebimento de notificações no navegador, conforme a Política de Privacidade e Termos de Uso.
           </span>
         </label>
 

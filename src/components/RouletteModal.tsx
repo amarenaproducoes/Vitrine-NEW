@@ -20,6 +20,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
   const [step, setStep] = useState<'form' | 'wheel'>('form');
   const [whatsapp, setWhatsapp] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [hasOneSignalId, setHasOneSignalId] = useState(false);
   const [isSearchingName, setIsSearchingName] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
   const [isSpinning, setIsSpinning] = useState(false);
@@ -93,6 +94,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
     const cleanWhatsapp = formatted.replace(/\D/g, '');
     // Clear name and stop searching if WhatsApp changes
     setCustomerName('');
+    setHasOneSignalId(false);
     setIsSearchingName(false);
   };
 
@@ -104,14 +106,18 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
         try {
           const { data, error } = await supabase
             .from('customers')
-            .select('name')
+            .select('name, onesignal_id')
             .eq('whatsapp', cleanWhatsapp)
             .maybeSingle();
           
           if (data?.name) {
             setCustomerName(data.name);
+            if (data.onesignal_id) {
+              setHasOneSignalId(true);
+            }
           } else {
             setCustomerName('');
+            setHasOneSignalId(false);
           }
         } catch (error) {
           logger.error('Error searching customer name:', error);
@@ -142,10 +148,27 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
       
       let onesignalId = null;
       try {
-        if (window.OneSignal && window.OneSignal.User && window.OneSignal.User.PushSubscription) {
-          onesignalId = window.OneSignal.User.PushSubscription.id;
+        if (window.OneSignal) {
+          // Add tags immediately so they are queued
           window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
           window.OneSignal.User.addTag("name", customerName.trim());
+
+          // Trigger native prompt if not already subscribed, with a 5-second timeout
+          if (!hasOneSignalId) {
+            await Promise.race([
+              window.OneSignal.Notifications.requestPermission(),
+              new Promise(resolve => setTimeout(resolve, 5000))
+            ]);
+          }
+          
+          // Try to get the ID, wait up to 2 seconds if permission is granted but ID is not yet available
+          for (let i = 0; i < 10; i++) {
+            if (window.OneSignal.User && window.OneSignal.User.PushSubscription && window.OneSignal.User.PushSubscription.id) {
+              onesignalId = window.OneSignal.User.PushSubscription.id;
+              break;
+            }
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
         }
       } catch (e) {
         console.error("OneSignal tag error", e);
@@ -156,7 +179,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
         .upsert({ 
           whatsapp: cleanWhatsapp, 
           name: customerName.trim(),
-          onesignal_id: onesignalId,
+          ...(onesignalId ? { onesignal_id: onesignalId } : {}),
           updated_at: new Date().toISOString()
         }, { onConflict: 'whatsapp' });
       
@@ -273,6 +296,12 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
                           </div>
                         )}
                       </div>
+                      {hasOneSignalId && (
+                        <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
+                        </div>
+                      )}
                     </motion.div>
 
                     <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
@@ -295,7 +324,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
                         </div>
                       </div>
                       <span className="text-xs text-slate-600 font-medium leading-tight">
-                        Estou ciente e autorizo a coleta e uso dos meus dados conforme a Política de Privacidade e Termos de Uso.
+                        Estou ciente e autorizo a coleta e uso dos meus dados, bem como o recebimento de notificações no navegador, conforme a Política de Privacidade e Termos de Uso.
                       </span>
                     </label>
                   </div>

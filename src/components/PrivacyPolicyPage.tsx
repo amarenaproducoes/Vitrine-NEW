@@ -83,10 +83,13 @@ const PrivacyPolicyPage: React.FC = () => {
             <section>
               <div className="flex items-center space-x-3 mb-4">
                 <MessageSquare className="text-[#279267]" size={24} />
-                <h2 className="text-xl font-bold text-slate-900">4. Comunicação com o Cliente</h2>
+                <h2 className="text-xl font-bold text-slate-900">4. Comunicação com o Cliente e Notificações</h2>
               </div>
-              <p>
+              <p className="mb-4">
                 Ao fornecer seu número de WhatsApp e marcar o checkbox de consentimento, você autoriza a <strong>Aparece aí por aqui</strong> a entrar em contato para fins comerciais, suporte e envio de ofertas. Você pode solicitar a interrupção dessas comunicações a qualquer momento através do próprio canal de atendimento.
+              </p>
+              <p>
+                <strong>Notificações no Navegador (Push Notifications):</strong> Ao se cadastrar em nossa plataforma, você também concorda em receber notificações diretamente em seu navegador. Utilizamos o serviço OneSignal para enviar atualizações importantes, novas promoções e lembretes. Você pode gerenciar ou desativar essas notificações a qualquer momento através das configurações do seu próprio navegador.
               </p>
             </section>
 

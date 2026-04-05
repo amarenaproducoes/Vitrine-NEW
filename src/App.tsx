@@ -89,7 +89,7 @@ const AnalyticsTracker = () => {
                         appId: appId,
                         allowLocalhostAsSecureOrigin: true,
                         notifyButton: {
-                            enable: true,
+                            enable: false,
                             prenotify: true,
                             showCredit: false,
                             text: {
@@ -109,7 +109,11 @@ const AnalyticsTracker = () => {
                             }
                         },
                     });
-                } catch (error) {
+                } catch (error: any) {
+                    if (error && (error.message === 'SDK already initialized' || error.message === 'Timeout')) {
+                        // Ignorar erros de dupla inicialização e timeout no React Strict Mode
+                        return;
+                    }
                     console.error('OneSignal Init Error:', error);
                 }
             }
