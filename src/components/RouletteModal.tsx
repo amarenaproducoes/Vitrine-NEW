@@ -161,13 +161,19 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
             ]);
           }
           
-          // Try to get the ID, wait up to 2 seconds if permission is granted but ID is not yet available
-          for (let i = 0; i < 10; i++) {
-            if (window.OneSignal.User && window.OneSignal.User.PushSubscription && window.OneSignal.User.PushSubscription.id) {
-              onesignalId = window.OneSignal.User.PushSubscription.id;
+          // Try to get the ID, wait up to 5 seconds if permission is granted but ID is not yet available
+          for (let i = 0; i < 25; i++) {
+            const subId = window.OneSignal.User?.PushSubscription?.id;
+            if (subId) {
+              onesignalId = subId;
+              console.log("OneSignal ID capturado com sucesso:", onesignalId);
               break;
             }
             await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          
+          if (!onesignalId) {
+            console.warn("Não foi possível capturar o OneSignal ID a tempo. O ID pode ser gerado em segundo plano.");
           }
         }
       } catch (e) {

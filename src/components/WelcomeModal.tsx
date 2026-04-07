@@ -8,9 +8,19 @@ interface WelcomeModalProps {
   onAccept: () => void;
   storeName: string;
   logoUrl?: string | null;
+  customTitle?: string;
+  customMessage?: string;
 }
 
-const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onAccept, storeName, logoUrl }) => {
+const WelcomeModal: React.FC<WelcomeModalProps> = ({ 
+  isOpen, 
+  onClose, 
+  onAccept, 
+  storeName, 
+  logoUrl,
+  customTitle,
+  customMessage
+}) => {
   if (!isOpen) return null;
 
   return (
@@ -33,13 +43,19 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onAccept, 
           </div>
 
           <h2 className="text-xl md:text-2xl font-black text-slate-900 mb-3 leading-tight">
-            Bem-vindo à Vitrine Aparece Aí por Aqui!
+            {customTitle || "Bem-vindo à Vitrine Aparece Aí por Aqui!"}
           </h2>
           
-          <p className="text-slate-600 text-sm font-medium mb-6">
-            Você está em <span className="text-[#279267] font-bold">{storeName}</span>. 
-            Escolha como deseja continuar:
-          </p>
+          <div className="text-slate-600 text-sm font-medium mb-6">
+            {customMessage ? (
+              <p>{customMessage}</p>
+            ) : (
+              <p>
+                Você está em <span className="text-[#279267] font-bold">{storeName}</span>. 
+                Escolha como deseja continuar:
+              </p>
+            )}
+          </div>
 
           <div className="space-y-3">
             <button 
@@ -47,16 +63,18 @@ const WelcomeModal: React.FC<WelcomeModalProps> = ({ isOpen, onClose, onAccept, 
               className="w-full py-4 px-4 bg-[#279267] text-white font-black text-sm md:text-base rounded-2xl shadow-lg shadow-green-900/20 hover:bg-green-700 transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 leading-tight"
             >
               <Sparkles className="w-5 h-5 flex-shrink-0" />
-              <span>Estou na loja e quero garantir meu cashback agora.</span>
+              <span>{customTitle ? "Acessar o Site" : "Estou na loja e quero garantir meu cashback agora."}</span>
             </button>
 
-            <button 
-              onClick={onClose}
-              className="w-full py-4 px-4 bg-slate-100 text-slate-700 font-bold text-sm md:text-base rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-3 leading-tight"
-            >
-              <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
-              <span>Continuar para as benefícios do meu bairro</span>
-            </button>
+            {!customTitle && (
+              <button 
+                onClick={onClose}
+                className="w-full py-4 px-4 bg-slate-100 text-slate-700 font-bold text-sm md:text-base rounded-2xl hover:bg-slate-200 transition-all flex items-center justify-center gap-3 leading-tight"
+              >
+                <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                <span>Continuar para as benefícios do meu bairro</span>
+              </button>
+            )}
           </div>
 
           <p className="mt-6 text-[10px] text-slate-400 uppercase tracking-widest font-bold">

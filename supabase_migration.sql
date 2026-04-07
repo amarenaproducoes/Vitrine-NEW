@@ -179,3 +179,30 @@ ALTER TABLE unlocked_coupons ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public inserts on unlocked_coupons" ON unlocked_coupons FOR INSERT WITH CHECK (true);
 CREATE POLICY "Allow public select on unlocked_coupons" ON unlocked_coupons FOR SELECT USING (true);
 CREATE POLICY "Allow public update on unlocked_coupons" ON unlocked_coupons FOR UPDATE USING (true);
+
+-- New tables for Personalized Welcome Messages
+CREATE TABLE IF NOT EXISTS welcome_messages (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  ref_id TEXT UNIQUE NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  logo_url TEXT
+);
+
+ALTER TABLE welcome_messages ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public select on welcome_messages" ON welcome_messages FOR SELECT USING (true);
+CREATE POLICY "Allow public insert on welcome_messages" ON welcome_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update on welcome_messages" ON welcome_messages FOR UPDATE WITH CHECK (true);
+CREATE POLICY "Allow public delete on welcome_messages" ON welcome_messages FOR DELETE USING (true);
+
+CREATE TABLE IF NOT EXISTS welcome_access_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  ref_id TEXT NOT NULL,
+  ip_address TEXT
+);
+
+ALTER TABLE welcome_access_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public insert on welcome_access_logs" ON welcome_access_logs FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public select on welcome_access_logs" ON welcome_access_logs FOR SELECT USING (true);

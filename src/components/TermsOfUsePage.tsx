@@ -64,10 +64,11 @@ const TermsOfUsePage: React.FC = () => {
               <p className="mb-4">
                 A plataforma funciona como uma vitrine digital integrada a um circuito de TVs inteligentes, oferecendo:
               </p>
-              <ul className="list-disc pl-6 space-y-2">
+              <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li>Divulgação de empresas e parceiros locais.</li>
                 <li>Disponibilização de cupons de desconto e sistemas de cashback.</li>
                 <li>Canais de contato para anunciantes, motoristas e comerciantes interessados em parcerias.</li>
+                <li>Mensagens de boas-vindas personalizadas com base no ponto de entrada do usuário (QR Codes de referência).</li>
               </ul>
             </section>
 

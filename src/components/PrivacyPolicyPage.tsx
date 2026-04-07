@@ -54,10 +54,10 @@ const PrivacyPolicyPage: React.FC = () => {
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Identificação:</strong> Nome completo ou nome da empresa.</li>
                 <li><strong>Contato:</strong> Número de WhatsApp.</li>
-                <li><strong>Dados Técnicos:</strong> Endereço IP, tipo de navegador e logs de acesso.</li>
+                <li><strong>Dados Técnicos:</strong> Endereço IP, tipo de navegador, logs de acesso e origem do acesso via IDs de referência (ex: QR Codes em veículos ou vestuário).</li>
                 <li><strong>Interação:</strong> Mensagens enviadas através de nossos formulários.</li>
               </ul>
-              <p className="mb-4"><strong>Finalidade:</strong> Seus dados são utilizados para viabilizar o contato comercial, enviar informações sobre promoções e benefícios locais (marketing direto), garantir a segurança do site contra bots (via reCAPTCHA) e realizar auditoria interna de resgates de cupons.</p>
+              <p className="mb-4"><strong>Finalidade:</strong> Seus dados são utilizados para viabilizar o contato comercial, enviar informações sobre promoções e benefícios locais (marketing direto), garantir a segurança do site contra bots (via reCAPTCHA), realizar auditoria interna de resgates de cupons e mensurar a eficácia de diferentes pontos de divulgação física através de IDs de referência.</p>
             </section>
 
             <section>

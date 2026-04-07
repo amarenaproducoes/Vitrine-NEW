@@ -90,3 +90,19 @@ export interface FeaturedCoupon {
   slot_id: number;
   partner_id: string | null;
 }
+
+export interface WelcomeMessage {
+  id: string;
+  ref_id: string;
+  title: string;
+  message: string;
+  logo_url: string | null;
+  created_at?: string;
+}
+
+export interface WelcomeAccessLog {
+  id: string;
+  ref_id: string;
+  ip_address: string;
+  created_at: string;
+}

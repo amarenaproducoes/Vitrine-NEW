@@ -9,7 +9,8 @@ import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import DOMPurify from 'dompurify';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, ChevronLeft, Plus, Trash2, 
-    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick
+    Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick,
+    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -26,7 +27,7 @@ import LoginPage from './components/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
-import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData } from './types';
+import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage } from './types';
 
 interface FeaturedCoupon {
     id?: string;
@@ -83,7 +84,9 @@ const AnalyticsTracker = () => {
     useEffect(() => {
         const initOneSignal = async () => {
             const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
-            if (appId) {
+            const isProduction = window.location.hostname === 'vitrine.apareceaiporaqui.com.br';
+            
+            if (appId && (isProduction || window.location.hostname === 'localhost')) {
                 try {
                     await OneSignal.init({
                         appId: appId,
@@ -274,6 +277,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [showRoulette, setShowRoulette] = useState(false);
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+    const [customWelcomeData, setCustomWelcomeData] = useState<{ title: string; message: string; logoUrl: string | null } | null>(null);
     const location = useLocation();
 
     useEffect(() => {
@@ -284,58 +288,88 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
         const refId = windowParams.get('ref') || locationParams.get('ref');
         
         if (refId) {
-            handleRefAccess(parseInt(refId));
+            handleRefAccess(refId);
         }
     }, [location]);
 
-    const handleRefAccess = async (displayId: number) => {
+    const handleRefAccess = async (refId: string) => {
         // Check if modal was already shown in this session to prevent re-triggering on navigation
-        if (sessionStorage.getItem(`welcome_modal_shown_${displayId}`)) return;
+        if (sessionStorage.getItem(`welcome_modal_shown_${refId}`)) return;
+        
+        // Mark as shown immediately to prevent race conditions
+        sessionStorage.setItem(`welcome_modal_shown_${refId}`, 'true');
 
         try {
-            const { data: partner } = await supabase
-                .from('partners')
-                .select('*')
-                .eq('display_id', displayId)
-                .maybeSingle();
+            const displayId = parseInt(refId);
+            const isNumeric = !isNaN(displayId);
 
-            if (partner) {
-                const ip = await getUserIP();
-                // Log access
-                await supabase.from('partner_access_logs').insert({
-                    partner_id: partner.id,
-                    ip_address: ip
-                });
+            if (isNumeric) {
+                const { data: partner } = await supabase
+                    .from('partners')
+                    .select('*')
+                    .eq('display_id', displayId)
+                    .maybeSingle();
 
-                // Only show modals if cashback is enabled for this partner
-                if (partner.cashback_enabled) {
-                    // Fetch cashback configs
-                    const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
-                    if (configs && configs.length > 0) {
-                        setCashbackConfigs(configs);
-                        setRoulettePartner({
-                            id: partner.id,
-                            name: partner.name,
-                            category: partner.category,
-                            activity: partner.activity,
-                            description: partner.description,
-                            address: partner.address,
-                            imageUrl: partner.image_url,
-                            images: partner.images || [],
-                            videoUrl: partner.video_url || '',
-                            link: partner.link,
-                            whatsappLink: partner.whatsapp_link,
-                            coupon: partner.coupon,
-                            couponDescription: partner.coupon_description,
-                            isAuthorized: partner.is_authorized,
-                            cashbackEnabled: partner.cashback_enabled,
-                            orderIndex: partner.order_index,
-                            displayId: partner.display_id
-                        });
-                        setShowWelcomeModal(true);
-                        // Mark as shown for this session
-                        sessionStorage.setItem(`welcome_modal_shown_${displayId}`, 'true');
+                if (partner) {
+                    const ip = await getUserIP();
+                    // Log access
+                    await supabase.from('partner_access_logs').insert({
+                        partner_id: partner.id,
+                        ip_address: ip
+                    });
+
+                    // Only show modals if cashback is enabled for this partner
+                    if (partner.cashback_enabled) {
+                        // Fetch cashback configs
+                        const { data: configs } = await supabase.from('cashback_configs').select('*').order('id', { ascending: true });
+                        if (configs && configs.length > 0) {
+                            setCashbackConfigs(configs);
+                            setRoulettePartner({
+                                id: partner.id,
+                                name: partner.name,
+                                category: partner.category,
+                                activity: partner.activity,
+                                description: partner.description,
+                                address: partner.address,
+                                imageUrl: partner.image_url,
+                                images: partner.images || [],
+                                videoUrl: partner.video_url || '',
+                                link: partner.link,
+                                whatsappLink: partner.whatsapp_link,
+                                coupon: partner.coupon,
+                                couponDescription: partner.coupon_description,
+                                isAuthorized: partner.is_authorized,
+                                cashbackEnabled: partner.cashback_enabled,
+                                orderIndex: partner.order_index,
+                                displayId: partner.display_id
+                            });
+                            setShowWelcomeModal(true);
+                        }
                     }
+                }
+            } else {
+                // Alphanumeric ref ID - check personalized welcome messages
+                const { data: welcomeMsg } = await supabase
+                    .from('welcome_messages')
+                    .select('*')
+                    .eq('ref_id', refId)
+                    .maybeSingle();
+
+                if (welcomeMsg) {
+                    const ip = await getUserIP();
+                    // Log access to the new table
+                    await supabase.from('welcome_access_logs').insert({
+                        ref_id: refId,
+                        ip_address: ip
+                    });
+
+                    // Show custom welcome modal
+                    setCustomWelcomeData({
+                        title: welcomeMsg.title,
+                        message: welcomeMsg.message,
+                        logoUrl: welcomeMsg.logo_url
+                    });
+                    setShowWelcomeModal(true);
                 }
             }
         } catch (error) {
@@ -380,16 +414,25 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     return (
         <main className="flex-grow">
             <AnimatePresence>
-                {showWelcomeModal && roulettePartner && (
+                {showWelcomeModal && (roulettePartner || customWelcomeData) && (
                     <WelcomeModal 
                         isOpen={showWelcomeModal}
-                        onClose={() => setShowWelcomeModal(false)}
+                        onClose={() => {
+                            setShowWelcomeModal(false);
+                            setCustomWelcomeData(null);
+                        }}
                         onAccept={() => {
                             setShowWelcomeModal(false);
-                            setShowRoulette(true);
+                            if (customWelcomeData) {
+                                setCustomWelcomeData(null);
+                            } else {
+                                setShowRoulette(true);
+                            }
                         }}
-                        storeName={roulettePartner.name}
-                        logoUrl={headerLogo}
+                        storeName={roulettePartner?.name || ''}
+                        logoUrl={customWelcomeData ? customWelcomeData.logoUrl : headerLogo}
+                        customTitle={customWelcomeData?.title}
+                        customMessage={customWelcomeData?.message}
                     />
                 )}
                 {showRoulette && roulettePartner && (
@@ -591,9 +634,96 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     );
 };
 
-const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanners, setCommercialBanners, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanners: CommercialBannerData[], setCommercialBanners: React.Dispatch<React.SetStateAction<CommercialBannerData[]>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>> }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons'>('partners');
+const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanners, setCommercialBanners, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons, welcomeMessages, setWelcomeMessages }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanners: CommercialBannerData[], setCommercialBanners: React.Dispatch<React.SetStateAction<CommercialBannerData[]>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>>, welcomeMessages: WelcomeMessage[], setWelcomeMessages: React.Dispatch<React.SetStateAction<WelcomeMessage[]>> }) => {
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome'>('partners');
     const navigate = useNavigate();
+    
+    const [welcomeFormData, setWelcomeFormData] = useState({
+        ref_id: '',
+        title: '',
+        message: '',
+        logo_url: '' as string | null,
+        logoFile: null as File | null
+    });
+    const [editingWelcomeId, setEditingWelcomeId] = useState<string | null>(null);
+
+    const handleAddOrUpdateWelcome = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            let logoUrl = welcomeFormData.logo_url;
+            if (welcomeFormData.logoFile) {
+                const fileExt = welcomeFormData.logoFile.name.split('.').pop();
+                const fileName = `welcome/logo_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('partners').upload(fileName, welcomeFormData.logoFile);
+                if (uploadError) throw uploadError;
+                const { data: { publicUrl } } = supabase.storage.from('partners').getPublicUrl(fileName);
+                logoUrl = publicUrl;
+            }
+
+            const payload = {
+                ref_id: welcomeFormData.ref_id,
+                title: welcomeFormData.title,
+                message: welcomeFormData.message,
+                logo_url: logoUrl
+            };
+
+            if (editingWelcomeId) {
+                const { error } = await supabase
+                    .from('welcome_messages')
+                    .update(payload)
+                    .eq('id', editingWelcomeId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('welcome_messages')
+                    .insert(payload);
+                if (error) throw error;
+            }
+
+            // Refresh list
+            const { data } = await supabase.from('welcome_messages').select('*').order('created_at', { ascending: false });
+            if (data) setWelcomeMessages(data);
+
+            setWelcomeFormData({ ref_id: '', title: '', message: '', logo_url: '', logoFile: null });
+            setEditingWelcomeId(null);
+            alert(editingWelcomeId ? "Mensagem atualizada!" : "Mensagem cadastrada!");
+        } catch (error: any) {
+            logger.error('Error saving welcome message:', error);
+            if (error.code === '23505') {
+                alert("Este ID de Referência já está em uso.");
+            } else {
+                alert("Erro ao salvar mensagem.");
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleEditWelcome = (msg: WelcomeMessage) => {
+        setEditingWelcomeId(msg.id);
+        setWelcomeFormData({
+            ref_id: msg.ref_id,
+            title: msg.title,
+            message: msg.message,
+            logo_url: msg.logo_url,
+            logoFile: null
+        });
+        setActiveTab('welcome');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRemoveWelcome = async (id: string) => {
+        if (!confirm("Tem certeza que deseja remover esta mensagem de boas-vindas?")) return;
+        try {
+            const { error } = await supabase.from('welcome_messages').delete().eq('id', id);
+            if (error) throw error;
+            setWelcomeMessages(prev => prev.filter(m => m.id !== id));
+        } catch (error) {
+            logger.error('Error removing welcome message:', error);
+            alert("Erro ao remover mensagem.");
+        }
+    };
     
     // Coupon Mass Edit State
     const [couponEdits, setCouponEdits] = useState<{[key: string]: { orderIndex: number, coupon: string, couponDescription: string }}>({});
@@ -1465,6 +1595,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             <button onClick={() => setActiveTab('cashback')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
                             <button onClick={() => setActiveTab('featured')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'featured' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Destaques</button>
                             <button onClick={() => setActiveTab('coupons')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'coupons' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons/Sequência</button>
+                            <button onClick={() => setActiveTab('welcome')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'welcome' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Boas-vindas</button>
                             <Link to="/admin-mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
@@ -2523,6 +2654,216 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 </div>
             )}
 
+            {activeTab === 'welcome' && (
+                <div className="space-y-8 sm:space-y-12">
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="bg-[#279267]/10 p-2 rounded-xl">
+                                <Sparkles className="text-[#279267]" size={24} />
+                            </div>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">
+                                {editingWelcomeId ? 'Editar Mensagem de Boas-vindas' : 'Nova Mensagem de Boas-vindas'}
+                            </h2>
+                        </div>
+
+                        <form onSubmit={handleAddOrUpdateWelcome} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Hash size={16} className="mr-2 text-slate-400" />
+                                        ID de Referência (Alfanumérico)
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={welcomeFormData.ref_id}
+                                        onChange={(e) => setWelcomeFormData({ ...welcomeFormData, ref_id: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                                        placeholder="Ex: carro, rua, camiseta-01"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all font-mono"
+                                    />
+                                    <p className="text-[10px] text-slate-400">Este será o valor usado na URL: ?ref={welcomeFormData.ref_id || 'id-aqui'}</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Type size={16} className="mr-2 text-slate-400" />
+                                        Título do Pop-up
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={welcomeFormData.title}
+                                        onChange={(e) => setWelcomeFormData({ ...welcomeFormData, title: e.target.value })}
+                                        placeholder="Ex: Bem-vindo ao nosso projeto!"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center">
+                                    <FileText size={16} className="mr-2 text-slate-400" />
+                                    Texto de Boas-vindas
+                                </label>
+                                <textarea 
+                                    required
+                                    rows={4}
+                                    value={welcomeFormData.message}
+                                    onChange={(e) => setWelcomeFormData({ ...welcomeFormData, message: e.target.value })}
+                                    placeholder="Escreva a mensagem que aparecerá no pop-up..."
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all resize-none"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center">
+                                    <ImageIcon size={16} className="mr-2 text-slate-400" />
+                                    Logotipo ou Imagem (Opcional)
+                                </label>
+                                <div className="flex items-center space-x-4">
+                                    <div className="flex-1">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={(e) => setWelcomeFormData({ ...welcomeFormData, logoFile: e.target.files?.[0] || null })}
+                                            className="hidden"
+                                            id="welcome-logo-upload"
+                                        />
+                                        <label 
+                                            htmlFor="welcome-logo-upload"
+                                            className="flex items-center justify-center space-x-2 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 hover:border-[#279267] transition-all group"
+                                        >
+                                            <Upload size={20} className="text-slate-400 group-hover:text-[#279267]" />
+                                            <span className="text-sm font-bold text-slate-500 group-hover:text-slate-700">
+                                                {welcomeFormData.logoFile ? welcomeFormData.logoFile.name : 'Selecionar Imagem'}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    {(welcomeFormData.logoFile || welcomeFormData.logo_url) && (
+                                        <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center p-1">
+                                            <img 
+                                                src={welcomeFormData.logoFile ? URL.createObjectURL(welcomeFormData.logoFile) : welcomeFormData.logo_url!} 
+                                                alt="Preview" 
+                                                className="w-full h-full object-contain"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+                                <button 
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="flex-1 py-4 bg-[#279267] text-white font-black rounded-2xl shadow-lg shadow-green-900/20 hover:bg-green-700 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? (
+                                        <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    ) : (
+                                        <>
+                                            <Save size={20} />
+                                            <span>{editingWelcomeId ? 'Atualizar Mensagem' : 'Salvar Mensagem'}</span>
+                                        </>
+                                    )}
+                                </button>
+                                {editingWelcomeId && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setEditingWelcomeId(null);
+                                            setWelcomeFormData({ ref_id: '', title: '', message: '', logo_url: '', logoFile: null });
+                                        }}
+                                        className="px-8 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-slate-900 text-white p-2 rounded-xl">
+                                    <FileText size={20} />
+                                </div>
+                                <h2 className="text-lg sm:text-2xl font-black text-slate-900">Mensagens Cadastradas</h2>
+                            </div>
+                            <span className="bg-slate-100 text-slate-600 px-3 py-1 rounded-full text-xs font-bold">
+                                {welcomeMessages.length} Total
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {welcomeMessages.map((msg) => (
+                                <div key={msg.id} className="group bg-slate-50 rounded-2xl p-6 border border-slate-100 hover:border-[#279267] hover:shadow-lg transition-all relative overflow-hidden">
+                                    <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity flex space-x-1">
+                                        <button 
+                                            onClick={() => handleEditWelcome(msg)}
+                                            className="p-2 bg-white text-blue-500 rounded-lg shadow-sm hover:bg-blue-50 transition-colors"
+                                            title="Editar"
+                                        >
+                                            <Edit2 size={14} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleRemoveWelcome(msg.id)}
+                                            className="p-2 bg-white text-red-500 rounded-lg shadow-sm hover:bg-red-50 transition-colors"
+                                            title="Excluir"
+                                        >
+                                            <Trash2 size={14} />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center space-x-4 mb-4">
+                                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center p-1 overflow-hidden">
+                                            {msg.logo_url ? (
+                                                <img src={msg.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <Sparkles className="text-[#279267]" size={20} />
+                                            )}
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-slate-900 leading-tight">{msg.title}</h3>
+                                            <p className="text-[10px] font-mono text-[#279267] font-bold uppercase tracking-wider">ref={msg.ref_id}</p>
+                                        </div>
+                                    </div>
+
+                                    <p className="text-xs text-slate-500 line-clamp-3 mb-4 leading-relaxed">
+                                        {msg.message}
+                                    </p>
+
+                                    <div className="pt-4 border-t border-slate-200/50 flex items-center justify-between">
+                                        <div className="flex items-center text-[10px] text-slate-400 font-bold">
+                                            <Calendar size={12} className="mr-1" />
+                                            {new Date(msg.created_at!).toLocaleDateString('pt-BR')}
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                const url = `${window.location.origin}/?ref=${msg.ref_id}`;
+                                                navigator.clipboard.writeText(url);
+                                                alert("Link copiado para a área de transferência!");
+                                            }}
+                                            className="text-[10px] font-bold text-[#279267] hover:underline flex items-center"
+                                        >
+                                            <ExternalLink size={12} className="mr-1" />
+                                            Copiar Link
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                            {welcomeMessages.length === 0 && (
+                                <div className="col-span-full py-12 text-center bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200">
+                                    <Sparkles className="mx-auto text-slate-300 mb-4" size={48} />
+                                    <h3 className="text-slate-500 font-bold">Nenhuma mensagem de boas-vindas cadastrada.</h3>
+                                    <p className="text-slate-400 text-sm">Crie sua primeira mensagem acima.</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {deleteConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
@@ -2568,6 +2909,7 @@ const App = () => {
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
     const [featuredCoupons, setFeaturedCoupons] = useState<FeaturedCoupon[]>([]);
+    const [welcomeMessages, setWelcomeMessages] = useState<WelcomeMessage[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -2604,11 +2946,12 @@ const App = () => {
 
     const fetchData = async () => {
         try {
-            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes] = await Promise.all([
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes] = await Promise.all([
                 supabase.from('partners').select('*').order('order_index', { ascending: true }),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
-                supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true })
+                supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
+                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false })
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
@@ -2643,6 +2986,10 @@ const App = () => {
 
             if (featuredCouponsRes.data) {
                 setFeaturedCoupons(featuredCouponsRes.data);
+            }
+
+            if (welcomeMessagesRes.data) {
+                setWelcomeMessages(welcomeMessagesRes.data);
             }
 
             if (bannerRes.data) {
@@ -2698,7 +3045,7 @@ const App = () => {
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/admin" element={
                             <ProtectedRoute>
-                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanners={commercialBanners} setCommercialBanners={setCommercialBanners} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} featuredCoupons={featuredCoupons} setFeaturedCoupons={setFeaturedCoupons} />
+                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanners={commercialBanners} setCommercialBanners={setCommercialBanners} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} featuredCoupons={featuredCoupons} setFeaturedCoupons={setFeaturedCoupons} welcomeMessages={welcomeMessages} setWelcomeMessages={setWelcomeMessages} />
                             </ProtectedRoute>
                         } />
                         <Route path="/admin-mensagens" element={
