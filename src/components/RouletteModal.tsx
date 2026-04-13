@@ -7,6 +7,7 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { CashbackConfig } from '../types';
 import { logger } from '../lib/logger';
 import { supabase } from '../lib/supabase';
+import { formatWhatsApp } from '../lib/format';
 
 interface RouletteModalProps {
   isOpen: boolean;
@@ -72,21 +73,6 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
     }, 4000);
   };
 
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, '').slice(0, 11);
-    let formatted = numbers;
-    if (numbers.length > 0) {
-      formatted = `(${numbers.slice(0, 2)}`;
-      if (numbers.length > 2) {
-        formatted += `) ${numbers.slice(2, 7)}`;
-      }
-      if (numbers.length > 7) {
-        formatted += `-${numbers.slice(7, 11)}`;
-      }
-    }
-    return formatted;
-  };
-
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatWhatsApp(e.target.value);
     setWhatsapp(formatted);
@@ -148,36 +134,49 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
       
       let onesignalId = null;
       try {
-        if (window.OneSignal) {
+        if (window.OneSignal && (window as any).isOneSignalInitialized) {
           // Add tags immediately so they are queued
           window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
           window.OneSignal.User.addTag("name", customerName.trim());
+          
+          // Link external ID via alias (v16 way)
+          try {
+            (window.OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
+          } catch (aliasErr) {
+            console.warn("Erro ao adicionar alias:", aliasErr);
+          }
 
-          // Trigger native prompt if not already subscribed, with a 5-second timeout
-          if (!hasOneSignalId) {
-            await Promise.race([
-              window.OneSignal.Notifications.requestPermission(),
-              new Promise(resolve => setTimeout(resolve, 5000))
-            ]);
+          // Trigger native prompt if not already subscribed and not blocked
+          if (!hasOneSignalId && window.OneSignal.Notifications.permissionNative === 'default') {
+            try {
+              await Promise.race([
+                window.OneSignal.Notifications.requestPermission(),
+                new Promise(resolve => setTimeout(resolve, 2000))
+              ]);
+            } catch (permErr) {
+              console.warn("Aviso: Solicitação de permissão ignorada ou bloqueada pelo navegador.");
+            }
           }
           
-          // Try to get the ID, wait up to 5 seconds if permission is granted but ID is not yet available
+          // Try to get the ID, wait up to 5 seconds
           for (let i = 0; i < 25; i++) {
-            const subId = window.OneSignal.User?.PushSubscription?.id;
+            const subId = window.OneSignal.User?.onesignalId || 
+                          window.OneSignal.User?.PushSubscription?.id ||
+                          (window.OneSignal.User as any)?.subscriptionId;
             if (subId) {
               onesignalId = subId;
-              console.log("OneSignal ID capturado com sucesso:", onesignalId);
+              console.log("ID OneSignal capturado:", onesignalId);
               break;
             }
             await new Promise(resolve => setTimeout(resolve, 200));
           }
-          
+
           if (!onesignalId) {
-            console.warn("Não foi possível capturar o OneSignal ID a tempo. O ID pode ser gerado em segundo plano.");
+            console.warn("Aviso: OneSignal inicializou mas o ID de inscrição ainda não está disponível.");
           }
         }
       } catch (e) {
-        console.error("OneSignal tag error", e);
+        console.error("Erro detalhado OneSignal:", e);
       }
 
       const { error } = await supabase

@@ -1,5 +1,5 @@
 import React from 'react';
-import { FileText, Shield, AlertCircle, Scale, ArrowLeft, Info, Lock as LockIcon } from 'lucide-react';
+import { FileText, Shield, AlertCircle, Scale, ArrowLeft, Info, Lock as LockIcon, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const TermsOfUsePage: React.FC = () => {
@@ -24,7 +24,7 @@ const TermsOfUsePage: React.FC = () => {
             </div>
             <h1 className="text-3xl md:text-4xl font-black text-white mb-4">Termos de Uso</h1>
             <p className="text-slate-400 max-w-2xl mx-auto">
-              Regras e condições para utilização da plataforma Aparece aí por aqui. 
+              Regras e condições para utilização da plataforma Aparece aí por aqui na região de Vila Formosa. 
               Ao navegar em nosso site, você concorda com estas diretrizes.
             </p>
           </div>
@@ -36,7 +36,7 @@ const TermsOfUsePage: React.FC = () => {
                 <h2 className="text-xl font-bold text-slate-900">1. Identificação da Empresa</h2>
               </div>
               <p className="mb-4">
-                A plataforma <strong>Aparece aí por aqui</strong> é de propriedade e operada por [NOME DO PROPRIETÁRIO/EMPRESA], com sede em [CIDADE/ESTADO], inscrita no CNPJ sob o nº [00.000.000/0000-00].
+                A plataforma <strong>Aparece aí por aqui</strong> é de propriedade e operada por [NOME DO PROPRIETÁRIO/EMPRESA], com sede em Vila Formosa, São Paulo/SP, inscrita no CNPJ sob o nº [00.000.000/0000-00].
               </p>
               <p>
                 Para qualquer dúvida ou solicitação, entre em contato através do e-mail: <a href="mailto:contato@apareceaiporaqui.com.br" className="text-[#279267] font-bold hover:underline">contato@apareceaiporaqui.com.br</a>.
@@ -65,8 +65,9 @@ const TermsOfUsePage: React.FC = () => {
                 A plataforma funciona como uma vitrine digital integrada a um circuito de TVs inteligentes, oferecendo:
               </p>
               <ul className="list-disc pl-6 space-y-2 mb-4">
-                <li>Divulgação de empresas e parceiros locais.</li>
-                <li>Disponibilização de cupons de desconto e sistemas de cashback.</li>
+                <li>Divulgação de empresas e parceiros locais em Vila Formosa.</li>
+                <li>Disponibilização de cupons de desconto, promoções e sistemas de cashback.</li>
+                <li>Cartões presente e benefícios exclusivos para a comunidade local.</li>
                 <li>Canais de contato para anunciantes, motoristas e comerciantes interessados em parcerias.</li>
                 <li>Mensagens de boas-vindas personalizadas com base no ponto de entrada do usuário (QR Codes de referência).</li>
               </ul>
@@ -145,9 +146,25 @@ const TermsOfUsePage: React.FC = () => {
               </p>
             </section>
 
+            <section className="bg-green-50 p-6 rounded-2xl border border-green-100">
+              <div className="flex items-center space-x-3 mb-4">
+                <Sparkles className="text-[#279267]" size={24} />
+                <h2 className="text-xl font-bold text-slate-900">10. Sistema de Cartão Presente</h2>
+              </div>
+              <p className="mb-4 text-sm">
+                O Cartão Presente da <strong>Aparece aí por aqui</strong> é um benefício corporativo destinado exclusivamente a funcionários de empresas parceiras.
+              </p>
+              <ul className="list-disc pl-6 space-y-2 text-sm">
+                <li><strong>Não Comercialização:</strong> É terminantemente proibida a venda ou comercialização do Cartão Presente. Ele é um benefício gratuito e pessoal.</li>
+                <li><strong>Ativação e Validade:</strong> O cartão deve ser ativado via QR Code. Após a ativação, o cliente tem 7 (sete) dias corridos para utilizá-lo no parceiro selecionado.</li>
+                <li><strong>Uso Único:</strong> Cada cartão possui um número único e só pode ser utilizado uma única vez.</li>
+                <li><strong>Fraudes:</strong> Tentativas de burlar o sistema de ativação ou validação resultarão no cancelamento imediato do benefício e possível bloqueio do usuário na plataforma.</li>
+              </ul>
+            </section>
+
             <div className="pt-8 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-400">
-                Última atualização: 02 de Abril de 2026.<br />
+                Última atualização: 10 de Abril de 2026.<br />
                 Aparece aí por aqui - Todos os direitos reservados.
               </p>
             </div>

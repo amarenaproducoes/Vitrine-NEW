@@ -4,6 +4,7 @@ import { Lead } from '../types';
 import { Filter, MessageSquare, Calendar, User, Phone, Tag, CheckSquare, Square, LogOut, Settings } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { logger } from '../lib/logger';
+import { formatWhatsApp } from '../lib/format';
 
 const AdminMessagesPage = () => {
     const [leads, setLeads] = useState<Lead[]>([]);
@@ -184,13 +185,13 @@ const AdminMessagesPage = () => {
                                         </td>
                                         <td className="p-4 text-slate-600">
                                             <a 
-                                                href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, '')}`} 
+                                                href={`https://wa.me/55${(lead.whatsapp || '').replace(/\D/g, '')}`} 
                                                 target="_blank" 
                                                 rel="noopener noreferrer"
                                                 className="flex items-center text-[#279267] hover:underline font-medium"
                                             >
                                                 <Phone size={14} className="mr-2" />
-                                                {lead.whatsapp}
+                                                {formatWhatsApp(lead.whatsapp)}
                                             </a>
                                         </td>
                                         <td className="p-4">

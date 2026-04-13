@@ -21,6 +21,28 @@ export interface Partner {
   cashbackEnabled: boolean;
   orderIndex: number;
   displayId?: number;
+  googleReviewLink?: string;
+  websiteUrl?: string;
+  giftCardEnabled?: boolean;
+}
+
+export interface GiftCard {
+  card_number: string;
+  value: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ActiveGiftCard {
+  id: string;
+  card_number: string;
+  whatsapp: string;
+  customer_name: string;
+  partner_id: string;
+  activated_at: string;
+  expires_at: string;
+  used: boolean;
+  used_at?: string;
 }
 
 export interface PartnerAccessLog {
@@ -61,6 +83,7 @@ export interface AboutConfig {
   id: number;
   history: string;
   logoUrl: string | null;
+  mission_vision_values?: string;
 }
 
 export interface Lead {
@@ -100,9 +123,22 @@ export interface WelcomeMessage {
   created_at?: string;
 }
 
-export interface WelcomeAccessLog {
+export interface CouponCampaign {
   id: string;
   ref_id: string;
+  title: string;
+  message: string;
+  logo_url: string | null;
+  partner_id: string;
+  custom_coupon: string | null;
+  custom_description: string | null;
+  expires_at: string | null;
+  created_at?: string;
+}
+
+export interface CouponCampaignAccessLog {
+  id: string;
+  campaign_id: string;
   ip_address: string;
   created_at: string;
 }

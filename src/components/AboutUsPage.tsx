@@ -25,14 +25,16 @@ const AboutUsPage: React.FC = () => {
         setAboutConfig({
           id: aboutRes.data.id,
           history: DOMPurify.sanitize(aboutRes.data.history),
-          logoUrl: aboutRes.data.logo_url
+          logoUrl: aboutRes.data.logo_url,
+          mission_vision_values: DOMPurify.sanitize(aboutRes.data.mission_vision_values || '')
         });
       } else {
         // Default content if not found
         setAboutConfig({
           id: 1,
           history: DOMPurify.sanitize("A 'Aparece aí por aqui' nasceu da visão de transformar espaços comuns em oportunidades extraordinárias de conexão. Iniciamos nossa jornada com o propósito de democratizar o acesso à publicidade de alto impacto para pequenos e médios empreendedores locais.\n\nAtravés de uma rede inteligente de telas estrategicamente posicionadas em estabelecimentos de alto fluxo e veículos de aplicativo, criamos um ecossistema onde marcas ganham vida e consumidores descobrem o melhor da sua região. Nossa história é construída diariamente por parcerias sólidas e resultados reais para nossos clientes."),
-          logoUrl: null
+          logoUrl: null,
+          mission_vision_values: ''
         });
       }
 
@@ -139,6 +141,29 @@ const AboutUsPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Mission, Vision, Values */}
+      {aboutConfig?.mission_vision_values && (
+        <section className="py-20 bg-slate-50">
+          <div className="max-w-4xl mx-auto px-4">
+            <div className="bg-white p-8 md:p-16 rounded-[40px] shadow-2xl border border-slate-100">
+              <div className="flex items-center space-x-4 mb-8">
+                <div className="bg-[#279267]/10 p-3 rounded-2xl text-[#279267]">
+                  <Star size={32} />
+                </div>
+                <h2 className="text-3xl font-black text-slate-900">Missão, Visão e Valores</h2>
+              </div>
+              
+              <div 
+                className="prose prose-lg text-slate-600 max-w-none leading-relaxed
+                  prose-strong:text-slate-900 prose-strong:font-black
+                  prose-ul:list-disc prose-ul:pl-6"
+                dangerouslySetInnerHTML={{ __html: aboutConfig.mission_vision_values }}
+              />
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Success Cases Section */}
       <section className="py-24 bg-white border-y border-slate-100">

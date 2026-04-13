@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2, AlertCircle, ChevronLeft, ChevronRight, Play } from 'lucide-react';
+import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2, AlertCircle, ChevronLeft, ChevronRight, Play, Star, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as htmlToImage from 'html-to-image';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
@@ -9,13 +9,20 @@ import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
+import { formatWhatsApp } from '../lib/format';
 
 interface PartnerCardProps {
   partner: Partner;
+  welcomeData?: {
+    custom_coupon: string;
+    custom_description: string;
+    expiresAt?: string | null;
+    autoOpen?: boolean;
+  };
 }
 
-const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
-  const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>('hidden');
+const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData }) => {
+  const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>(welcomeData?.autoOpen ? 'input' : 'hidden');
   const [whatsapp, setWhatsapp] = useState('');
   const [customerName, setCustomerName] = useState('');
   const [hasOneSignalId, setHasOneSignalId] = useState(false);
@@ -30,30 +37,23 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
   const couponRef = useRef<HTMLDivElement>(null);
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(partner.address)}`;
 
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, '').slice(0, 11);
-    let formatted = numbers;
-    if (numbers.length > 0) {
-      formatted = `(${numbers.slice(0, 2)}`;
-      if (numbers.length > 2) {
-        formatted += `) ${numbers.slice(2, 7)}`;
-      }
-      if (numbers.length > 7) {
-        formatted += `-${numbers.slice(7, 11)}`;
-      }
-    }
-    return formatted;
-  };
-
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatWhatsApp(e.target.value);
-    setWhatsapp(formatted);
+    const rawValue = e.target.value;
+    const cleanRaw = rawValue.replace(/\D/g, '');
     
-    const cleanWhatsapp = formatted.replace(/\D/g, '');
-    // Clear name and stop searching if WhatsApp changes
-    setCustomerName('');
-    setHasOneSignalId(false);
-    setIsSearchingName(false);
+    // Prevent typing more than 11 digits
+    if (cleanRaw.length > 11) return;
+
+    const formatted = formatWhatsApp(rawValue);
+    
+    // Only update and clear if the value actually changed
+    if (formatted !== whatsapp) {
+      setWhatsapp(formatted);
+      // Clear name and stop searching if WhatsApp changes
+      setCustomerName('');
+      setHasOneSignalId(false);
+      setIsSearchingName(false);
+    }
   };
 
   const isWhatsappValid = whatsapp.replace(/\D/g, '').length === 11;
@@ -92,9 +92,20 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
     searchName();
   }, [whatsapp]);
 
-  const expirationDate = new Date();
-  expirationDate.setDate(expirationDate.getDate() + 7);
-  const formattedDate = expirationDate.toLocaleDateString('pt-BR');
+  const getExpirationDate = () => {
+    if (welcomeData?.expiresAt) {
+      const date = new Date(welcomeData.expiresAt);
+      // Add one day to include the full day selected (since HTML date input is usually midnight UTC)
+      // Or just use the date as is. Usually users expect "Valid until [Date]" to include that date.
+      // Let's adjust for timezone if needed, but simple local date string is usually fine.
+      return date.toLocaleDateString('pt-BR');
+    }
+    const expirationDate = new Date();
+    expirationDate.setDate(expirationDate.getDate() + 7);
+    return expirationDate.toLocaleDateString('pt-BR');
+  };
+
+  const formattedDate = getExpirationDate();
 
   useEffect(() => {
     getUserIP().then(setUserIp);
@@ -115,9 +126,12 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
             skipFonts: true // Disable font embedding to avoid CORS issues with external stylesheets
           });
           
+          const now = new Date();
+          const timeSuffix = `${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+          
           const link = document.createElement('a');
           link.href = dataUrl;
-          link.download = `cupom-${partner.name.toLowerCase().replace(/\s+/g, '-')}.png`;
+          link.download = `cupom-${partner.name.toLowerCase().replace(/\s+/g, '-')}-${timeSuffix}.png`;
           link.click();
         } catch (err) {
           logger.error('Error generating coupon image:', err);
@@ -165,36 +179,49 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
       try {
         let onesignalId = null;
         try {
-          if (window.OneSignal) {
+          if (window.OneSignal && (window as any).isOneSignalInitialized) {
             // Add tags immediately so they are queued
             window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
             window.OneSignal.User.addTag("name", customerName.trim());
+            
+            // Link external ID via alias (v16 way)
+            try {
+              (window.OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
+            } catch (aliasErr) {
+              console.warn("Erro ao adicionar alias:", aliasErr);
+            }
 
-            // Trigger native prompt if not already subscribed, with a 5-second timeout
-            if (!hasOneSignalId) {
-              await Promise.race([
-                window.OneSignal.Notifications.requestPermission(),
-                new Promise(resolve => setTimeout(resolve, 5000))
-              ]);
+            // Trigger native prompt if not already subscribed and not blocked
+            if (!hasOneSignalId && window.OneSignal.Notifications.permissionNative === 'default') {
+              try {
+                await Promise.race([
+                  window.OneSignal.Notifications.requestPermission(),
+                  new Promise(resolve => setTimeout(resolve, 2000))
+                ]);
+              } catch (permErr) {
+                console.warn("Aviso: Solicitação de permissão ignorada ou bloqueada pelo navegador.");
+              }
             }
             
-            // Try to get the ID, wait up to 5 seconds if permission is granted but ID is not yet available
+            // Try to get the ID, wait up to 5 seconds
             for (let i = 0; i < 25; i++) {
-              const subId = window.OneSignal.User?.PushSubscription?.id;
+              const subId = window.OneSignal.User?.onesignalId || 
+                            window.OneSignal.User?.PushSubscription?.id ||
+                            (window.OneSignal.User as any)?.subscriptionId;
               if (subId) {
                 onesignalId = subId;
-                console.log("OneSignal ID capturado com sucesso:", onesignalId);
+                console.log("ID OneSignal capturado:", onesignalId);
                 break;
               }
               await new Promise(resolve => setTimeout(resolve, 200));
             }
-            
+
             if (!onesignalId) {
-              console.warn("Não foi possível capturar o OneSignal ID a tempo. O ID pode ser gerado em segundo plano.");
+              console.warn("Aviso: OneSignal inicializou mas o ID de inscrição ainda não está disponível.");
             }
           }
         } catch (e) {
-          console.error("OneSignal tag error", e);
+          console.error("Erro detalhado OneSignal:", e);
         }
 
         await supabase
@@ -222,11 +249,12 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           {
             partner_id: partner.id,
             partner_name: partner.name,
-            coupon_code: partner.coupon,
-            coupon_description: partner.couponDescription,
+            coupon_code: welcomeData?.custom_coupon || partner.coupon,
+            coupon_description: welcomeData?.custom_description || partner.couponDescription,
             whatsapp: cleanWhatsapp, // Use clean number for consistency
             customer_name: customerName.trim(),
-            ip_address: ip
+            ip_address: ip,
+            expires_at: welcomeData?.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
           }
         ]);
 
@@ -244,7 +272,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
     }
   };
 
-  const trackClick = async (destination: 'instagram' | 'whatsapp') => {
+  const trackClick = async (destination: 'instagram' | 'whatsapp' | 'google' | 'site/vitrine') => {
     if (!partner.id) {
       logger.warn('Tracking skipped: Partner ID is missing');
       return;
@@ -518,9 +546,9 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
               <div className="flex flex-col items-center animate-in fade-in duration-200 w-full space-y-4">
                 <div className="text-center">
                   <span className="text-slate-700 font-bold text-xs mb-1 block">Para liberar o seu benefício, digite o seu Whatsapp e ganhe:</span>
-                  {partner.couponDescription && (
+                  {(welcomeData?.custom_description || partner.couponDescription) && (
                     <span className="text-[#279267] font-black text-[11px] sm:text-xs mb-3 block bg-white px-2 py-1.5 rounded-md border border-green-100 shadow-sm w-full break-words">
-                      {partner.couponDescription}
+                      {welcomeData?.custom_description || partner.couponDescription}
                     </span>
                   )}
                 </div>
@@ -536,6 +564,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                       placeholder="(11) 99999-9999"
                       value={whatsapp}
                       onChange={handleWhatsappChange}
+                      maxLength={15}
                       className="w-full pl-10 pr-3 py-2.5 text-base rounded-xl border border-slate-200 focus:outline-none focus:border-[#279267] bg-white font-bold tracking-wider"
                       autoFocus
                     />
@@ -619,6 +648,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                 }}
                 className="flex flex-col items-center text-center"
               >
+                <div className="mb-4 w-full">
+                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Estabelecimento</span>
+                  <div className="bg-white px-3 py-2 rounded-xl border border-slate-100 shadow-sm inline-block max-w-full">
+                    <h3 className="text-base sm:text-lg font-black text-slate-900 leading-tight break-words">{partner.name}</h3>
+                  </div>
+                </div>
+
                 <div className="flex items-center space-x-1 mb-2">
                   <CheckCircle2 size={16} className="text-[#279267]" />
                   <span className="text-[#279267] font-bold text-sm">Cupom Desbloqueado!</span>
@@ -629,15 +665,19 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
                   <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{whatsapp}</span>
                 </div>
 
-                {partner.couponDescription && (
-                  <p className="text-[10px] sm:text-[11px] text-slate-700 font-medium mb-2 break-words">{partner.couponDescription}</p>
+                {(welcomeData?.custom_description || partner.couponDescription) && (
+                  <p className="text-[10px] sm:text-[11px] text-slate-700 font-medium mb-2 break-words">{welcomeData?.custom_description || partner.couponDescription}</p>
                 )}
                 <div className="w-full py-2.5 bg-white rounded-lg border-2 border-[#279267] mb-1 select-all shadow-sm">
-                  <span className="text-lg font-mono font-black text-slate-800 tracking-wider">{partner.coupon}</span>
+                  <span className="text-lg font-mono font-black text-slate-800 tracking-wider">{welcomeData?.custom_coupon || partner.coupon}</span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-medium">Apresente este código no estabelecimento</span>
                 <p className="text-[9px] text-slate-400 mt-1 leading-tight">
-                  Este cupom é válido por 07 dias. Apresente até o dia <span className="font-bold">{formattedDate}</span> e garanta o seu benefício.
+                  {welcomeData?.expiresAt ? (
+                    <>Este cupom é válido até o dia <span className="font-bold">{formattedDate}</span>. Apresente e garanta o seu benefício.</>
+                  ) : (
+                    <>Este cupom é válido por 07 dias. Apresente até o dia <span className="font-bold">{formattedDate}</span> e garanta o seu benefício.</>
+                  )}
                 </p>
 
                 {!isGeneratingImage && (
@@ -657,16 +697,16 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
           </div>
         )}
         
-        <div className="flex flex-col gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <a 
             href={partner.link}
             target="_blank" 
             rel="noopener noreferrer"
-            onPointerDown={() => trackClick('instagram')}
-            className="inline-flex items-center justify-center w-full bg-slate-100 group-hover:bg-[#279267] text-slate-800 group-hover:text-white py-3 px-4 rounded-xl font-bold text-sm transition-colors duration-200"
+            onMouseDown={() => trackClick('instagram')}
+            className="inline-flex items-center justify-center w-full bg-slate-100 group-hover:bg-[#279267] text-slate-800 group-hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 text-center leading-tight"
           >
-            Visitar Instagram
-            <ExternalLink className="ml-2 w-4 h-4" />
+            Instagram
+            <ExternalLink className="ml-1.5 w-3 h-3" />
           </a>
           
           {partner.whatsappLink && (
@@ -674,11 +714,37 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner }) => {
               href={partner.whatsappLink}
               target="_blank" 
               rel="noopener noreferrer"
-              onPointerDown={() => trackClick('whatsapp')}
-              className="inline-flex items-center justify-center w-full bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white py-3 px-4 rounded-xl font-bold text-sm transition-colors duration-200"
+              onMouseDown={() => trackClick('whatsapp')}
+              className="inline-flex items-center justify-center w-full bg-[#25D366]/10 hover:bg-[#25D366] text-[#25D366] hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 text-center leading-tight"
             >
-              Chamar no Whatsapp
-              <MessageCircle className="ml-2 w-4 h-4" />
+              WhatsApp
+              <MessageCircle className="ml-1.5 w-3 h-3" />
+            </a>
+          )}
+
+          {partner.googleReviewLink && (
+            <a 
+              href={partner.googleReviewLink}
+              target="_blank" 
+              rel="noopener noreferrer"
+              onMouseDown={() => trackClick('google')}
+              className="inline-flex items-center justify-center w-full bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 border border-blue-100 text-center leading-tight"
+            >
+              Avaliar Google
+              <Star className="ml-1.5 w-3 h-3" />
+            </a>
+          )}
+
+          {partner.websiteUrl && (
+            <a 
+              href={partner.websiteUrl}
+              target="_blank" 
+              rel="noopener noreferrer"
+              onMouseDown={() => trackClick('site/vitrine')}
+              className="inline-flex items-center justify-center w-full bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 border border-purple-100 text-center leading-tight"
+            >
+              Site/Vitrine
+              <Globe className="ml-1.5 w-3 h-3" />
             </a>
           )}
         </div>

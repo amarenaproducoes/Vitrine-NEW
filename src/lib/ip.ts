@@ -4,7 +4,6 @@ export async function getUserIP(): Promise<string> {
   // Try multiple services in case one is blocked
   const services = [
     'https://api.ipify.org?format=json',
-    'https://ipapi.co/json/',
     'https://api.seeip.org/jsonip'
   ];
 

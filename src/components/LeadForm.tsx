@@ -5,27 +5,13 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
+import { formatWhatsApp } from '../lib/format';
 
 interface LeadFormProps {
   type: 'anunciante' | 'motorista' | 'comerciante' | 'contato';
   title: string;
   subtitle: string;
 }
-
-const formatWhatsApp = (value: string) => {
-  const v = value.replace(/\D/g, '').slice(0, 11);
-  let formatted = v;
-  if (v.length > 0) {
-    formatted = `(${v.slice(0, 2)}`;
-    if (v.length > 2) {
-      formatted += `) ${v.slice(2, 7)}`;
-    }
-    if (v.length > 7) {
-      formatted += `-${v.slice(7, 11)}`;
-    }
-  }
-  return formatted;
-};
 
 const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
@@ -105,36 +91,49 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
         
         let onesignalId = null;
         try {
-          if (window.OneSignal) {
+          if (window.OneSignal && (window as any).isOneSignalInitialized) {
             // Add tags immediately so they are queued
             window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
             window.OneSignal.User.addTag("name", formData.fullName.trim());
+            
+            // Link external ID via alias (v16 way)
+            try {
+              (window.OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
+            } catch (aliasErr) {
+              console.warn("Erro ao adicionar alias:", aliasErr);
+            }
 
-            // Trigger native prompt if not already subscribed, with a 5-second timeout
-            if (!hasOneSignalId) {
-              await Promise.race([
-                window.OneSignal.Notifications.requestPermission(),
-                new Promise(resolve => setTimeout(resolve, 5000))
-              ]);
+            // Trigger native prompt if not already subscribed and not blocked
+            if (!hasOneSignalId && window.OneSignal.Notifications.permissionNative === 'default') {
+              try {
+                await Promise.race([
+                  window.OneSignal.Notifications.requestPermission(),
+                  new Promise(resolve => setTimeout(resolve, 2000))
+                ]);
+              } catch (permErr) {
+                console.warn("Aviso: Solicitação de permissão ignorada ou bloqueada pelo navegador.");
+              }
             }
             
-            // Try to get the ID, wait up to 5 seconds if permission is granted but ID is not yet available
+            // Try to get the ID, wait up to 5 seconds
             for (let i = 0; i < 25; i++) {
-              const subId = window.OneSignal.User?.PushSubscription?.id;
+              const subId = window.OneSignal.User?.onesignalId || 
+                            window.OneSignal.User?.PushSubscription?.id ||
+                            (window.OneSignal.User as any)?.subscriptionId;
               if (subId) {
                 onesignalId = subId;
-                console.log("OneSignal ID capturado com sucesso:", onesignalId);
+                console.log("ID OneSignal capturado:", onesignalId);
                 break;
               }
               await new Promise(resolve => setTimeout(resolve, 200));
             }
-            
+
             if (!onesignalId) {
-              console.warn("Não foi possível capturar o OneSignal ID a tempo. O ID pode ser gerado em segundo plano.");
+              console.warn("Aviso: OneSignal inicializou mas o ID de inscrição ainda não está disponível.");
             }
           }
         } catch (e) {
-          console.error("OneSignal tag error", e);
+          console.error("Erro detalhado OneSignal:", e);
         }
 
         await supabase

@@ -10,7 +10,7 @@ import DOMPurify from 'dompurify';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, ChevronLeft, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick,
-    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink
+    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -23,11 +23,13 @@ import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import TermsOfUsePage from './components/TermsOfUsePage';
 import RouletteModal from './components/RouletteModal';
 import WelcomeModal from './components/WelcomeModal';
+import WelcomePage from './components/WelcomePage';
 import LoginPage from './components/LoginPage';
+import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence } from 'motion/react';
 import { CATEGORIES } from './constants';
-import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage } from './types';
+import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
 interface FeaturedCoupon {
     id?: string;
@@ -39,6 +41,7 @@ interface FeaturedCoupon {
 import { supabase } from './lib/supabase';
 import { getUserIP } from './lib/ip';
 import { logger } from './lib/logger';
+import { formatWhatsApp } from './lib/format';
 import Editor, { 
     Toolbar, 
     BtnBold, 
@@ -84,10 +87,10 @@ const AnalyticsTracker = () => {
     useEffect(() => {
         const initOneSignal = async () => {
             const appId = import.meta.env.VITE_ONESIGNAL_APP_ID;
-            const isProduction = window.location.hostname === 'vitrine.apareceaiporaqui.com.br';
             
-            if (appId && (isProduction || window.location.hostname === 'localhost')) {
+            if (appId) {
                 try {
+                    console.log('Iniciando OneSignal com App ID:', appId);
                     await OneSignal.init({
                         appId: appId,
                         allowLocalhostAsSecureOrigin: true,
@@ -98,7 +101,7 @@ const AnalyticsTracker = () => {
                             text: {
                                 'tip.state.unsubscribed': 'Inscreva-se para notificações',
                                 'tip.state.subscribed': 'Você está inscrito',
-                                'tip.state.blocked': 'Notificações bloqueadas',
+                                'tip.state.blocked': 'Notificações blocked',
                                 'message.prenotify': 'Clique para receber novidades!',
                                 'message.action.subscribed': 'Obrigado por se inscrever!',
                                 'message.action.resubscribed': 'Você está inscrito novamente',
@@ -112,12 +115,17 @@ const AnalyticsTracker = () => {
                             }
                         },
                     });
+                    console.log('OneSignal inicializado com sucesso!');
+                    (window as any).isOneSignalInitialized = true;
                 } catch (error: any) {
-                    if (error && (error.message === 'SDK already initialized' || error.message === 'Timeout')) {
-                        // Ignorar erros de dupla inicialização e timeout no React Strict Mode
-                        return;
+                    const errorMsg = error?.message || String(error);
+                    console.warn('Aviso OneSignal Init:', errorMsg);
+                    
+                    if (errorMsg.includes('SDK already initialized') || errorMsg.includes('Timeout')) {
+                        (window as any).isOneSignalInitialized = true;
+                    } else {
+                        (window as any).isOneSignalInitialized = false;
                     }
-                    console.error('OneSignal Init Error:', error);
                 }
             }
         };
@@ -456,37 +464,6 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm">
-                <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-grow">
-                        <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
-                        {['Todos', ...categories.map(c => c.name)].map(cat => (
-                            <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
-                        ))}
-                    </div>
-                    <div className="relative w-full md:w-80">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <Search size={18} className="text-slate-400" />
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Buscar parceiro pelo nome..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-2xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#279267] focus:border-[#279267] sm:text-sm transition-all font-medium"
-                        />
-                        {searchTerm && (
-                            <button 
-                                onClick={() => setSearchTerm("")}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
-                            >
-                                <X size={16} />
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </section>
-
             <section className="py-6 bg-white border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center space-x-2 mb-8">
@@ -538,6 +515,37 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                 </button>
                             );
                         })}
+                    </div>
+                </div>
+            </section>
+
+            <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm">
+                <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-grow">
+                        <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
+                        {['Todos', ...categories.map(c => c.name)].map(cat => (
+                            <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
+                        ))}
+                    </div>
+                    <div className="relative w-full md:w-80">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search size={18} className="text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Buscar parceiro pelo nome..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-2xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-1 focus:ring-[#279267] focus:border-[#279267] sm:text-sm transition-all font-medium"
+                        />
+                        {searchTerm && (
+                            <button 
+                                onClick={() => setSearchTerm("")}
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                            >
+                                <X size={16} />
+                            </button>
+                        )}
                     </div>
                 </div>
             </section>
@@ -634,8 +642,65 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     );
 };
 
-const AdminPage = ({ partners, setPartners, categories, setCategories, commercialBanners, setCommercialBanners, headerLogo, setHeaderLogo, featuredCoupons, setFeaturedCoupons, welcomeMessages, setWelcomeMessages }: { partners: Partner[], setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, categories: Category[], setCategories: React.Dispatch<React.SetStateAction<Category[]>>, commercialBanners: CommercialBannerData[], setCommercialBanners: React.Dispatch<React.SetStateAction<CommercialBannerData[]>>, headerLogo: string | null, setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, featuredCoupons: FeaturedCoupon[], setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>>, welcomeMessages: WelcomeMessage[], setWelcomeMessages: React.Dispatch<React.SetStateAction<WelcomeMessage[]>> }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome'>('partners');
+const AdminPage = ({ 
+    partners, 
+    setPartners, 
+    categories, 
+    setCategories, 
+    commercialBanners, 
+    setCommercialBanners, 
+    headerLogo, 
+    setHeaderLogo, 
+    featuredCoupons, 
+    setFeaturedCoupons, 
+    welcomeMessages, 
+    setWelcomeMessages,
+    welcomeAccessCounts,
+    couponCampaigns,
+    setCouponCampaigns,
+    couponCampaignAccessCounts,
+    giftCards,
+    setGiftCards,
+    isLoadingGiftCards,
+    fetchGiftCards,
+    activeGiftCards,
+    isLoadingActiveGiftCards,
+    activeGiftCardsError,
+    fetchActiveGiftCards,
+    handleUpdateGiftCard,
+    isUpdatingGiftCard,
+    setIsUpdatingGiftCard
+}: { 
+    partners: Partner[], 
+    setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, 
+    categories: Category[], 
+    setCategories: React.Dispatch<React.SetStateAction<Category[]>>, 
+    commercialBanners: CommercialBannerData[], 
+    setCommercialBanners: React.Dispatch<React.SetStateAction<CommercialBannerData[]>>, 
+    headerLogo: string | null, 
+    setHeaderLogo: React.Dispatch<React.SetStateAction<string | null>>, 
+    featuredCoupons: FeaturedCoupon[], 
+    setFeaturedCoupons: React.Dispatch<React.SetStateAction<FeaturedCoupon[]>>, 
+    welcomeMessages: WelcomeMessage[], 
+    setWelcomeMessages: React.Dispatch<React.SetStateAction<WelcomeMessage[]>>,
+    welcomeAccessCounts: Record<string, number>,
+    couponCampaigns: CouponCampaign[],
+    setCouponCampaigns: React.Dispatch<React.SetStateAction<CouponCampaign[]>>,
+    couponCampaignAccessCounts: Record<string, number>,
+    giftCards: any[],
+    setGiftCards: React.Dispatch<React.SetStateAction<any[]>>,
+    isLoadingGiftCards: boolean,
+    fetchGiftCards: () => Promise<void>,
+    activeGiftCards: any[],
+    isLoadingActiveGiftCards: boolean,
+    activeGiftCardsError: string | null,
+    fetchActiveGiftCards: () => Promise<void>,
+    handleUpdateGiftCard: (cardNumber: string, field: string, value: any) => Promise<void>,
+    isUpdatingGiftCard: string | null,
+    setIsUpdatingGiftCard: React.Dispatch<React.SetStateAction<string | null>>
+}) => {
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards'>('partners');
+    const [giftCardPage, setGiftCardPage] = useState(0);
     const navigate = useNavigate();
     
     const [welcomeFormData, setWelcomeFormData] = useState({
@@ -646,6 +711,26 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         logoFile: null as File | null
     });
     const [editingWelcomeId, setEditingWelcomeId] = useState<string | null>(null);
+
+    const [campaignFormData, setCampaignFormData] = useState({
+        ref_id: '',
+        title: '',
+        message: '',
+        logo_url: '' as string | null,
+        logoFile: null as File | null,
+        partner_id: '' as string | null,
+        custom_coupon: '' as string | null,
+        custom_description: '' as string | null,
+        expires_at: '' as string | null
+    });
+    const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
+    const [isSupabaseAuth, setIsSupabaseAuth] = useState(false);
+
+    useEffect(() => {
+        supabase.auth.getUser().then(({ data }) => {
+            setIsSupabaseAuth(!!data.user);
+        });
+    }, []);
 
     const handleAddOrUpdateWelcome = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -685,7 +770,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             const { data } = await supabase.from('welcome_messages').select('*').order('created_at', { ascending: false });
             if (data) setWelcomeMessages(data);
 
-            setWelcomeFormData({ ref_id: '', title: '', message: '', logo_url: '', logoFile: null });
+            setWelcomeFormData({ 
+                ref_id: '', 
+                title: '', 
+                message: '', 
+                logo_url: '', 
+                logoFile: null
+            });
             setEditingWelcomeId(null);
             alert(editingWelcomeId ? "Mensagem atualizada!" : "Mensagem cadastrada!");
         } catch (error: any) {
@@ -711,6 +802,102 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         });
         setActiveTab('welcome');
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleAddOrUpdateCampaign = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSubmitting(true);
+        try {
+            let logoUrl = campaignFormData.logo_url;
+            if (campaignFormData.logoFile) {
+                const fileExt = campaignFormData.logoFile.name.split('.').pop();
+                const fileName = `campaigns/logo_${Date.now()}.${fileExt}`;
+                const { error: uploadError } = await supabase.storage.from('partners').upload(fileName, campaignFormData.logoFile);
+                if (uploadError) throw uploadError;
+                const { data: { publicUrl } } = supabase.storage.from('partners').getPublicUrl(fileName);
+                logoUrl = publicUrl;
+            }
+
+            const payload = {
+                ref_id: campaignFormData.ref_id,
+                title: campaignFormData.title,
+                message: campaignFormData.message,
+                logo_url: logoUrl,
+                partner_id: campaignFormData.partner_id,
+                custom_coupon: campaignFormData.custom_coupon || null,
+                custom_description: campaignFormData.custom_description || null,
+                expires_at: campaignFormData.expires_at || null
+            };
+
+            if (editingCampaignId) {
+                const { error } = await supabase
+                    .from('coupon_campaigns')
+                    .update(payload)
+                    .eq('id', editingCampaignId);
+                if (error) throw error;
+            } else {
+                const { error } = await supabase
+                    .from('coupon_campaigns')
+                    .insert(payload);
+                if (error) throw error;
+            }
+
+            // Refresh list
+            const { data } = await supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false });
+            if (data) setCouponCampaigns(data);
+
+            setCampaignFormData({ 
+                ref_id: '', 
+                title: '', 
+                message: '', 
+                logo_url: '', 
+                logoFile: null,
+                partner_id: '',
+                custom_coupon: '',
+                custom_description: '',
+                expires_at: ''
+            });
+            setEditingCampaignId(null);
+            alert(editingCampaignId ? "Campanha atualizada!" : "Campanha cadastrada!");
+        } catch (error: any) {
+            logger.error('Error saving campaign:', error);
+            if (error.code === '23505') {
+                alert("Este ID de Referência já está em uso.");
+            } else {
+                alert("Erro ao salvar campanha.");
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleEditCampaign = (campaign: CouponCampaign) => {
+        setEditingCampaignId(campaign.id);
+        setCampaignFormData({
+            ref_id: campaign.ref_id,
+            title: campaign.title,
+            message: campaign.message,
+            logo_url: campaign.logo_url,
+            logoFile: null,
+            partner_id: campaign.partner_id,
+            custom_coupon: campaign.custom_coupon || '',
+            custom_description: campaign.custom_description || '',
+            expires_at: campaign.expires_at || ''
+        });
+        setActiveTab('campaigns');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleRemoveCampaign = async (id: string) => {
+        if (!confirm("Tem certeza que deseja remover esta campanha?")) return;
+        try {
+            const { error } = await supabase.from('coupon_campaigns').delete().eq('id', id);
+            if (error) throw error;
+            setCouponCampaigns(prev => prev.filter(c => c.id !== id));
+        } catch (error) {
+            logger.error('Error removing campaign:', error);
+            alert("Erro ao remover campanha.");
+        }
     };
 
     const handleRemoveWelcome = async (id: string) => {
@@ -800,10 +987,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         videoUrl: string,
         link: string, 
         whatsappLink: string, 
+        googleReviewLink: string,
+        websiteUrl: string,
         coupon: string, 
         couponDescription: string, 
         isAuthorized: boolean, 
         cashbackEnabled: boolean, 
+        giftCardEnabled: boolean,
         orderIndex: number, 
         displayId: number
     }>({ 
@@ -819,10 +1009,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         videoUrl: '',
         link: '', 
         whatsappLink: '', 
+        googleReviewLink: '',
+        websiteUrl: '',
         coupon: '', 
         couponDescription: '', 
         isAuthorized: true, 
         cashbackEnabled: true, 
+        giftCardEnabled: false,
         orderIndex: 0, 
         displayId: 0 
     });
@@ -834,7 +1027,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     });
     
     // About Us State
-    const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null });
+    const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null, mission_vision_values: '' });
     const [aboutLogoFile, setAboutLogoFile] = useState<File | null>(null);
     
     // Success Cases State
@@ -844,16 +1037,19 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
     // Ranking State
     const [rankingData, setRankingData] = useState<any[]>([]);
+    const [partnerRankingPeriod, setPartnerRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
     const [shareRankingData, setShareRankingData] = useState<any[]>([]);
-    const [sharePeriod, setSharePeriod] = useState<'all' | 'month'>('all');
+    const [sharePeriod, setSharePeriod] = useState<'all' | 'month' | 'prev_month'>('all');
     const [clickRankingData, setClickRankingData] = useState<any[]>([]);
-    const [clickPeriod, setClickPeriod] = useState<'all' | 'month'>('all');
+    const [clickPeriod, setClickPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
     const [cashbackRankingData, setCashbackRankingData] = useState<any[]>([]);
-    const [cashbackRankingPeriod, setCashbackRankingPeriod] = useState<'all' | 'month'>('all');
+    const [cashbackRankingPeriod, setCashbackRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
     const [customerRankingData, setCustomerRankingData] = useState<any[]>([]);
     const [customerRankingPeriod, setCustomerRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
+    const [isRankingLoading, setIsRankingLoading] = useState(false);
+    const [rankingError, setRankingError] = useState<string | null>(null);
 
     const [newCategoryName, setNewCategoryName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -882,11 +1078,63 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
         return nextId;
     };
 
+    const [debugCounts, setDebugCounts] = useState<{ [key: string]: number }>({});
+    const [debugError, setDebugError] = useState<string | null>(null);
+    const [rawSample, setRawSample] = useState<any>(null);
+
     useEffect(() => {
+        const checkData = async () => {
+            setDebugError(null);
+            try {
+                const [coupons, customers, partners, clicks, shares, gCards, aGCards] = await Promise.all([
+                    supabase.from('unlocked_coupons').select('*', { count: 'exact', head: true }),
+                    supabase.from('customers').select('*', { count: 'exact', head: true }),
+                    supabase.from('partners').select('*', { count: 'exact', head: true }),
+                    supabase.from('partner_clicks').select('*', { count: 'exact', head: true }),
+                    supabase.from('partner_shares').select('*', { count: 'exact', head: true }),
+                    supabase.from('gift_cards').select('*', { count: 'exact', head: true }),
+                    supabase.from('active_gift_cards').select('*', { count: 'exact', head: true })
+                ]);
+                
+                setDebugCounts({
+                    coupons: coupons.count || 0,
+                    customers: customers.count || 0,
+                    partners: partners.count || 0,
+                    clicks: clicks.count || 0,
+                    shares: shares.count || 0,
+                    giftCards: gCards.count || 0,
+                    activeGiftCards: aGCards.count || 0
+                });
+
+                // Try to fetch a raw sample to see if data is actually visible
+                const { data: sample, error: sampleError } = await supabase
+                    .from('unlocked_coupons')
+                    .select('*')
+                    .limit(1);
+                
+                if (sampleError) {
+                    setDebugError(`Erro RLS/Banco: ${sampleError.message} (Código: ${sampleError.code})`);
+                } else if (sample && sample.length > 0) {
+                    setRawSample(sample[0]);
+                } else {
+                    setRawSample('Nenhum dado retornado (Tabela vazia ou RLS bloqueando)');
+                }
+
+                if (coupons.error) logger.error('Error checking unlocked_coupons count:', coupons.error);
+            } catch (err: any) {
+                logger.error('Exception checking counts:', err);
+                setDebugError(`Exceção: ${err.message || String(err)}`);
+            }
+        };
+        checkData();
         fetchAdminData();
         if (activeTab === 'ranking') fetchRanking();
         if (activeTab === 'cashback') fetchCashbackConfigs();
-    }, [activeTab, sharePeriod, clickPeriod, cashbackRankingPeriod, customerRankingPeriod]);
+        if (activeTab === 'giftcards') {
+            fetchGiftCards();
+            fetchActiveGiftCards();
+        }
+    }, [activeTab, partnerRankingPeriod, sharePeriod, clickPeriod, cashbackRankingPeriod, customerRankingPeriod]);
 
     useEffect(() => {
         if (!editingId && formData.displayId === 0 && partners.length > 0) {
@@ -895,91 +1143,172 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
     }, [partners, editingId]);
 
     const fetchRanking = async () => {
+        setIsRankingLoading(true);
+        setRankingError(null);
         try {
             const now = new Date();
-            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+            const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+            const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
 
-            const { data: partnersData } = await supabase.from('partners').select('id, name, display_id');
-            if (!partnersData) return;
+            // Fetch Partner Ranking
+            try {
+                const { data: partnersData, error: pError } = await supabase.from('partners').select('id, name, display_id');
+                if (pError) throw pError;
+                
+                if (partnersData) {
+                    const ranking = await Promise.all(partnersData.map(async (p) => {
+                        let query = supabase
+                            .from('partner_access_logs')
+                            .select('*', { count: 'exact', head: true })
+                            .eq('partner_id', p.id);
 
-            const ranking = await Promise.all(partnersData.map(async (p) => {
-                const { count: monthCount } = await supabase
-                    .from('partner_access_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('partner_id', p.id)
-                    .gte('created_at', firstDayOfMonth);
+                        if (partnerRankingPeriod === 'month') {
+                            query = query.gte('created_at', firstDayCurrentMonth);
+                        } else if (partnerRankingPeriod === 'prev_month') {
+                            query = query.gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth);
+                        }
 
-                const { count: weekCount } = await supabase
-                    .from('partner_access_logs')
-                    .select('*', { count: 'exact', head: true })
-                    .eq('partner_id', p.id)
-                    .gte('created_at', sevenDaysAgo);
+                        const { count } = await query;
 
-                return {
-                    ...p,
-                    monthCount: monthCount || 0,
-                    weekCount: weekCount || 0
-                };
-            }));
+                        return {
+                            ...p,
+                            count: count || 0
+                        };
+                    }));
 
-            setRankingData(ranking.sort((a, b) => b.monthCount - a.monthCount).slice(0, 10));
+                    setRankingData(ranking.sort((a, b) => b.count - a.count).slice(0, 10));
+                }
+            } catch (err) {
+                logger.error('Error fetching partner ranking:', err);
+            }
 
             // Fetch Share Ranking
-            const { data: shareRanking, error: shareError } = await supabase.rpc('get_partner_share_counts', { period: sharePeriod });
-            if (shareError) throw shareError;
-            setShareRankingData(shareRanking || []);
+            try {
+                let query = supabase.from('partner_shares').select('partner_id, partner_name');
+                
+                if (sharePeriod === 'month') {
+                    query = query.gte('created_at', firstDayCurrentMonth);
+                } else if (sharePeriod === 'prev_month') {
+                    query = query.gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth);
+                }
+
+                const { data: shares, error: shareError } = await query;
+                if (shareError) throw shareError;
+
+                const ranking: { [key: string]: any } = {};
+                shares?.forEach((s: any) => {
+                    const partnerId = s.partner_id;
+                    if (!ranking[partnerId]) {
+                        ranking[partnerId] = {
+                            partner_id: partnerId,
+                            partner_name: s.partner_name || 'N/A',
+                            share_count: 0
+                        };
+                    }
+                    ranking[partnerId].share_count++;
+                });
+
+                setShareRankingData(Object.values(ranking).sort((a, b) => b.share_count - a.share_count).slice(0, 10));
+            } catch (err) {
+                logger.error('Error fetching share ranking:', err);
+            }
 
             // Fetch Click Ranking
-            const { data: clickRanking, error: clickError } = await supabase.rpc('get_partner_click_counts', { period: clickPeriod });
-            if (clickError) throw clickError;
-            
-            // Explicitly sort by total clicks (Instagram + WhatsApp) descending
-            const sortedClickRanking = (clickRanking || []).sort((a: any, b: any) => {
-                const totalA = Number(a.instagram_count || 0) + Number(a.whatsapp_count || 0);
-                const totalB = Number(b.instagram_count || 0) + Number(b.whatsapp_count || 0);
-                return totalB - totalA;
-            });
-            
-            setClickRankingData(sortedClickRanking);
+            try {
+                const { data: ranking, error: clickError } = await supabase.rpc('get_partner_click_counts', { 
+                    period: clickPeriod 
+                });
+                
+                if (clickError) throw clickError;
+                
+                setClickRankingData(ranking || []);
+            } catch (err) {
+                logger.error('Error fetching click ranking:', err);
+            }
 
             // Fetch Customer Ranking (based on Unlocked Coupons)
-            const { data: allUnlockedCoupons } = await supabase.from('unlocked_coupons').select('whatsapp, customer_name, created_at');
-            if (allUnlockedCoupons) {
-                const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+            try {
+                // Fetch both coupons and customers for better name mapping
+                const [couponsRes, customersRes] = await Promise.all([
+                    supabase.from('unlocked_coupons').select('whatsapp, customer_name, created_at'),
+                    supabase.from('customers').select('whatsapp, name')
+                ]);
 
-                const rankingMap: { [key: string]: { name: string, all: number, current: number, prev: number } } = {};
-
-                allUnlockedCoupons.forEach(coupon => {
-                    const couponDate = new Date(coupon.created_at);
-                    if (!rankingMap[coupon.whatsapp]) {
-                        rankingMap[coupon.whatsapp] = { name: coupon.customer_name || 'Sem Nome', all: 0, current: 0, prev: 0 };
-                    }
-                    
-                    rankingMap[coupon.whatsapp].all++;
-                    if (couponDate >= firstDayCurrentMonth) {
-                        rankingMap[coupon.whatsapp].current++;
-                    } else if (couponDate >= firstDayPrevMonth && couponDate <= lastDayPrevMonth) {
-                        rankingMap[coupon.whatsapp].prev++;
+                if (couponsRes.error) {
+                    throw couponsRes.error;
+                }
+                
+                const allUnlockedCoupons = couponsRes.data || [];
+                const allCustomers = customersRes.data || [];
+                
+                // Create a name map from customers table
+                const customerNameMap: { [key: string]: string } = {};
+                allCustomers.forEach(c => {
+                    if (c.whatsapp && c.name) {
+                        customerNameMap[c.whatsapp.trim()] = c.name.trim();
                     }
                 });
 
-                const sortedCustomerRanking = Object.entries(rankingMap)
-                    .map(([whatsapp, stats]) => ({
-                        whatsapp,
-                        name: stats.name,
-                        count: customerRankingPeriod === 'all' ? stats.all : 
-                               customerRankingPeriod === 'month' ? stats.current : stats.prev
-                    }))
-                    .sort((a, b) => b.count - a.count)
-                    .slice(0, 20);
+                if (allUnlockedCoupons.length > 0) {
+                    const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-                setCustomerRankingData(sortedCustomerRanking);
+                    const rankingMap: { [key: string]: { name: string, all: number, current: number, prev: number } } = {};
+
+                    allUnlockedCoupons.forEach(coupon => {
+                        const whatsapp = (coupon.whatsapp || '').trim();
+                        if (!whatsapp) return;
+                        
+                        const couponDate = new Date(coupon.created_at);
+                        
+                        if (!rankingMap[whatsapp]) {
+                            // Try to get name from: 1. Coupon record, 2. Customers table, 3. Default
+                            const name = (coupon.customer_name || customerNameMap[whatsapp] || 'Cliente').trim();
+                            rankingMap[whatsapp] = { 
+                                name: name || 'Cliente', 
+                                all: 0, 
+                                current: 0, 
+                                prev: 0 
+                            };
+                        } else if ((rankingMap[whatsapp].name === 'Cliente' || !rankingMap[whatsapp].name) && coupon.customer_name) {
+                            // Update name if we previously had 'Cliente' or empty but now found a real name
+                            rankingMap[whatsapp].name = coupon.customer_name.trim();
+                        }
+                        
+                        rankingMap[whatsapp].all++;
+                        if (couponDate >= firstDayCurrentMonth) {
+                            rankingMap[whatsapp].current++;
+                        } else if (couponDate >= firstDayPrevMonth && couponDate <= lastDayPrevMonth) {
+                            rankingMap[whatsapp].prev++;
+                        }
+                    });
+
+                    const sortedCustomerRanking = Object.entries(rankingMap)
+                        .map(([whatsapp, stats]) => ({
+                            whatsapp,
+                            name: stats.name,
+                            count: customerRankingPeriod === 'all' ? stats.all : 
+                                   customerRankingPeriod === 'month' ? stats.current : stats.prev
+                        }))
+                        .filter(item => item.count > 0)
+                        .sort((a, b) => b.count - a.count)
+                        .slice(0, 10);
+
+                    setCustomerRankingData(sortedCustomerRanking);
+                } else {
+                    setCustomerRankingData([]);
+                }
+            } catch (err) {
+                logger.error('Error in customer ranking block:', err);
+                setRankingError(err instanceof Error ? err.message : String(err));
+                setCustomerRankingData([]);
             }
         } catch (error) {
-            logger.error('Error fetching ranking:', error);
+            logger.error('Global error in fetchRanking:', error);
+        } finally {
+            setIsRankingLoading(false);
         }
     };
 
@@ -993,10 +1322,15 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             // Fetch Ranking
             let query = supabase.from('cashback_logs').select('store_name, cashback_value, cashback_label, created_at');
             
+            const now = new Date();
+            const firstDayCurrentMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+            const firstDayPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+            const lastDayPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString();
+
             if (cashbackRankingPeriod === 'month') {
-                const now = new Date();
-                const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-                query = query.gte('created_at', firstDayOfMonth);
+                query = query.gte('created_at', firstDayCurrentMonth);
+            } else if (cashbackRankingPeriod === 'prev_month') {
+                query = query.gte('created_at', firstDayPrevMonth).lte('created_at', lastDayPrevMonth);
             }
 
             const { data: allLogs } = await query;
@@ -1010,7 +1344,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
                 const sortedRanking = Object.entries(ranking)
                     .map(([name, total]) => ({ name, total }))
-                    .sort((a, b) => b.total - a.total);
+                    .sort((a, b) => b.total - a.total)
+                    .slice(0, 10);
 
                 setCashbackRankingData(sortedRanking);
             }
@@ -1040,7 +1375,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 setAboutConfig({
                     id: aboutRes.data.id,
                     history: DOMPurify.sanitize(aboutRes.data.history),
-                    logoUrl: aboutRes.data.logo_url
+                    logoUrl: aboutRes.data.logo_url,
+                    mission_vision_values: DOMPurify.sanitize(aboutRes.data.mission_vision_values || '')
                 });
             }
             if (casesRes.data) {
@@ -1151,12 +1487,15 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                 image_url: finalImageUrl,
                 images: finalImages.filter(img => img && img.startsWith('http')),
                 video_url: formData.videoUrl || null,
-                link: formData.link,
+                link: formData.link || null,
                 whatsapp_link: formData.whatsappLink || null,
+                google_review_link: formData.googleReviewLink || null,
+                website_url: formData.websiteUrl || null,
                 coupon: formData.coupon || null,
                 coupon_description: formData.couponDescription || null,
                 is_authorized: formData.isAuthorized,
                 cashback_enabled: formData.cashbackEnabled,
+                gift_card_enabled: formData.giftCardEnabled,
                 order_index: formData.orderIndex,
                 display_id: formData.displayId
             };
@@ -1190,6 +1529,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         imageUrl: finalImageUrl, 
                         images: partnerData.images,
                         videoUrl: formData.videoUrl || '',
+                        websiteUrl: formData.websiteUrl || '',
                         id: editingId, 
                         displayId: partnerData.display_id || p.displayId || 0
                     } : p).sort((a, b) => a.orderIndex - b.orderIndex));
@@ -1201,6 +1541,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         imageUrl: finalImageUrl, 
                         images: data.images || [],
                         videoUrl: data.video_url || '',
+                        websiteUrl: data.website_url || '',
                         id: editingId, 
                         displayId: data.display_id 
                     } : p).sort((a, b) => a.orderIndex - b.orderIndex));
@@ -1228,6 +1569,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         imageUrl: finalImageUrl,
                         images: partnerData.images,
                         videoUrl: formData.videoUrl || '',
+                        websiteUrl: formData.websiteUrl || '',
                         id: 'temp-' + Date.now(), // Fallback ID if DB didn't return one
                         displayId: partnerData.display_id || formData.displayId || 0
                     };
@@ -1239,6 +1581,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                         imageUrl: finalImageUrl, 
                         images: data.images || [],
                         videoUrl: data.video_url || '',
+                        websiteUrl: data.website_url || '',
                         id: data.id, 
                         displayId: data.display_id 
                     };
@@ -1270,10 +1613,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             videoUrl: '',
             link: '', 
             whatsappLink: '', 
+            googleReviewLink: '',
+            websiteUrl: '',
             coupon: '', 
             couponDescription: '', 
             isAuthorized: true, 
             cashbackEnabled: true, 
+            giftCardEnabled: false,
             orderIndex: 0, 
             displayId: nextId 
         });
@@ -1297,10 +1643,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             videoUrl: partner.videoUrl || '',
             link: partner.link,
             whatsappLink: partner.whatsappLink || '',
+            googleReviewLink: partner.googleReviewLink || '',
+            websiteUrl: partner.websiteUrl || '',
             coupon: partner.coupon || '',
             couponDescription: partner.couponDescription || '',
             isAuthorized: partner.isAuthorized,
             cashbackEnabled: partner.cashbackEnabled,
+            giftCardEnabled: partner.giftCardEnabled || false,
             orderIndex: partner.orderIndex,
             displayId: partner.displayId || 0
         });
@@ -1496,7 +1845,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
             const { error } = await supabase.from('about_config').upsert({
                 id: 1,
                 history: DOMPurify.sanitize(aboutConfig.history),
-                logo_url: finalLogoUrl
+                logo_url: finalLogoUrl,
+                mission_vision_values: DOMPurify.sanitize(aboutConfig.mission_vision_values || '')
             });
             if (error) throw error;
             setAboutConfig(prev => ({ ...prev!, logoUrl: finalLogoUrl }));
@@ -1596,6 +1946,8 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             <button onClick={() => setActiveTab('featured')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'featured' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Destaques</button>
                             <button onClick={() => setActiveTab('coupons')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'coupons' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons/Sequência</button>
                             <button onClick={() => setActiveTab('welcome')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'welcome' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Boas-vindas</button>
+                            <button onClick={() => setActiveTab('campaigns')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'campaigns' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons Surpresa</button>
+                            <button onClick={() => setActiveTab('giftcards')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'giftcards' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cartão Presente</button>
                             <Link to="/admin-mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
@@ -1611,6 +1963,19 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     </div>
                 </div>
             </div>
+            
+            {!isSupabaseAuth && localStorage.getItem('dev_bypass') === 'true' && (
+                <div className="bg-blue-50 border border-blue-200 p-4 mb-6 rounded-2xl text-blue-800 text-sm font-bold flex items-start space-x-3 shadow-sm animate-in fade-in slide-in-from-top-2">
+                    <Sparkles className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+                    <div>
+                        <p className="mb-1 uppercase tracking-tight text-[10px] sm:text-xs">Modo de Testes Ativo</p>
+                        <p className="font-medium text-blue-700/80 text-[10px] sm:text-xs">
+                            Você está no modo de acesso rápido. O salvamento de dados foi liberado para este período de testes, mesmo sem login oficial do Google. 
+                            Certifique-se de ter rodado o comando SQL de liberação no Supabase.
+                        </p>
+                    </div>
+                </div>
+            )}
 
             {activeTab === 'partners' && (
                 <>
@@ -1716,7 +2081,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     )}
                                 </div>
                                 <form onSubmit={handleAddOrUpdate} className="space-y-4">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                             <input 
                                                 type="checkbox" 
@@ -1725,7 +2090,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                 checked={formData.isAuthorized} 
                                                 onChange={e => setFormData({...formData, isAuthorized: e.target.checked})} 
                                             />
-                                            <label htmlFor="isAuthorized" className="text-sm font-bold text-slate-700 cursor-pointer">Divulgação autorizada</label>
+                                            <label htmlFor="isAuthorized" className="text-sm font-bold text-slate-700 cursor-pointer">Autorizado</label>
                                         </div>
                                         <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
                                             <input 
@@ -1735,7 +2100,17 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                                 checked={formData.cashbackEnabled} 
                                                 onChange={e => setFormData({...formData, cashbackEnabled: e.target.checked})} 
                                             />
-                                            <label htmlFor="cashbackEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Cashback Ativado</label>
+                                            <label htmlFor="cashbackEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Cashback</label>
+                                        </div>
+                                        <div className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                                            <input 
+                                                type="checkbox" 
+                                                id="giftCardEnabled" 
+                                                className="w-5 h-5 accent-[#279267] cursor-pointer" 
+                                                checked={formData.giftCardEnabled} 
+                                                onChange={e => setFormData({...formData, giftCardEnabled: e.target.checked})} 
+                                            />
+                                            <label htmlFor="giftCardEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Presente</label>
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
@@ -1770,8 +2145,10 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Atividade (Ex: Pizzaria)" value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Endereço" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
                                     <textarea rows={2} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-                                    <input required type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
+                                    <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram (Opcional)" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do WhatsApp (wa.me/...)" value={formData.whatsappLink} onChange={e => setFormData({...formData, whatsappLink: e.target.value})} />
+                                    <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link de Avaliação do Google" value={formData.googleReviewLink} onChange={e => setFormData({...formData, googleReviewLink: e.target.value})} />
+                                    <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Site/Vitrine" value={formData.websiteUrl} onChange={e => setFormData({...formData, websiteUrl: e.target.value})} />
                                     <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Cupom de Desconto (Opcional)" value={formData.coupon} onChange={e => setFormData({...formData, coupon: e.target.value})} />
                                     <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="O que o cliente ganha com o cupom? (Opcional)" value={formData.couponDescription} onChange={e => setFormData({...formData, couponDescription: e.target.value})} />
                                     
@@ -2023,6 +2400,43 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             />
                         </div>
 
+                        <div className="space-y-2">
+                            <label className="block text-sm font-bold text-slate-700">Missão, Visão e Valores</label>
+                            <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden focus-within:border-[#279267]">
+                                <Editor 
+                                    value={aboutConfig.mission_vision_values} 
+                                    onChange={e => setAboutConfig({...aboutConfig, mission_vision_values: e.target.value})} 
+                                    containerProps={{ style: { minHeight: '300px', border: 'none', width: '100%' } }}
+                                >
+                                    <Toolbar style={{ display: 'flex', flexWrap: 'wrap' }}>
+                                        <BtnUndo />
+                                        <BtnRedo />
+                                        <Separator />
+                                        <BtnBold />
+                                        <BtnItalic />
+                                        <BtnUnderline />
+                                        <BtnStrikeThrough />
+                                        <Separator />
+                                        <BtnNumberedList />
+                                        <BtnBulletList />
+                                        <Separator />
+                                        <BtnLink />
+                                        <BtnClearFormatting />
+                                        <HtmlButton />
+                                        <Separator />
+                                        <BtnStyles />
+                                        <Separator />
+                                        <input 
+                                            type="color" 
+                                            onChange={(e) => document.execCommand('foreColor', false, e.target.value)}
+                                            title="Cor do Texto"
+                                            className="w-6 h-6 p-0 border-0 cursor-pointer bg-transparent"
+                                        />
+                                    </Toolbar>
+                                </Editor>
+                            </div>
+                        </div>
+
                         <button disabled={isSubmitting} className="bg-slate-900 text-white font-black px-8 py-4 rounded-xl hover:bg-[#279267] transition-all flex items-center justify-center space-x-2 shadow-lg active:scale-95 disabled:opacity-70">
                             {isSubmitting ? <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <span>Salvar Configurações</span>}
                         </button>
@@ -2140,13 +2554,35 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
 
             {activeTab === 'ranking' && (
                 <div className="bg-white p-2 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 overflow-hidden">
-                    <div className="flex items-center space-x-3 mb-6 sm:mb-8 px-2 sm:px-0">
-                        <div className="bg-amber-100 text-amber-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
-                            <Trophy size={20} className="sm:w-6 sm:h-6" />
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
+                        <div className="flex items-center space-x-3">
+                            <div className="bg-amber-100 text-amber-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                <Trophy size={20} className="sm:w-6 sm:h-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Parceiros</h2>
+                                <p className="text-slate-500 text-[10px] sm:text-sm">Top 10 parceiros mais acessados.</p>
+                            </div>
                         </div>
-                        <div>
-                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Parceiros</h2>
-                            <p className="text-slate-500 text-[10px] sm:text-sm">Top 10 parceiros mais acessados no mês atual.</p>
+                        <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
+                            <button 
+                                onClick={() => setPartnerRankingPeriod('all')}
+                                className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${partnerRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Tudo
+                            </button>
+                            <button 
+                                onClick={() => setPartnerRankingPeriod('month')}
+                                className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${partnerRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Mês
+                            </button>
+                            <button 
+                                onClick={() => setPartnerRankingPeriod('prev_month')}
+                                className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${partnerRankingPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Anterior
+                            </button>
                         </div>
                     </div>
 
@@ -2157,33 +2593,30 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
                                     <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
                                     <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">ID QR</th>
-                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Mês</th>
-                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">7 dias</th>
+                                    <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Acessos</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {rankingData.map((item, index) => (
-                                    <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                        <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                            <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                {index + 1}
-                                            </div>
-                                        </td>
-                                        <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base truncate max-w-[120px] sm:max-w-none">{item.name}</td>
-                                        <td className="py-3 sm:py-4 px-2 sm:px-4 text-center font-mono text-slate-500 text-[10px] sm:text-sm">{item.display_id || '-'}</td>
-                                        <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
-                                            <span className="bg-green-100 text-[#279267] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
-                                                {item.monthCount}
-                                            </span>
-                                        </td>
-                                        <td className="py-3 sm:py-4 px-2 sm:px-4 text-center text-slate-400 text-[10px] sm:text-sm font-medium">
-                                            {item.weekCount}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {rankingData.length === 0 && (
-                                    <tr>
-                                        <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum dado de acesso registrado este mês.</td>
+                                {rankingData.length > 0 ? (
+                                    rankingData.map((item, index) => (
+                                        <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {index + 1}
+                                                </div>
+                                            </td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base truncate max-w-[120px] sm:max-w-none">{item.name}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-center font-mono text-slate-500 text-[10px] sm:text-sm">{item.display_id || '-'}</td>
+                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                <span className="bg-green-100 text-[#279267] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
+                                                    {item.count}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr key="empty-partners">
+                                        <td colSpan={4} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum dado de acesso registrado.</td>
                                     </tr>
                                 )}
                             </tbody>
@@ -2191,31 +2624,37 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                     </div>
 
                     <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
-                            <div className="flex items-center space-x-3">
-                                <div className="bg-blue-100 text-blue-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
-                                    <Share2 size={20} className="sm:w-6 sm:h-6" />
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
+                                <div className="flex items-center space-x-3">
+                                    <div className="bg-blue-100 text-blue-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                        <Share2 size={20} className="sm:w-6 sm:h-6" />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Compartilhamentos</h2>
+                                        <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de compartilhamentos por parceiro.</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Compartilhamentos</h2>
-                                    <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de compartilhamentos por parceiro.</p>
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
+                                    <button 
+                                        onClick={() => setSharePeriod('all')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Tudo
+                                    </button>
+                                    <button 
+                                        onClick={() => setSharePeriod('month')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Mês
+                                    </button>
+                                    <button 
+                                        onClick={() => setSharePeriod('prev_month')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Anterior
+                                    </button>
                                 </div>
                             </div>
-                            <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit">
-                                <button 
-                                    onClick={() => setSharePeriod('all')}
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    Tudo
-                                </button>
-                                <button 
-                                    onClick={() => setSharePeriod('month')}
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${sharePeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                >
-                                    Mês
-                                </button>
-                            </div>
-                        </div>
 
                         <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
                             <table className="w-full text-left border-collapse min-w-[400px] sm:min-w-full">
@@ -2227,62 +2666,80 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {shareRankingData.map((item, index) => (
-                                        <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                    {index + 1}
-                                                </div>
-                                            </td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
-                                                <span className="bg-blue-100 text-blue-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
-                                                    {item.share_count}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {shareRankingData.length === 0 && (
-                                        <tr>
+                                    {shareRankingData.length > 0 ? (
+                                        shareRankingData.map((item, index) => (
+                                            <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {index + 1}
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                    <span className="bg-blue-100 text-blue-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
+                                                        {item.share_count}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr key="empty-shares">
                                             <td colSpan={3} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum compartilhamento registrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
+                    </div>
 
-                        <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
-                                <div className="flex items-center space-x-3">
-                                    <div className="bg-green-100 text-[#279267] p-2 sm:p-3 rounded-xl sm:rounded-2xl">
-                                        <MousePointerClick size={20} className="sm:w-6 sm:h-6" />
+                    <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8 px-2 sm:px-0">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="bg-green-100 text-[#279267] p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                            <MousePointerClick size={20} className="sm:w-6 sm:h-6" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Clientes (Cupons)</h2>
+                                            <p className="text-slate-500 text-[10px] sm:text-sm">Clientes que mais desbloquearam cupons.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Clientes (Cupons)</h2>
-                                        <p className="text-slate-500 text-[10px] sm:text-sm">Clientes que mais desbloquearam cupons.</p>
+                                    <div className="flex items-center gap-2">
+                                        {rankingError && (
+                                            <div className="flex items-center space-x-2 text-red-500 bg-red-50 px-3 py-1.5 rounded-lg border border-red-100">
+                                                <AlertCircle size={14} />
+                                                <span className="text-[10px] font-bold">Erro ao carregar</span>
+                                            </div>
+                                        )}
+                                        <button 
+                                            onClick={fetchRanking}
+                                            disabled={isRankingLoading}
+                                            className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-400 hover:text-[#279267] disabled:opacity-50"
+                                            title="Atualizar Ranking"
+                                        >
+                                            <RefreshCw size={18} className={isRankingLoading ? 'animate-spin' : ''} />
+                                        </button>
+                                        <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
+                                            <button 
+                                                onClick={() => setCustomerRankingPeriod('all')}
+                                                className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Tudo
+                                            </button>
+                                            <button 
+                                                onClick={() => setCustomerRankingPeriod('month')}
+                                                className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Mês
+                                            </button>
+                                            <button 
+                                                onClick={() => setCustomerRankingPeriod('prev_month')}
+                                                className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                            >
+                                                Anterior
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
-                                    <button 
-                                        onClick={() => setCustomerRankingPeriod('all')}
-                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        Tudo
-                                    </button>
-                                    <button 
-                                        onClick={() => setCustomerRankingPeriod('month')}
-                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        Mês
-                                    </button>
-                                    <button 
-                                        onClick={() => setCustomerRankingPeriod('prev_month')}
-                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${customerRankingPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                                    >
-                                        Anterior
-                                    </button>
-                                </div>
-                            </div>
 
                             <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
                                 <table className="w-full text-left border-collapse min-w-[450px] sm:min-w-full">
@@ -2295,25 +2752,41 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {customerRankingData.map((item, index) => (
-                                            <tr key={item.whatsapp} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                        {index + 1}
+                                        {isRankingLoading ? (
+                                            <tr key="loading-customers">
+                                                <td colSpan={4} className="py-10 text-center">
+                                                    <div className="flex items-center justify-center space-x-2 text-slate-400">
+                                                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                                                        <span className="ml-2 font-bold text-xs">Carregando ranking...</span>
                                                     </div>
                                                 </td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-slate-500 font-mono text-[10px] sm:text-sm">{item.whatsapp}</td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
-                                                    <span className="bg-green-100 text-[#279267] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
-                                                        {item.count}
-                                                    </span>
-                                                </td>
                                             </tr>
-                                        ))}
-                                        {customerRankingData.length === 0 && (
-                                            <tr>
-                                                <td colSpan={4} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum cupom liberado.</td>
+                                        ) : customerRankingData.length > 0 ? (
+                                            customerRankingData.map((item, index) => (
+                                                <tr key={item.whatsapp} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {index + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-slate-500 font-mono text-[10px] sm:text-sm">{formatWhatsApp(item.whatsapp)}</td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="bg-green-100 text-[#279267] px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-sm font-bold">
+                                                            {item.count}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr key="empty-customers">
+                                                <td colSpan={4} className="py-10 sm:py-20 text-center">
+                                                    <div className="flex flex-col items-center space-y-2">
+                                                        <p className="text-slate-400 font-bold text-xs sm:text-base">Nenhum cupom liberado para este período.</p>
+                                                    </div>
+                                                </td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -2332,18 +2805,24 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                         <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de cliques (Instagram e WhatsApp) por parceiro.</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit">
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
                                     <button 
                                         onClick={() => setClickPeriod('all')}
-                                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         Tudo
                                     </button>
                                     <button 
                                         onClick={() => setClickPeriod('month')}
-                                        className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
                                         Mês
+                                    </button>
+                                    <button 
+                                        onClick={() => setClickPeriod('prev_month')}
+                                        className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${clickPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Anterior
                                     </button>
                                 </div>
                             </div>
@@ -2356,34 +2835,43 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">IG</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">WPP</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">GGL</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">VIT</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {clickRankingData.map((item, index) => (
-                                            <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                        {index + 1}
-                                                    </div>
-                                                </td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
-                                                    <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.instagram_count}</span>
-                                                </td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
-                                                    <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.whatsapp_count}</span>
-                                                </td>
-                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
-                                                    <span className="bg-purple-100 text-purple-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
-                                                        {Number(item.instagram_count) + Number(item.whatsapp_count)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                        {clickRankingData.length === 0 && (
-                                            <tr>
-                                                <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum clique registrado.</td>
+                                        {clickRankingData.length > 0 ? (
+                                            clickRankingData.map((item, index) => (
+                                                <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {index + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.instagram_count}</span>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.whatsapp_count}</span>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.google_count || 0}</span>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.website_count || 0}</span>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="bg-purple-100 text-purple-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
+                                                            {Number(item.instagram_count) + Number(item.whatsapp_count) + Number(item.google_count || 0) + Number(item.website_count || 0)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr key="empty-clicks">
+                                                <td colSpan={6} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum clique registrado.</td>
                                             </tr>
                                         )}
                                     </tbody>
@@ -2391,8 +2879,7 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
 
             {activeTab === 'cashback' && (
                 <div className="space-y-6 sm:space-y-8">
@@ -2459,18 +2946,24 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <p className="text-slate-500 text-[10px] sm:text-sm">Somatório de valores ganhos por parceiro.</p>
                                 </div>
                             </div>
-                            <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit">
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
                                 <button 
                                     onClick={() => setCashbackRankingPeriod('all')}
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Tudo
                                 </button>
                                 <button 
                                     onClick={() => setCashbackRankingPeriod('month')}
-                                    className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     Mês
+                                </button>
+                                <button 
+                                    onClick={() => setCashbackRankingPeriod('prev_month')}
+                                    className={`whitespace-nowrap px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${cashbackRankingPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                >
+                                    Anterior
                                 </button>
                             </div>
                         </div>
@@ -2485,26 +2978,27 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {cashbackRankingData.map((item, index) => (
-                                        <tr key={item.name} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                <span className={`w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full text-[10px] sm:text-xs font-black ${
-                                                    index === 0 ? 'bg-yellow-100 text-yellow-700' : 
-                                                    index === 1 ? 'bg-slate-200 text-slate-700' : 
-                                                    index === 2 ? 'bg-amber-100 text-amber-700' : 
-                                                    'bg-slate-100 text-slate-500'
-                                                }`}>
-                                                    {index + 1}º
-                                                </span>
-                                            </td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-right">
-                                                <span className="text-[#279267] font-black text-[11px] sm:text-base">R$ {item.total.toFixed(2)}</span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {cashbackRankingData.length === 0 && (
-                                        <tr>
+                                    {cashbackRankingData.length > 0 ? (
+                                        cashbackRankingData.map((item, index) => (
+                                            <tr key={item.name} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                    <span className={`w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center rounded-full text-[10px] sm:text-xs font-black ${
+                                                        index === 0 ? 'bg-yellow-100 text-yellow-700' : 
+                                                        index === 1 ? 'bg-slate-200 text-slate-700' : 
+                                                        index === 2 ? 'bg-amber-100 text-amber-700' : 
+                                                        'bg-slate-100 text-slate-500'
+                                                    }`}>
+                                                        {index + 1}º
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-right">
+                                                    <span className="text-[#279267] font-black text-[11px] sm:text-base">R$ {item.total.toFixed(2)}</span>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr key="empty-cashback">
                                             <td colSpan={3} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum cashback registrado.</td>
                                         </tr>
                                     )}
@@ -2536,23 +3030,24 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {cashbackLogs.map((log) => (
-                                        <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm text-slate-500">
-                                                {new Date(log.created_at).toLocaleString('pt-BR')}
-                                            </td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{log.store_name}</td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-[#279267]">{log.whatsapp}</td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                <span className="text-[#279267] font-black text-[11px] sm:text-base">
-                                                    {log.cashback_label ? log.cashback_label : `R$ ${parseCashbackValue(log.cashback_label, log.cashback_value).toFixed(2)}`}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-mono text-slate-400">{log.ip_address}</td>
-                                        </tr>
-                                    ))}
-                                    {cashbackLogs.length === 0 && (
-                                        <tr>
+                                    {cashbackLogs.length > 0 ? (
+                                        cashbackLogs.map((log) => (
+                                            <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm text-slate-500">
+                                                    {new Date(log.created_at).toLocaleString('pt-BR')}
+                                                </td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{log.store_name}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm font-bold text-[#279267]">{formatWhatsApp(log.whatsapp)}</td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                    <span className="text-[#279267] font-black text-[11px] sm:text-base">
+                                                        {log.cashback_label ? log.cashback_label : `R$ ${parseCashbackValue(log.cashback_label, log.cashback_value).toFixed(2)}`}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-mono text-slate-400">{log.ip_address}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr key="empty-logs">
                                             <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum log registrado.</td>
                                         </tr>
                                     )}
@@ -2597,59 +3092,237 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {partners.map((partner) => {
-                                    const currentEdit = couponEdits[partner.id] || {
-                                        orderIndex: partner.orderIndex,
-                                        coupon: partner.coupon || '',
-                                        couponDescription: partner.couponDescription || ''
-                                    };
-                                    return (
-                                        <tr key={partner.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="p-4">
-                                                <div className="flex items-center space-x-3">
-                                                    <img src={partner.imageUrl} alt={partner.name} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
-                                                    <div>
-                                                        <p className="font-bold text-slate-900 text-sm">{partner.name}</p>
-                                                        <p className="text-[10px] font-black text-[#279267] uppercase tracking-widest">{partner.category}</p>
+                                {partners.length > 0 ? (
+                                    partners.map((partner) => {
+                                        const currentEdit = couponEdits[partner.id] || {
+                                            orderIndex: partner.orderIndex,
+                                            coupon: partner.coupon || '',
+                                            couponDescription: partner.couponDescription || ''
+                                        };
+                                        return (
+                                            <tr key={partner.id} className="hover:bg-slate-50/50 transition-colors">
+                                                <td className="p-4">
+                                                    <div className="flex items-center space-x-3">
+                                                        <img src={partner.imageUrl} alt={partner.name} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                                                        <div>
+                                                            <p className="font-bold text-slate-900 text-sm">{partner.name}</p>
+                                                            <p className="text-[10px] font-black text-[#279267] uppercase tracking-widest">{partner.category}</p>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="p-4">
-                                                <input 
-                                                    type="number" 
-                                                    value={currentEdit.orderIndex}
-                                                    onChange={(e) => handleCouponChange(partner.id, 'orderIndex', parseInt(e.target.value) || 0)}
-                                                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
-                                                />
-                                            </td>
-                                            <td className="p-4">
-                                                <input 
-                                                    type="text" 
-                                                    value={currentEdit.coupon}
-                                                    placeholder="Ex: PROMO10"
-                                                    onChange={(e) => handleCouponChange(partner.id, 'coupon', e.target.value)}
-                                                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
-                                                />
-                                            </td>
-                                            <td className="p-4">
-                                                <input 
-                                                    type="text" 
-                                                    value={currentEdit.couponDescription}
-                                                    placeholder="Ex: 10% de desconto"
-                                                    onChange={(e) => handleCouponChange(partner.id, 'couponDescription', e.target.value)}
-                                                    className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
-                                                />
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {partners.length === 0 && (
-                                    <tr>
+                                                </td>
+                                                <td className="p-4">
+                                                    <input 
+                                                        type="number" 
+                                                        value={currentEdit.orderIndex}
+                                                        onChange={(e) => handleCouponChange(partner.id, 'orderIndex', parseInt(e.target.value) || 0)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                    />
+                                                </td>
+                                                <td className="p-4">
+                                                    <input 
+                                                        type="text" 
+                                                        value={currentEdit.coupon}
+                                                        placeholder="Ex: PROMO10"
+                                                        onChange={(e) => handleCouponChange(partner.id, 'coupon', e.target.value)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                    />
+                                                </td>
+                                                <td className="p-4">
+                                                    <input 
+                                                        type="text" 
+                                                        value={currentEdit.couponDescription}
+                                                        placeholder="Ex: 10% de desconto"
+                                                        onChange={(e) => handleCouponChange(partner.id, 'couponDescription', e.target.value)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                    />
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr key="empty-partners-list">
                                         <td colSpan={4} className="py-12 text-center text-slate-400 font-bold">Nenhum parceiro cadastrado.</td>
                                     </tr>
                                 )}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'giftcards' && (
+                <div className="space-y-6">
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-purple-100 text-purple-600 p-2 rounded-xl">
+                                    <DollarSign size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg sm:text-2xl font-black text-slate-900">Gestão de Cartões Presente</h2>
+                                    <p className="text-slate-500 text-[10px] sm:text-sm">Atualize valores e status de ativação dos cartões.</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={fetchGiftCards}
+                                disabled={isLoadingGiftCards}
+                                className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
+                            >
+                                <RefreshCw size={18} className={isLoadingGiftCards ? 'animate-spin' : ''} />
+                                <span>Atualizar Lista</span>
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Número</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Valor (R$)</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {isLoadingGiftCards ? (
+                                        <tr>
+                                            <td colSpan={4} className="p-12 text-center">
+                                                <RefreshCw size={32} className="animate-spin text-purple-600 mx-auto mb-2" />
+                                                <p className="text-slate-400 font-bold">Carregando cartões...</p>
+                                            </td>
+                                        </tr>
+                                    ) : giftCards.slice(giftCardPage * 10, (giftCardPage + 1) * 10).map((card) => (
+                                        <tr key={card.card_number} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                            <td className="p-4 font-mono font-bold text-slate-900">{card.card_number}</td>
+                                            <td className="p-4">
+                                                <input 
+                                                    type="number"
+                                                    value={card.value}
+                                                    onChange={(e) => handleUpdateGiftCard(card.card_number, 'value', parseFloat(e.target.value) || 0)}
+                                                    className="w-32 px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] font-bold"
+                                                />
+                                            </td>
+                                            <td className="p-4">
+                                                <select 
+                                                    value={card.is_active ? 'true' : 'false'}
+                                                    onChange={(e) => handleUpdateGiftCard(card.card_number, 'is_active', e.target.value === 'true')}
+                                                    className={`px-3 py-2 rounded-lg border outline-none font-bold text-xs ${card.is_active ? 'bg-green-50 border-green-200 text-green-700' : 'bg-red-50 border-red-200 text-red-700'}`}
+                                                >
+                                                    <option value="true">ATIVO</option>
+                                                    <option value="false">INATIVO</option>
+                                                </select>
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                {isUpdatingGiftCard === card.card_number ? (
+                                                    <RefreshCw size={16} className="animate-spin text-slate-400 mx-auto" />
+                                                ) : (
+                                                    <div className="w-4 h-4 rounded-full bg-green-500 mx-auto shadow-sm shadow-green-200"></div>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="mt-8 flex items-center justify-center space-x-4">
+                            <button 
+                                onClick={() => setGiftCardPage(prev => Math.max(0, prev - 1))}
+                                disabled={giftCardPage === 0}
+                                className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                            >
+                                <ChevronLeft size={24} />
+                            </button>
+                            <div className="flex items-center space-x-2">
+                                <span className="text-sm font-bold text-slate-900">Página {giftCardPage + 1}</span>
+                                <span className="text-xs text-slate-400">de {Math.ceil(giftCards.length / 10)}</span>
+                            </div>
+                            <button 
+                                onClick={() => setGiftCardPage(prev => Math.min(Math.ceil(giftCards.length / 10) - 1, prev + 1))}
+                                disabled={giftCardPage >= Math.ceil(giftCards.length / 10) - 1}
+                                className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                            >
+                                <ChevronRight size={24} />
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-green-100 text-green-600 p-2 rounded-xl">
+                                    <History size={24} />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg sm:text-2xl font-black text-slate-900">Visualização de Cartões Ativos</h2>
+                                    <p className="text-slate-500 text-[10px] sm:text-sm">Consulte todos os cartões que já foram ativados pelos clientes.</p>
+                                </div>
+                            </div>
+                            <button 
+                                onClick={fetchActiveGiftCards}
+                                disabled={isLoadingActiveGiftCards}
+                                className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
+                            >
+                                <RefreshCw size={18} className={isLoadingActiveGiftCards ? 'animate-spin' : ''} />
+                                <span>Atualizar</span>
+                            </button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            {activeGiftCardsError && (
+                                <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center space-x-3 text-red-600">
+                                    <AlertCircle size={20} />
+                                    <span className="text-sm font-bold">Erro ao carregar: {activeGiftCardsError}</span>
+                                </div>
+                            )}
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="border-b border-slate-100">
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Número</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Valor</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">WhatsApp</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loja</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Expiração</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {isLoadingActiveGiftCards ? (
+                                        <tr>
+                                            <td colSpan={7} className="p-12 text-center">
+                                                <RefreshCw size={32} className="animate-spin text-[#279267] mx-auto mb-2" />
+                                                <p className="text-slate-400 font-bold">Carregando dados...</p>
+                                            </td>
+                                        </tr>
+                                    ) : activeGiftCards.length > 0 ? (
+                                        activeGiftCards.map((card) => (
+                                            <tr key={card.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                <td className="p-4 font-mono font-bold text-slate-900">{card.card_number}</td>
+                                                <td className="p-4 font-bold text-[#279267]">
+                                                    {card.gift_cards?.value ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(card.gift_cards.value) : 'N/A'}
+                                                </td>
+                                                <td className="p-4 text-sm text-slate-600">{card.customer_name}</td>
+                                                <td className="p-4 text-sm text-slate-600">{formatWhatsApp(card.whatsapp)}</td>
+                                                <td className="p-4 text-sm text-slate-600 font-bold">{card.partners?.name || 'N/A'}</td>
+                                                <td className="p-4">
+                                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${card.used ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                                        {card.used ? 'USADO' : 'NÃO USADO'}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-sm text-slate-500">
+                                                    {(!card.used && card.expires_at) ? new Date(card.expires_at).toLocaleDateString('pt-BR') : '-'}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão ativo encontrado.</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             )}
@@ -2771,7 +3444,13 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                         type="button"
                                         onClick={() => {
                                             setEditingWelcomeId(null);
-                                            setWelcomeFormData({ ref_id: '', title: '', message: '', logo_url: '', logoFile: null });
+                                            setWelcomeFormData({ 
+                                                ref_id: '', 
+                                                title: '', 
+                                                message: '', 
+                                                logo_url: '', 
+                                                logoFile: null
+                                            });
                                         }}
                                         className="px-8 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
                                     >
@@ -2815,17 +3494,23 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                         </button>
                                     </div>
 
-                                    <div className="flex items-center space-x-4 mb-4">
-                                        <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center p-1 overflow-hidden">
-                                            {msg.logo_url ? (
-                                                <img src={msg.logo_url} alt="Logo" className="w-full h-full object-contain" />
-                                            ) : (
-                                                <Sparkles className="text-[#279267]" size={20} />
-                                            )}
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center p-1 overflow-hidden">
+                                                {msg.logo_url ? (
+                                                    <img src={msg.logo_url} alt="Logo" className="w-full h-full object-contain" />
+                                                ) : (
+                                                    <Sparkles className="text-[#279267]" size={20} />
+                                                )}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-slate-900 leading-tight">{msg.title}</h3>
+                                                <p className="text-[10px] font-mono text-[#279267] font-bold uppercase tracking-wider">ref={msg.ref_id}</p>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h3 className="font-black text-slate-900 leading-tight">{msg.title}</h3>
-                                            <p className="text-[10px] font-mono text-[#279267] font-bold uppercase tracking-wider">ref={msg.ref_id}</p>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-xs font-black text-slate-900">{welcomeAccessCounts[msg.ref_id] || 0}</span>
+                                            <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">Acessos</span>
                                         </div>
                                     </div>
 
@@ -2859,6 +3544,274 @@ const AdminPage = ({ partners, setPartners, categories, setCategories, commercia
                                     <p className="text-slate-400 text-sm">Crie sua primeira mensagem acima.</p>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'campaigns' && (
+                <div className="space-y-8 sm:space-y-12">
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="bg-[#279267]/10 p-2 rounded-xl">
+                                <Gift className="text-[#279267]" size={24} />
+                            </div>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">
+                                {editingCampaignId ? 'Editar Campanha de Cupom' : 'Nova Campanha de Cupom'}
+                            </h2>
+                        </div>
+
+                        <form onSubmit={handleAddOrUpdateCampaign} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Hash size={16} className="mr-2 text-slate-400" />
+                                        ID de Referência (Slug da URL)
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={campaignFormData.ref_id}
+                                        onChange={(e) => setCampaignFormData({ ...campaignFormData, ref_id: e.target.value.toLowerCase().replace(/\s+/g, '-') })}
+                                        placeholder="Ex: cupom-especial, oferta-natal"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all font-mono"
+                                    />
+                                    <p className="text-[10px] text-slate-400">Este será o valor usado na URL: /#/v/{campaignFormData.ref_id || 'slug-aqui'}</p>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Type size={16} className="mr-2 text-slate-400" />
+                                        Título da Campanha
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        required
+                                        value={campaignFormData.title}
+                                        onChange={(e) => setCampaignFormData({ ...campaignFormData, title: e.target.value })}
+                                        placeholder="Ex: Seu Cupom Especial Chegou!"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center">
+                                    <FileText size={16} className="mr-2 text-slate-400" />
+                                    Mensagem de Boas-vindas
+                                </label>
+                                <textarea 
+                                    required
+                                    rows={3}
+                                    value={campaignFormData.message}
+                                    onChange={(e) => setCampaignFormData({ ...campaignFormData, message: e.target.value })}
+                                    placeholder="Escreva a mensagem que aparecerá no topo da página..."
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all resize-none"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Store size={16} className="mr-2 text-slate-400" />
+                                        Loja Parceira
+                                    </label>
+                                    <select 
+                                        required
+                                        value={campaignFormData.partner_id || ''}
+                                        onChange={(e) => setCampaignFormData({ ...campaignFormData, partner_id: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all"
+                                    >
+                                        <option value="">Selecione uma loja...</option>
+                                        {partners.map(p => (
+                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Gift size={16} className="mr-2 text-slate-400" />
+                                        Código do Cupom (Personalizado)
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={campaignFormData.custom_coupon || ''}
+                                        onChange={(e) => setCampaignFormData({ ...campaignFormData, custom_coupon: e.target.value })}
+                                        placeholder="Ex: BEMVINDO10"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all font-mono"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Sparkles size={16} className="mr-2 text-slate-400" />
+                                        Descrição do Benefício
+                                    </label>
+                                    <input 
+                                        type="text" 
+                                        value={campaignFormData.custom_description || ''}
+                                        onChange={(e) => setCampaignFormData({ ...campaignFormData, custom_description: e.target.value })}
+                                        placeholder="Ex: 10% de desconto na primeira compra"
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 flex items-center">
+                                        <Calendar size={16} className="mr-2 text-slate-400" />
+                                        Data de Validade (Opcional)
+                                    </label>
+                                    <input 
+                                        type="date" 
+                                        value={campaignFormData.expires_at || ''}
+                                        onChange={(e) => setCampaignFormData({ ...campaignFormData, expires_at: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all"
+                                    />
+                                    <p className="text-[10px] text-slate-400">Se vazio, usará a regra padrão de 7 dias.</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 flex items-center">
+                                    <ImageIcon size={16} className="mr-2 text-slate-400" />
+                                    Logotipo ou Imagem da Campanha (Opcional)
+                                </label>
+                                <div className="flex items-center space-x-4">
+                                    <div className="flex-1">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*"
+                                            onChange={(e) => setCampaignFormData({ ...campaignFormData, logoFile: e.target.files?.[0] || null })}
+                                            className="hidden"
+                                            id="campaign-logo-upload"
+                                        />
+                                        <label 
+                                            htmlFor="campaign-logo-upload"
+                                            className="flex items-center justify-center space-x-2 px-4 py-3 bg-slate-50 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 hover:border-[#279267] transition-all group"
+                                        >
+                                            <Upload size={20} className="text-slate-400 group-hover:text-[#279267]" />
+                                            <span className="text-sm font-bold text-slate-500 group-hover:text-slate-700">
+                                                {campaignFormData.logoFile ? campaignFormData.logoFile.name : 'Selecionar Imagem'}
+                                            </span>
+                                        </label>
+                                    </div>
+                                    {(campaignFormData.logoFile || campaignFormData.logo_url) && (
+                                        <div className="w-12 h-12 rounded-lg bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center p-1">
+                                            <img 
+                                                src={campaignFormData.logoFile ? URL.createObjectURL(campaignFormData.logoFile) : campaignFormData.logo_url!} 
+                                                alt="Preview" 
+                                                className="w-full h-full object-contain"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4 pt-4">
+                                <button 
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="flex-1 py-4 bg-[#279267] text-white font-black rounded-2xl shadow-lg shadow-green-900/20 hover:bg-green-700 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                                >
+                                    {isSubmitting ? (
+                                        <div className="w-6 h-6 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                    ) : (
+                                        <>
+                                            <Save size={20} />
+                                            <span>{editingCampaignId ? 'Atualizar Campanha' : 'Salvar Campanha'}</span>
+                                        </>
+                                    )}
+                                </button>
+                                {editingCampaignId && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setEditingCampaignId(null);
+                                            setCampaignFormData({ 
+                                                ref_id: '', 
+                                                title: '', 
+                                                message: '', 
+                                                logo_url: '', 
+                                                logoFile: null,
+                                                partner_id: '',
+                                                custom_coupon: '',
+                                                custom_description: '',
+                                                expires_at: ''
+                                            });
+                                        }}
+                                        className="px-8 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
+                                    >
+                                        Cancelar
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center">
+                            <List size={24} className="mr-2 text-[#279267]" />
+                            Campanhas Ativas
+                        </h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {couponCampaigns.map(campaign => (
+                                <div key={campaign.id} className="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:border-[#279267] transition-all group">
+                                    <div className="flex items-center space-x-3 mb-3">
+                                        <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center overflow-hidden">
+                                            {campaign.logo_url ? (
+                                                <img src={campaign.logo_url} alt="" className="w-full h-full object-contain" />
+                                            ) : (
+                                                <Gift size={20} className="text-slate-300" />
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="text-sm font-black text-slate-900 truncate">{campaign.title}</h4>
+                                            <p className="text-[10px] font-mono text-slate-500">/#/v/{campaign.ref_id}</p>
+                                            {campaign.expires_at && (
+                                                <p className="text-[9px] font-bold text-amber-600 mt-1 flex items-center">
+                                                    <Calendar size={10} className="mr-1" />
+                                                    Expira em: {new Date(campaign.expires_at).toLocaleDateString('pt-BR')}
+                                                </p>
+                                            )}
+                                        </div>
+                                        <div className="flex flex-col items-end">
+                                            <span className="text-[10px] font-black text-[#279267] bg-[#279267]/10 px-2 py-0.5 rounded-full">
+                                                {couponCampaignAccessCounts[campaign.ref_id] || 0} acessos
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between pt-3 border-t border-slate-200">
+                                        <div className="flex space-x-2">
+                                            <button 
+                                                onClick={() => handleEditCampaign(campaign)}
+                                                className="p-2 text-slate-400 hover:text-[#279267] hover:bg-white rounded-lg transition-all"
+                                                title="Editar"
+                                            >
+                                                <Edit2 size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleRemoveCampaign(campaign.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                                                title="Remover"
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                        <button 
+                                            onClick={() => {
+                                                const url = `${window.location.origin}${window.location.pathname}#/v/${campaign.ref_id}`;
+                                                navigator.clipboard.writeText(url);
+                                                alert("Link copiado!");
+                                            }}
+                                            className="flex items-center space-x-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-[#279267] hover:text-[#279267] transition-all"
+                                        >
+                                            <Copy size={12} />
+                                            <span>Copiar Link</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -2910,11 +3863,129 @@ const App = () => {
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
     const [featuredCoupons, setFeaturedCoupons] = useState<FeaturedCoupon[]>([]);
     const [welcomeMessages, setWelcomeMessages] = useState<WelcomeMessage[]>([]);
+    const [welcomeAccessCounts, setWelcomeAccessCounts] = useState<Record<string, number>>({});
+    const [couponCampaigns, setCouponCampaigns] = useState<CouponCampaign[]>([]);
+    const [couponCampaignAccessCounts, setCouponCampaignAccessCounts] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
+    const [showGiftCardModal, setShowGiftCardModal] = useState(false);
+    const [giftCardNumber, setGiftCardNumber] = useState('');
+    const [giftCardToken, setGiftCardToken] = useState('');
+    const [giftCards, setGiftCards] = useState<any[]>([]);
+    const [isLoadingGiftCards, setIsLoadingGiftCards] = useState(false);
+    const [activeGiftCards, setActiveGiftCards] = useState<any[]>([]);
+    const [isLoadingActiveGiftCards, setIsLoadingActiveGiftCards] = useState(false);
+    const [activeGiftCardsError, setActiveGiftCardsError] = useState<string | null>(null);
+    const [isUpdatingGiftCard, setIsUpdatingGiftCard] = useState<string | null>(null);
+
+    useEffect(() => {
+        // Detect /presente/XXX-TOKEN or /presenteXXX path
+        const checkPath = (p: string) => {
+            // New secure format: /presente/001-AbC123
+            const secureMatch = p.match(/\/presente\/(\d{3})-([a-zA-Z0-9]{6})/);
+            if (secureMatch) {
+                setGiftCardNumber(secureMatch[1]);
+                setGiftCardToken(secureMatch[2]);
+                setShowGiftCardModal(true);
+                return true;
+            }
+
+            // Legacy format: /presente001
+            const legacyMatch = p.match(/\/presente(\d{3})/);
+            if (legacyMatch) {
+                setGiftCardNumber(legacyMatch[1]);
+                setGiftCardToken(''); // No token for legacy
+                setShowGiftCardModal(true);
+                return true;
+            }
+            return false;
+        };
+
+        if (!checkPath(window.location.pathname)) {
+            checkPath(window.location.hash);
+        }
+    }, []);
 
     useEffect(() => {
         fetchData();
+        fetchGiftCards();
+        fetchActiveGiftCards();
     }, []);
+
+    const fetchActiveGiftCards = async () => {
+        setIsLoadingActiveGiftCards(true);
+        setActiveGiftCardsError(null);
+        try {
+            // Try to fetch with joins, but fall back if it fails (likely due to missing foreign keys)
+            const { data: enrichedData, error: enrichedError } = await supabase
+                .from('active_gift_cards')
+                .select('*, partners(name), gift_cards(value)')
+                .order('id', { ascending: false });
+            
+            if (enrichedError) {
+                logger.warn('Enriched fetch failed, falling back to simple fetch:', enrichedError);
+                const { data: simpleData, error: simpleError } = await supabase
+                    .from('active_gift_cards')
+                    .select('*')
+                    .order('id', { ascending: false });
+                
+                if (simpleError) {
+                    logger.error('Simple fetch also failed:', simpleError);
+                    setActiveGiftCardsError(simpleError.message);
+                    throw simpleError;
+                }
+                setActiveGiftCards(simpleData || []);
+            } else {
+                setActiveGiftCards(enrichedData || []);
+            }
+        } catch (error: any) {
+            logger.error('Error fetching active gift cards:', error);
+            setActiveGiftCardsError(error.message || 'Erro desconhecido ao buscar cartões ativos.');
+        } finally {
+            setIsLoadingActiveGiftCards(false);
+        }
+    };
+
+    const fetchGiftCards = async () => {
+        setIsLoadingGiftCards(true);
+        try {
+            const { data, error } = await supabase
+                .from('gift_cards')
+                .select('*')
+                .order('card_number', { ascending: true });
+            if (error) throw error;
+            setGiftCards(data || []);
+        } catch (error) {
+            logger.error('Error fetching gift cards:', error);
+        } finally {
+            setIsLoadingGiftCards(false);
+        }
+    };
+
+    const handleUpdateGiftCard = async (cardNumber: string, field: string, value: any) => {
+        setIsUpdatingGiftCard(cardNumber);
+        try {
+            const { data, error } = await supabase
+                .from('gift_cards')
+                .update({ [field]: value })
+                .eq('card_number', cardNumber)
+                .select();
+            
+            if (error) throw error;
+            
+            if (!data || data.length === 0) {
+                throw new Error('Nenhum registro encontrado para este número de cartão.');
+            }
+            
+            setGiftCards(prev => prev.map(card => 
+                card.card_number === cardNumber ? { ...card, [field]: value } : card
+            ));
+        } catch (error: any) {
+            logger.error('Error updating gift card:', error);
+            alert(`Erro ao atualizar cartão: ${error.message || 'Erro desconhecido'}`);
+        } finally {
+            setIsUpdatingGiftCard(null);
+        }
+    };
 
     useEffect(() => {
         if (!loading && partners.length > 0) {
@@ -2946,12 +4017,15 @@ const App = () => {
 
     const fetchData = async () => {
         try {
-            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes] = await Promise.all([
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes] = await Promise.all([
                 supabase.from('partners').select('*').order('order_index', { ascending: true }),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
-                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false })
+                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }),
+                supabase.from('welcome_access_logs').select('ref_id'),
+                supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
+                supabase.from('coupon_campaign_access_logs').select('ref_id')
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
@@ -2970,10 +4044,13 @@ const App = () => {
                     videoUrl: p.video_url || '',
                     link: p.link,
                     whatsappLink: p.whatsapp_link,
+                    googleReviewLink: p.google_review_link,
+                    websiteUrl: p.website_url,
                     coupon: p.coupon,
                     couponDescription: p.coupon_description,
                     isAuthorized: p.is_authorized ?? true,
                     cashbackEnabled: p.cashback_enabled ?? true,
+                    giftCardEnabled: p.gift_card_enabled ?? false,
                     orderIndex: p.order_index ?? 0,
                     displayId: p.display_id || 0
                 }));
@@ -2990,6 +4067,26 @@ const App = () => {
 
             if (welcomeMessagesRes.data) {
                 setWelcomeMessages(welcomeMessagesRes.data);
+            }
+
+            if (welcomeAccessLogsRes.data) {
+                const counts: Record<string, number> = {};
+                welcomeAccessLogsRes.data.forEach(log => {
+                    counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
+                });
+                setWelcomeAccessCounts(counts);
+            }
+
+            if (couponCampaignsRes.data) {
+                setCouponCampaigns(couponCampaignsRes.data);
+            }
+
+            if (couponCampaignAccessLogsRes.data) {
+                const counts: Record<string, number> = {};
+                couponCampaignAccessLogsRes.data.forEach(log => {
+                    counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
+                });
+                setCouponCampaignAccessCounts(counts);
             }
 
             if (bannerRes.data) {
@@ -3032,6 +4129,22 @@ const App = () => {
             language="pt-BR"
         >
             <Router>
+                <AnimatePresence>
+                    {showGiftCardModal && (
+                        <GiftCardModal 
+                            isOpen={showGiftCardModal}
+                            cardNumber={giftCardNumber}
+                            accessToken={giftCardToken}
+                            onClose={() => {
+                                setShowGiftCardModal(false);
+                                setGiftCardNumber('');
+                                setGiftCardToken('');
+                            }}
+                            partners={partners}
+                            headerLogo={headerLogo}
+                        />
+                    )}
+                </AnimatePresence>
                 <AnalyticsTracker />
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
@@ -3043,9 +4156,38 @@ const App = () => {
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
+                        <Route path="/v/:refId" element={<WelcomePage partners={partners} />} />
                         <Route path="/admin" element={
                             <ProtectedRoute>
-                                <AdminPage partners={partners} setPartners={setPartners} categories={categories} setCategories={setCategories} commercialBanners={commercialBanners} setCommercialBanners={setCommercialBanners} headerLogo={headerLogo} setHeaderLogo={setHeaderLogo} featuredCoupons={featuredCoupons} setFeaturedCoupons={setFeaturedCoupons} welcomeMessages={welcomeMessages} setWelcomeMessages={setWelcomeMessages} />
+                                <AdminPage 
+                                    partners={partners} 
+                                    setPartners={setPartners} 
+                                    categories={categories} 
+                                    setCategories={setCategories} 
+                                    commercialBanners={commercialBanners} 
+                                    setCommercialBanners={setCommercialBanners} 
+                                    headerLogo={headerLogo} 
+                                    setHeaderLogo={setHeaderLogo} 
+                                    featuredCoupons={featuredCoupons} 
+                                    setFeaturedCoupons={setFeaturedCoupons} 
+                                    welcomeMessages={welcomeMessages} 
+                                    setWelcomeMessages={setWelcomeMessages}
+                                    welcomeAccessCounts={welcomeAccessCounts}
+                                    couponCampaigns={couponCampaigns}
+                                    setCouponCampaigns={setCouponCampaigns}
+                                    couponCampaignAccessCounts={couponCampaignAccessCounts}
+                                    giftCards={giftCards}
+                                    setGiftCards={setGiftCards}
+                                    isLoadingGiftCards={isLoadingGiftCards}
+                                    fetchGiftCards={fetchGiftCards}
+                                    activeGiftCards={activeGiftCards}
+                                    isLoadingActiveGiftCards={isLoadingActiveGiftCards}
+                                    activeGiftCardsError={activeGiftCardsError}
+                                    fetchActiveGiftCards={fetchActiveGiftCards}
+                                    handleUpdateGiftCard={handleUpdateGiftCard}
+                                    isUpdatingGiftCard={isUpdatingGiftCard}
+                                    setIsUpdatingGiftCard={setIsUpdatingGiftCard}
+                                />
                             </ProtectedRoute>
                         } />
                         <Route path="/admin-mensagens" element={

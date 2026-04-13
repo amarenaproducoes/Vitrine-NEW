@@ -24,7 +24,7 @@ const PrivacyPolicyPage: React.FC = () => {
             </div>
             <h1 className="text-3xl md:text-4xl font-black text-white mb-4">Política de Privacidade</h1>
             <p className="text-slate-400 max-w-2xl mx-auto">
-              Sua privacidade e a segurança dos seus dados são nossa prioridade máxima. 
+              Sua privacidade e a segurança dos seus dados são nossa prioridade máxima na região de Vila Formosa. 
               Conheça como tratamos suas informações em conformidade com a LGPD.
             </p>
           </div>
@@ -54,10 +54,11 @@ const PrivacyPolicyPage: React.FC = () => {
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Identificação:</strong> Nome completo ou nome da empresa.</li>
                 <li><strong>Contato:</strong> Número de WhatsApp.</li>
+                <li><strong>Dados de Cartão Presente:</strong> Número do cartão, parceiro selecionado para resgate e status de utilização.</li>
                 <li><strong>Dados Técnicos:</strong> Endereço IP, tipo de navegador, logs de acesso e origem do acesso via IDs de referência (ex: QR Codes em veículos ou vestuário).</li>
                 <li><strong>Interação:</strong> Mensagens enviadas através de nossos formulários.</li>
               </ul>
-              <p className="mb-4"><strong>Finalidade:</strong> Seus dados são utilizados para viabilizar o contato comercial, enviar informações sobre promoções e benefícios locais (marketing direto), garantir a segurança do site contra bots (via reCAPTCHA), realizar auditoria interna de resgates de cupons e mensurar a eficácia de diferentes pontos de divulgação física através de IDs de referência.</p>
+              <p className="mb-4"><strong>Finalidade:</strong> Seus dados são utilizados para viabilizar o contato comercial, enviar informações sobre promoções, cupons, cashback e benefícios locais em Vila Formosa (marketing direto), garantir a segurança do site contra bots (via reCAPTCHA), realizar auditoria interna de resgates de cupons e mensurar a eficácia de diferentes pontos de divulgação física através de IDs de referência.</p>
             </section>
 
             <section>
@@ -151,7 +152,7 @@ const PrivacyPolicyPage: React.FC = () => {
 
             <div className="pt-8 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-400">
-                Última atualização: 03 de Abril de 2026.<br />
+                Última atualização: 10 de Abril de 2026.<br />
                 Aparece aí por aqui - Todos os direitos reservados.
               </p>
             </div>
