@@ -7,7 +7,7 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { CashbackConfig } from '../types';
 import { logger } from '../lib/logger';
 import { supabase } from '../lib/supabase';
-import { formatWhatsApp } from '../lib/format';
+import { formatWhatsApp, getCleanWhatsApp } from '../lib/format';
 
 interface RouletteModalProps {
   isOpen: boolean;
@@ -94,7 +94,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
 
   useEffect(() => {
     const searchName = async () => {
-      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const cleanWhatsapp = getCleanWhatsApp(whatsapp);
       if (cleanWhatsapp.length === 11) {
         setIsSearchingName(true);
         try {
@@ -138,7 +138,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
 
     // Save/Update customer name
     try {
-      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const cleanWhatsapp = getCleanWhatsApp(whatsapp);
       
       let onesignalId = null;
       try {

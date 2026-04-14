@@ -1,9 +1,24 @@
 -- ===============================================================
 -- AUDITORIA E REFORÇO DE SEGURANÇA (RLS) - SUPABASE
 -- Projeto: Aparece Aí
--- Usuário Autorizado: amarena.producoes@gmail.com
+-- Usuário Autorizado: amarena.producoes@gmail.com e reo2000.renato@gmail.com
 -- Data: 2026-04-14
 -- ===============================================================
+
+-- ===============================================================
+-- 0. CRIAÇÃO DE TABELAS DE SISTEMA (SE NÃO EXISTIREM)
+-- ===============================================================
+
+CREATE TABLE IF NOT EXISTS security_logs (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    event_type TEXT NOT NULL,
+    severity TEXT DEFAULT 'low',
+    ip_address TEXT,
+    user_agent TEXT,
+    path TEXT,
+    details JSONB DEFAULT '{}'::jsonb
+);
 
 -- 1. HABILITAR RLS EM TODAS AS TABELAS
 ALTER TABLE partners ENABLE ROW LEVEL SECURITY;
@@ -39,29 +54,29 @@ BEGIN
     END LOOP;
 END $$;
 
--- 3. POLÍTICAS PARA O ADMINISTRADOR (amarena.producoes@gmail.com)
--- Permite acesso total a todas as tabelas apenas para o e-mail autorizado
-CREATE POLICY "Admin Full Access" ON partners FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON categories FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON commercial_banner FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON featured_coupons FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON about_config FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON success_cases FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON partner_access_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON partner_clicks FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON partner_shares FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON cashback_configs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON cashback_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON unlocked_coupons FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON customers FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON welcome_messages FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON welcome_access_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON coupon_campaigns FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON coupon_campaign_access_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON gift_cards FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON active_gift_cards FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON leads FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
-CREATE POLICY "Admin Full Access" ON security_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' = 'amarena.producoes@gmail.com');
+-- 3. POLÍTICAS PARA O ADMINISTRADOR
+-- Permite acesso total a todas as tabelas apenas para os e-mails autorizados
+CREATE POLICY "Admin Full Access" ON partners FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON categories FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON commercial_banner FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON featured_coupons FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON about_config FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON success_cases FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON partner_access_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON partner_clicks FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON partner_shares FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON cashback_configs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON cashback_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON unlocked_coupons FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON customers FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON welcome_messages FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON welcome_access_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON coupon_campaigns FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON coupon_campaign_access_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON gift_cards FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON active_gift_cards FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON leads FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
+CREATE POLICY "Admin Full Access" ON security_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
 
 -- 4. POLÍTICAS PÚBLICAS (ANÔNIMOS) - APENAS O NECESSÁRIO PARA O FUNCIONAMENTO DO SITE
 -- Leitura Pública
@@ -75,6 +90,8 @@ CREATE POLICY "Public Read" ON welcome_messages FOR SELECT TO anon USING (true);
 CREATE POLICY "Public Read" ON coupon_campaigns FOR SELECT TO anon USING (true);
 CREATE POLICY "Public Read" ON cashback_configs FOR SELECT TO anon USING (true);
 CREATE POLICY "Public Read" ON active_gift_cards FOR SELECT TO anon USING (true);
+CREATE POLICY "Public Read" ON customers FOR SELECT TO anon USING (true);
+CREATE POLICY "Public Read" ON gift_cards FOR SELECT TO anon USING (true);
 
 -- Escrita Pública (Apenas Inserção)
 CREATE POLICY "Public Insert" ON partner_access_logs FOR INSERT TO anon WITH CHECK (true);

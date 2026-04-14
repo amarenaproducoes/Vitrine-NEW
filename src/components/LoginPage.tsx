@@ -11,8 +11,26 @@ const LoginPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const stateError = (location.state as any)?.error;
+
+  React.useEffect(() => {
+    if (stateError) setError(stateError);
+  }, [stateError]);
 
   const from = (location.state as any)?.from?.pathname || '/admin';
+
+  React.useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const email = session.user.email?.toLowerCase();
+        if (email === 'amarena.producoes@gmail.com' || email === 'reo2000.renato@gmail.com') {
+          navigate(from, { replace: true });
+        }
+      }
+    };
+    checkSession();
+  }, [navigate, from]);
 
   const validatePassword = (pass: string) => {
     const minLength = pass.length >= 6;
@@ -35,10 +53,11 @@ const LoginPage: React.FC = () => {
         severity: 'low',
         details: { action: 'google_login_attempt' }
       });
+      console.log('Iniciando login com Google...');
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/#/admin`
+          redirectTo: window.location.origin
         }
       });
 

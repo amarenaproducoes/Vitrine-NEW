@@ -9,7 +9,7 @@ import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
-import { formatWhatsApp } from '../lib/format';
+import { formatWhatsApp, getCleanWhatsApp } from '../lib/format';
 
 interface PartnerCardProps {
   partner: Partner;
@@ -61,7 +61,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData }) => {
 
   useEffect(() => {
     const searchName = async () => {
-      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const cleanWhatsapp = getCleanWhatsApp(whatsapp);
       // Only query if WhatsApp is complete (11 digits)
       if (cleanWhatsapp.length === 11) {
         setIsSearchingName(true);
@@ -173,7 +173,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData }) => {
       }
 
       const ip = await getUserIP();
-      const cleanWhatsapp = whatsapp.replace(/\D/g, '');
+      const cleanWhatsapp = getCleanWhatsApp(whatsapp);
 
       // Save/Update customer name
       try {

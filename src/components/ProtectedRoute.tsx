@@ -14,20 +14,39 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const location = useLocation();
 
   useEffect(() => {
+    let mounted = true;
+
     const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (import.meta.env.DEV) {
+          console.log('Auth Check - User:', session?.user?.email);
+        }
+        if (mounted) {
+          setUser(session?.user ?? null);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) setLoading(false);
+      }
     };
 
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
+      if (import.meta.env.DEV) {
+        console.log('Auth Change - User:', session?.user?.email);
+      }
+      if (mounted) {
+        setUser(session?.user ?? null);
+        setLoading(false);
+      }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
@@ -40,8 +59,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   const isDevBypass = false;
 
-  if (!isDevBypass && (!user || user.email !== 'amarena.producoes@gmail.com')) {
+  if (!isDevBypass && (!user || (user.email?.toLowerCase() !== 'amarena.producoes@gmail.com' && user.email?.toLowerCase() !== 'reo2000.renato@gmail.com'))) {
     if (user) {
+      console.warn('Acesso negado para o e-mail:', user.email);
       // Log unauthorized access attempt
       logger.security({
         type: 'unauthorized_access',
@@ -66,7 +86,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         });
       }
     }
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location, error: user ? `E-mail ${user.email} não autorizado.` : null }} replace />;
   }
 
   return <>{children}</>;

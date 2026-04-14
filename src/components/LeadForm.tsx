@@ -5,7 +5,7 @@ import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
-import { formatWhatsApp } from '../lib/format';
+import { formatWhatsApp, getCleanWhatsApp } from '../lib/format';
 
 interface LeadFormProps {
   type: 'anunciante' | 'motorista' | 'comerciante' | 'contato';
@@ -30,7 +30,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
 
   React.useEffect(() => {
     const searchName = async () => {
-      const cleanWhatsapp = formData.whatsapp.replace(/\D/g, '');
+      const cleanWhatsapp = getCleanWhatsApp(formData.whatsapp);
       if (cleanWhatsapp.length === 11) {
         try {
           const { data } = await supabase
@@ -87,7 +87,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
       
       // Save/Update customer name
       try {
-        const cleanWhatsapp = formData.whatsapp.replace(/\D/g, '');
+        const cleanWhatsapp = getCleanWhatsApp(formData.whatsapp);
         
         let onesignalId = null;
         try {
