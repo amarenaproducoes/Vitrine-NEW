@@ -1262,7 +1262,13 @@ const AdminPage = ({
                 
                 if (clickError) throw clickError;
                 
-                setClickRankingData(ranking || []);
+                const sortedRanking = (ranking || []).sort((a, b) => {
+                    const totalA = Number(a.instagram_count || 0) + Number(a.whatsapp_count || 0) + Number(a.google_count || 0) + Number(a.website_count || 0);
+                    const totalB = Number(b.instagram_count || 0) + Number(b.whatsapp_count || 0) + Number(b.google_count || 0) + Number(b.website_count || 0);
+                    return totalB - totalA;
+                });
+                
+                setClickRankingData(sortedRanking);
             } catch (err) {
                 logger.error('Error fetching click ranking:', err);
             }
