@@ -74,14 +74,22 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
   };
 
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatWhatsApp(e.target.value);
-    setWhatsapp(formatted);
+    const rawValue = e.target.value;
+    const cleanRaw = rawValue.replace(/\D/g, '');
     
-    const cleanWhatsapp = formatted.replace(/\D/g, '');
-    // Clear name and stop searching if WhatsApp changes
-    setCustomerName('');
-    setHasOneSignalId(false);
-    setIsSearchingName(false);
+    // Prevent typing more than 11 digits
+    if (cleanRaw.length > 11) return;
+
+    const formatted = formatWhatsApp(rawValue);
+    
+    // Only update and clear if the value actually changed
+    if (formatted !== whatsapp) {
+      setWhatsapp(formatted);
+      // Clear name and stop searching if WhatsApp changes
+      setCustomerName('');
+      setHasOneSignalId(false);
+      setIsSearchingName(false);
+    }
   };
 
   useEffect(() => {
@@ -270,6 +278,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
                           placeholder="(00) 00000-0000"
                           value={whatsapp}
                           onChange={handleWhatsappChange}
+                          maxLength={15}
                           className="w-full pl-12 pr-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#279267] focus:bg-white outline-none transition-all font-bold text-slate-900"
                         />
                       </div>

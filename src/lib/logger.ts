@@ -1,3 +1,5 @@
+import { supabase } from './supabase';
+
 /**
  * Simple logger utility to mask sensitive data in production
  */
@@ -52,6 +54,30 @@ export const logger = {
       console.log(`${label}: [MASKED]`);
     } else {
       console.log(`${label}:`, data);
+    }
+  },
+  // New method for security logging
+  security: async (event: {
+    type: 'unauthorized_access' | 'failed_password' | 'successful_login' | 'blocked_bot' | 'rls_violation' | 'admin_access';
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    details?: any;
+    path?: string;
+  }) => {
+    try {
+      // Get IP if possible (simple client-side attempt, usually needs backend for real IP)
+      // For now, we rely on Supabase's internal logging or a simple fetch if needed
+      
+      const { error } = await supabase.from('security_logs').insert([{
+        event_type: event.type,
+        severity: event.severity,
+        details: event.details || {},
+        path: event.path || window.location.pathname,
+        user_agent: navigator.userAgent
+      }]);
+
+      if (error) console.error('Failed to save security log:', error);
+    } catch (e) {
+      console.error('Logger security error:', e);
     }
   }
 };

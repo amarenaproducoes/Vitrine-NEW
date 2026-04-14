@@ -6,11 +6,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
+import { Lock } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, ChevronLeft, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick,
-    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List
+    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List, Shield
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -18,6 +19,7 @@ import Footer from './components/Footer';
 import PartnerCard from './components/PartnerCard';
 import LeadForm from './components/LeadForm';
 import AdminMessagesPage from './components/AdminMessagesPage';
+import SecurityLogsPage from './components/SecurityLogsPage';
 import AboutUsPage from './components/AboutUsPage';
 import PrivacyPolicyPage from './components/PrivacyPolicyPage';
 import TermsOfUsePage from './components/TermsOfUsePage';
@@ -1918,7 +1920,6 @@ const AdminPage = ({
     };
 
     const handleLogout = async () => {
-        localStorage.removeItem('dev_bypass');
         await supabase.auth.signOut();
         navigate('/login');
     };
@@ -1952,6 +1953,10 @@ const AdminPage = ({
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
                             </Link>
+                            <Link to="/admin/security" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                                <Shield size={10} className="mr-1" />
+                                Segurança
+                            </Link>
                         </div>
                         <button 
                             onClick={handleLogout}
@@ -1964,19 +1969,6 @@ const AdminPage = ({
                 </div>
             </div>
             
-            {!isSupabaseAuth && localStorage.getItem('dev_bypass') === 'true' && (
-                <div className="bg-blue-50 border border-blue-200 p-4 mb-6 rounded-2xl text-blue-800 text-sm font-bold flex items-start space-x-3 shadow-sm animate-in fade-in slide-in-from-top-2">
-                    <Sparkles className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
-                    <div>
-                        <p className="mb-1 uppercase tracking-tight text-[10px] sm:text-xs">Modo de Testes Ativo</p>
-                        <p className="font-medium text-blue-700/80 text-[10px] sm:text-xs">
-                            Você está no modo de acesso rápido. O salvamento de dados foi liberado para este período de testes, mesmo sem login oficial do Google. 
-                            Certifique-se de ter rodado o comando SQL de liberação no Supabase.
-                        </p>
-                    </div>
-                </div>
-            )}
-
             {activeTab === 'partners' && (
                 <>
                     <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
@@ -3856,6 +3848,38 @@ const AdminPage = ({
 };
 
 const App = () => {
+    const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+
+    useEffect(() => {
+        const savedAuth = localStorage.getItem('app_authorized');
+        if (savedAuth === 'true') {
+            setIsPasswordVerified(true);
+        }
+    }, []);
+
+    const handlePasswordSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (passwordInput === 'Ama23') {
+            localStorage.setItem('app_authorized', 'true');
+            setIsPasswordVerified(true);
+            setPasswordError('');
+            logger.security({
+                type: 'successful_login',
+                severity: 'low',
+                details: { method: 'global_password' }
+            });
+        } else {
+            setPasswordError('Senha incorreta. Tente novamente.');
+            logger.security({
+                type: 'failed_password',
+                severity: 'medium',
+                details: { attempted_password: passwordInput }
+            });
+        }
+    };
+
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
@@ -4123,6 +4147,46 @@ const App = () => {
         );
     }
 
+    if (!isPasswordVerified) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center">
+                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <Lock className="text-slate-900" size={32} />
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Ambiente de Testes</h1>
+                    <p className="text-slate-500 mb-8 font-medium">Digite a senha para acessar a plataforma.</p>
+                    
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                placeholder="Digite a senha"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all text-center font-bold"
+                                autoFocus
+                            />
+                        </div>
+                        {passwordError && (
+                            <p className="text-red-500 text-sm font-bold">{passwordError}</p>
+                        )}
+                        <button
+                            type="submit"
+                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                        >
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <p className="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                        Aparece aí por aqui • Vila Formosa
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <GoogleReCaptchaProvider 
             reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
@@ -4193,6 +4257,11 @@ const App = () => {
                         <Route path="/admin-mensagens" element={
                             <ProtectedRoute>
                                 <AdminMessagesPage />
+                            </ProtectedRoute>
+                        } />
+                        <Route path="/admin/security" element={
+                            <ProtectedRoute>
+                                <SecurityLogsPage />
                             </ProtectedRoute>
                         } />
                         <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} />} />

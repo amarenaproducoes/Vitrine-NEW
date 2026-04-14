@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Lock, User, AlertCircle, Megaphone } from 'lucide-react';
+import { logger } from '../lib/logger';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -29,6 +30,11 @@ const LoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      logger.security({
+        type: 'admin_access',
+        severity: 'low',
+        details: { action: 'google_login_attempt' }
+      });
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -98,17 +104,6 @@ const LoginPage: React.FC = () => {
             )}
           </button>
 
-          {/* Botão de Bypass para Desenvolvimento */}
-          <button
-            onClick={() => {
-              localStorage.setItem('dev_bypass', 'true');
-              navigate('/admin');
-            }}
-            className="w-full bg-slate-800 text-slate-400 font-bold py-3 rounded-xl hover:bg-slate-700 hover:text-white transition-all border border-slate-700 text-xs uppercase tracking-widest"
-          >
-            Acesso Rápido (Dev Mode)
-          </button>
-          
           <p className="text-[10px] text-slate-500 text-center uppercase tracking-widest font-bold">
             Somente e-mails autorizados têm acesso
           </p>

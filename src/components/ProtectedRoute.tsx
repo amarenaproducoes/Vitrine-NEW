@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
+import { logger } from '../lib/logger';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -37,12 +38,33 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     );
   }
 
-  const isDevBypass = localStorage.getItem('dev_bypass') === 'true';
+  const isDevBypass = false;
 
-  if (!isDevBypass && (!user || user.email !== 'reo2000.renato@gmail.com')) {
+  if (!isDevBypass && (!user || user.email !== 'amarena.producoes@gmail.com')) {
     if (user) {
+      // Log unauthorized access attempt
+      logger.security({
+        type: 'unauthorized_access',
+        severity: 'high',
+        details: { 
+          user_email: user.email,
+          attempted_path: location.pathname
+        }
+      });
       // Se estiver logado mas com o e-mail errado, desloga e manda pro login
       supabase.auth.signOut();
+    } else {
+      // Optional: log anonymous access attempt to admin area
+      if (location.pathname.startsWith('/admin')) {
+        logger.security({
+          type: 'unauthorized_access',
+          severity: 'medium',
+          details: { 
+            method: 'anonymous',
+            attempted_path: location.pathname
+          }
+        });
+      }
     }
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
