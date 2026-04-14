@@ -40,7 +40,7 @@ interface FeaturedCoupon {
     created_at?: string;
 }
 
-import { supabase } from './lib/supabase';
+import { supabase, AUTHORIZED_EMAILS } from './lib/supabase';
 import { getUserIP } from './lib/ip';
 import { logger } from './lib/logger';
 import { formatWhatsApp } from './lib/format';
@@ -68,6 +68,44 @@ const GA_MEASUREMENT_ID = 'G-9F6ST94BVG';
 
 // Inicializa o GA4 fora do componente para garantir que rode apenas uma vez
 ReactGA.initialize(GA_MEASUREMENT_ID);
+
+const GlobalAuthGuard = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            if (session?.user) {
+                const email = session.user.email?.toLowerCase();
+                if (!AUTHORIZED_EMAILS.includes(email || '')) {
+                    // Log unauthorized access attempt immediately
+                    logger.security({
+                        type: 'unauthorized_access',
+                        severity: 'high',
+                        details: { 
+                            user_email: session.user.email,
+                            attempted_path: location.pathname,
+                            method: 'global_guard'
+                        }
+                    });
+
+                    // Se não for autorizado, desloga imediatamente
+                    await supabase.auth.signOut();
+                    
+                    // Redireciona para a tela de login com a mensagem de erro
+                    navigate('/login', { 
+                        replace: true, 
+                        state: { error: `E-mail ${session.user.email} não autorizado.` } 
+                    });
+                }
+            }
+        });
+
+        return () => subscription.unsubscribe();
+    }, [navigate, location]);
+
+    return null;
+};
 
 const parseCashbackValue = (label: string | null | undefined, fallbackValue: number): number => {
     if (!label) return fallbackValue;
@@ -4193,6 +4231,7 @@ const App = () => {
             language="pt-BR"
         >
             <Router>
+                <GlobalAuthGuard />
                 <AnimatePresence>
                     {showGiftCardModal && (
                         <GiftCardModal 

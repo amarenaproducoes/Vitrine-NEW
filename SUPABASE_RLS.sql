@@ -78,38 +78,38 @@ CREATE POLICY "Admin Full Access" ON active_gift_cards FOR ALL TO authenticated 
 CREATE POLICY "Admin Full Access" ON leads FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
 CREATE POLICY "Admin Full Access" ON security_logs FOR ALL TO authenticated USING (auth.jwt() ->> 'email' IN ('amarena.producoes@gmail.com', 'reo2000.renato@gmail.com'));
 
--- 4. POLÍTICAS PÚBLICAS (ANÔNIMOS) - APENAS O NECESSÁRIO PARA O FUNCIONAMENTO DO SITE
--- Leitura Pública
-CREATE POLICY "Public Read" ON partners FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON categories FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON commercial_banner FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON featured_coupons FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON about_config FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON success_cases FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON welcome_messages FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON coupon_campaigns FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON cashback_configs FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON active_gift_cards FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON customers FOR SELECT TO anon USING (true);
-CREATE POLICY "Public Read" ON gift_cards FOR SELECT TO anon USING (true);
+-- 4. POLÍTICAS PÚBLICAS (ANÔNIMOS E AUTENTICADOS NÃO-ADMINS) - APENAS O NECESSÁRIO PARA O FUNCIONAMENTO DO SITE
+-- Leitura Pública (Permite que qualquer um veja o site, mesmo logado com e-mail não autorizado)
+CREATE POLICY "Public Read" ON partners FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON categories FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON commercial_banner FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON featured_coupons FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON about_config FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON success_cases FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON welcome_messages FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON coupon_campaigns FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON cashback_configs FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON active_gift_cards FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON customers FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Public Read" ON gift_cards FOR SELECT TO anon, authenticated USING (true);
 
 -- Escrita Pública (Apenas Inserção)
-CREATE POLICY "Public Insert" ON partner_access_logs FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON partner_clicks FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON partner_shares FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON unlocked_coupons FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON customers FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON welcome_access_logs FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON coupon_campaign_access_logs FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON cashback_logs FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert" ON leads FOR INSERT TO anon WITH CHECK (true);
-CREATE POLICY "Public Insert Security" ON security_logs FOR INSERT TO anon WITH CHECK (true);
+CREATE POLICY "Public Insert" ON partner_access_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON partner_clicks FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON partner_shares FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON unlocked_coupons FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON customers FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON welcome_access_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON coupon_campaign_access_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON cashback_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON leads FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert Security" ON security_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- Atualização Pública (Apenas campos específicos para clientes existentes)
-CREATE POLICY "Public Update Customer" ON customers FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Public Update Logs" ON cashback_logs FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Public Update Coupons" ON unlocked_coupons FOR UPDATE TO anon USING (true) WITH CHECK (true);
-CREATE POLICY "Public Update Shares" ON partner_shares FOR UPDATE TO anon USING (true) WITH CHECK (true);
+CREATE POLICY "Public Update Customer" ON customers FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public Update Logs" ON cashback_logs FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public Update Coupons" ON unlocked_coupons FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public Update Shares" ON partner_shares FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- 5. NOTA FINAL
 -- Todas as outras operações (DELETE, UPDATE em tabelas de config, etc) estão bloqueadas por padrão (RLS).

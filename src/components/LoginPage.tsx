@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, AUTHORIZED_EMAILS } from '../lib/supabase';
 import { Lock, User, AlertCircle, Megaphone } from 'lucide-react';
 import { logger } from '../lib/logger';
 
@@ -24,8 +24,24 @@ const LoginPage: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const email = session.user.email?.toLowerCase();
-        if (email === 'amarena.producoes@gmail.com' || email === 'reo2000.renato@gmail.com') {
+        const isAuthorized = AUTHORIZED_EMAILS.includes(email || '');
+        if (isAuthorized) {
           navigate(from, { replace: true });
+        } else {
+          // Log unauthorized access attempt
+          logger.security({
+            type: 'unauthorized_access',
+            severity: 'high',
+            details: { 
+              user_email: session.user.email,
+              attempted_path: '/login',
+              method: 'login_page_check'
+            }
+          });
+
+          // Se o usuário logou com um e-mail não autorizado, desloga imediatamente
+          await supabase.auth.signOut();
+          setError(`E-mail ${email} não autorizado.`);
         }
       }
     };
@@ -53,11 +69,11 @@ const LoginPage: React.FC = () => {
         severity: 'low',
         details: { action: 'google_login_attempt' }
       });
-      console.log('Iniciando login com Google...');
       const { error: authError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin
+          // Garante que o redirecionamento volte para o mesmo domínio e protocolo atual
+          redirectTo: `${window.location.origin}/`
         }
       });
 

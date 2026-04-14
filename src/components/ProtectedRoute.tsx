@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, AUTHORIZED_EMAILS } from '../lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { logger } from '../lib/logger';
 
@@ -19,9 +19,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const checkUser = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (import.meta.env.DEV) {
-          console.log('Auth Check - User:', session?.user?.email);
-        }
         if (mounted) {
           setUser(session?.user ?? null);
           setLoading(false);
@@ -34,9 +31,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     checkUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (import.meta.env.DEV) {
-        console.log('Auth Change - User:', session?.user?.email);
-      }
       if (mounted) {
         setUser(session?.user ?? null);
         setLoading(false);
@@ -58,17 +52,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   const isDevBypass = false;
+  const userEmail = user?.email?.toLowerCase() || '';
+  const isAuthorized = AUTHORIZED_EMAILS.includes(userEmail);
 
-  if (!isDevBypass && (!user || (user.email?.toLowerCase() !== 'amarena.producoes@gmail.com' && user.email?.toLowerCase() !== 'reo2000.renato@gmail.com'))) {
+  if (!isDevBypass && (!user || !isAuthorized)) {
     if (user) {
-      console.warn('Acesso negado para o e-mail:', user.email);
       // Log unauthorized access attempt
       logger.security({
         type: 'unauthorized_access',
         severity: 'high',
         details: { 
           user_email: user.email,
-          attempted_path: location.pathname
+          attempted_path: location.pathname,
+          method: 'protected_route'
         }
       });
       // Se estiver logado mas com o e-mail errado, desloga e manda pro login
@@ -80,13 +76,13 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
           type: 'unauthorized_access',
           severity: 'medium',
           details: { 
-            method: 'anonymous',
+            method: 'anonymous_admin_attempt',
             attempted_path: location.pathname
           }
         });
       }
     }
-    return <Navigate to="/login" state={{ from: location, error: user ? `E-mail ${user.email} não autorizado.` : null }} replace />;
+    return <Navigate to="/login" state={{ from: location, error: user ? `E-mail ${user.email} não autorizado.` : 'Acesso restrito. Por favor, faça login.' }} replace />;
   }
 
   return <>{children}</>;
