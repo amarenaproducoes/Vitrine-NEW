@@ -775,15 +775,33 @@ const AdminPage = ({
         // Period Filter
         if (activeGiftCardsPeriod !== 'all') {
             const now = new Date();
-            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-            const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-            const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+            // Use UTC to be consistent with Supabase timestamps
+            const nowYear = now.getUTCFullYear();
+            const nowMonth = now.getUTCMonth();
             
             filtered = filtered.filter(c => {
-                const date = new Date(c.created_at);
-                if (isNaN(date.getTime())) return true;
-                if (activeGiftCardsPeriod === 'month') return date >= startOfMonth;
-                if (activeGiftCardsPeriod === 'prev_month') return date >= startOfPrevMonth && date <= endOfPrevMonth;
+                // Try activated_at first, then created_at
+                const dateStr = c.activated_at || c.created_at;
+                if (!dateStr) return false; 
+                
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return false;
+                
+                const dateYear = date.getUTCFullYear();
+                const dateMonth = date.getUTCMonth();
+                
+                if (activeGiftCardsPeriod === 'month') {
+                    return dateYear === nowYear && dateMonth === nowMonth;
+                }
+                if (activeGiftCardsPeriod === 'prev_month') {
+                    let targetMonth = nowMonth - 1;
+                    let targetYear = nowYear;
+                    if (targetMonth < 0) {
+                        targetMonth = 11;
+                        targetYear--;
+                    }
+                    return dateYear === targetYear && dateMonth === targetMonth;
+                }
                 return true;
             });
         }
