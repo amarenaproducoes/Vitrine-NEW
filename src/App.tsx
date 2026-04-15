@@ -1375,7 +1375,7 @@ const AdminPage = ({
             try {
                 const { data: bannerClicks, error: bannerError } = await supabase
                     .from('banner_clicks')
-                    .select('partner_name, banner_link, clicked_at')
+                    .select('partner_name, link_url, clicked_at')
                     .order('clicked_at', { ascending: false });
                 
                 if (bannerError) throw bannerError;
@@ -1383,11 +1383,11 @@ const AdminPage = ({
                 // Group by partner and link
                 const bannerRanking: { [key: string]: any } = {};
                 bannerClicks?.forEach((c: any) => {
-                    const key = `${c.partner_name}-${c.banner_link}`;
+                    const key = `${c.partner_name}-${c.link_url}`;
                     if (!bannerRanking[key]) {
                         bannerRanking[key] = {
                             partner_name: c.partner_name,
-                            banner_link: c.banner_link,
+                            banner_link: c.link_url,
                             click_count: 0,
                             last_click: c.clicked_at
                         };
@@ -4138,15 +4138,22 @@ const App = () => {
     });
 
     const logBannerClick = async (banner: CommercialBannerData) => {
+        console.log('Logging banner click:', banner);
         try {
             const ip = await getUserIP();
-            await supabase.from('banner_clicks').insert({
+            const { error } = await supabase.from('banner_clicks').insert({
                 banner_id: banner.id,
                 partner_name: banner.partnerName || 'N/A',
-                banner_link: banner.linkUrl || 'N/A',
+                link_url: banner.linkUrl || 'N/A',
                 ip_address: ip
             });
+            if (error) {
+                console.error('Supabase error logging banner click:', error);
+            } else {
+                console.log('Banner click logged successfully');
+            }
         } catch (error) {
+            console.error('Catch error logging banner click:', error);
             logger.error('Error logging banner click:', error);
         }
     };
