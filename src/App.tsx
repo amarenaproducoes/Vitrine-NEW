@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import { Lock } from 'lucide-react';
@@ -764,6 +764,34 @@ const AdminPage = ({
     const [activeGiftCardsPage, setActiveGiftCardsPage] = useState(0);
     const [activeGiftCardsFilter, setActiveGiftCardsFilter] = useState<'all' | 'used' | 'unused'>('all');
     const [activeGiftCardsPeriod, setActiveGiftCardsPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
+
+    const filteredActiveGiftCards = useMemo(() => {
+        let filtered = [...activeGiftCards];
+        
+        // Status Filter
+        if (activeGiftCardsFilter === 'used') filtered = filtered.filter(c => c.used);
+        if (activeGiftCardsFilter === 'unused') filtered = filtered.filter(c => !c.used);
+        
+        // Period Filter
+        if (activeGiftCardsPeriod !== 'all') {
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+            const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
+            
+            filtered = filtered.filter(c => {
+                const date = new Date(c.created_at);
+                if (isNaN(date.getTime())) return true;
+                if (activeGiftCardsPeriod === 'month') return date >= startOfMonth;
+                if (activeGiftCardsPeriod === 'prev_month') return date >= startOfPrevMonth && date <= endOfPrevMonth;
+                return true;
+            });
+        }
+        return filtered;
+    }, [activeGiftCards, activeGiftCardsFilter, activeGiftCardsPeriod]);
+
+    const activeGiftCardsTotalPages = Math.ceil(filteredActiveGiftCards.length / 10);
+    const activeGiftCardsDisplayData = filteredActiveGiftCards.slice(activeGiftCardsPage * 10, (activeGiftCardsPage + 1) * 10);
     const navigate = useNavigate();
     
     const [welcomeFormData, setWelcomeFormData] = useState({
@@ -3481,7 +3509,7 @@ const AdminPage = ({
                                         onClick={() => { setActiveGiftCardsPeriod('all'); setActiveGiftCardsPage(0); }}
                                         className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                     >
-                                        Sempre
+                                        Todos
                                     </button>
                                     <button 
                                         onClick={() => { setActiveGiftCardsPeriod('month'); setActiveGiftCardsPage(0); }}
@@ -3537,40 +3565,8 @@ const AdminPage = ({
                                             </td>
                                         </tr>
                                     ) : activeGiftCards.length > 0 ? (
-                                        (() => {
-                                            let filtered = [...activeGiftCards];
-                                            
-                                            // Status Filter
-                                            if (activeGiftCardsFilter === 'used') filtered = filtered.filter(c => c.used);
-                                            if (activeGiftCardsFilter === 'unused') filtered = filtered.filter(c => !c.used);
-                                            
-                                            // Period Filter
-                                            if (activeGiftCardsPeriod !== 'all') {
-                                                const now = new Date();
-                                                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                                                const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                                                const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-                                                
-                                                filtered = filtered.filter(c => {
-                                                    const date = new Date(c.created_at);
-                                                    if (activeGiftCardsPeriod === 'month') return date >= startOfMonth;
-                                                    if (activeGiftCardsPeriod === 'prev_month') return date >= startOfPrevMonth && date <= endOfPrevMonth;
-                                                    return true;
-                                                });
-                                            }
-
-                                            const totalPages = Math.ceil(filtered.length / 10);
-                                            const displayData = filtered.slice(activeGiftCardsPage * 10, (activeGiftCardsPage + 1) * 10);
-
-                                            if (displayData.length === 0) {
-                                                return (
-                                                    <tr>
-                                                        <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão encontrado com estes filtros.</td>
-                                                    </tr>
-                                                );
-                                            }
-
-                                            return displayData.map((card) => (
+                                        activeGiftCardsDisplayData.length > 0 ? (
+                                            activeGiftCardsDisplayData.map((card) => (
                                                 <tr key={card.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                     <td className="p-4 font-mono font-bold text-slate-900">{card.card_number}</td>
                                                     <td className="p-4 font-bold text-[#279267]">
@@ -3591,8 +3587,12 @@ const AdminPage = ({
                                                         {(!card.used && card.expires_at) ? new Date(card.expires_at).toLocaleDateString('pt-BR') : '-'}
                                                     </td>
                                                 </tr>
-                                            ));
-                                        })()
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão encontrado com estes filtros.</td>
+                                            </tr>
+                                        )
                                     ) : (
                                         <tr>
                                             <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão ativo encontrado.</td>
@@ -3602,50 +3602,28 @@ const AdminPage = ({
                             </table>
                         </div>
 
-                        {(() => {
-                            let filtered = [...activeGiftCards];
-                            if (activeGiftCardsFilter === 'used') filtered = filtered.filter(c => c.used);
-                            if (activeGiftCardsFilter === 'unused') filtered = filtered.filter(c => !c.used);
-                            if (activeGiftCardsPeriod !== 'all') {
-                                const now = new Date();
-                                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-                                const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                                const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
-                                filtered = filtered.filter(c => {
-                                    const date = new Date(c.created_at);
-                                    if (activeGiftCardsPeriod === 'month') return date >= startOfMonth;
-                                    if (activeGiftCardsPeriod === 'prev_month') return date >= startOfPrevMonth && date <= endOfPrevMonth;
-                                    return true;
-                                });
-                            }
-                            const totalPages = Math.ceil(filtered.length / 10);
-                            
-                            if (totalPages > 1) {
-                                return (
-                                    <div className="mt-8 flex items-center justify-center space-x-4">
-                                        <button 
-                                            onClick={() => setActiveGiftCardsPage(prev => Math.max(0, prev - 1))}
-                                            disabled={activeGiftCardsPage === 0}
-                                            className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
-                                        >
-                                            <ChevronLeft size={24} />
-                                        </button>
-                                        <div className="flex items-center space-x-2">
-                                            <span className="text-sm font-bold text-slate-900">Página {activeGiftCardsPage + 1}</span>
-                                            <span className="text-xs text-slate-400">de {totalPages}</span>
-                                        </div>
-                                        <button 
-                                            onClick={() => setActiveGiftCardsPage(prev => Math.min(totalPages - 1, prev + 1))}
-                                            disabled={activeGiftCardsPage >= totalPages - 1}
-                                            className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
-                                        >
-                                            <ChevronRight size={24} />
-                                        </button>
-                                    </div>
-                                );
-                            }
-                            return null;
-                        })()}
+                        {activeGiftCardsTotalPages > 1 && (
+                            <div className="mt-8 flex items-center justify-center space-x-4">
+                                <button 
+                                    onClick={() => setActiveGiftCardsPage(prev => Math.max(0, prev - 1))}
+                                    disabled={activeGiftCardsPage === 0}
+                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-bold text-slate-900">Página {activeGiftCardsPage + 1}</span>
+                                    <span className="text-xs text-slate-400">de {activeGiftCardsTotalPages}</span>
+                                </div>
+                                <button 
+                                    onClick={() => setActiveGiftCardsPage(prev => Math.min(activeGiftCardsTotalPages - 1, prev + 1))}
+                                    disabled={activeGiftCardsPage >= activeGiftCardsTotalPages - 1}
+                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
