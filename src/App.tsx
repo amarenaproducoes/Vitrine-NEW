@@ -762,6 +762,8 @@ const AdminPage = ({
     const [giftCardPage, setGiftCardPage] = useState(0);
     const [cashbackLogsPage, setCashbackLogsPage] = useState(0);
     const [activeGiftCardsPage, setActiveGiftCardsPage] = useState(0);
+    const [activeGiftCardsFilter, setActiveGiftCardsFilter] = useState<'all' | 'used' | 'unused'>('all');
+    const [activeGiftCardsPeriod, setActiveGiftCardsPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
     const navigate = useNavigate();
     
     const [welcomeFormData, setWelcomeFormData] = useState({
@@ -3452,14 +3454,58 @@ const AdminPage = ({
                                     <p className="text-slate-500 text-[10px] sm:text-sm">Consulte todos os cartões que já foram ativados pelos clientes.</p>
                                 </div>
                             </div>
-                            <button 
-                                onClick={fetchActiveGiftCards}
-                                disabled={isLoadingActiveGiftCards}
-                                className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
-                            >
-                                <RefreshCw size={18} className={isLoadingActiveGiftCards ? 'animate-spin' : ''} />
-                                <span>Atualizar</span>
-                            </button>
+                            <div className="flex flex-wrap items-center gap-3">
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button 
+                                        onClick={() => { setActiveGiftCardsFilter('all'); setActiveGiftCardsPage(0); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Todos
+                                    </button>
+                                    <button 
+                                        onClick={() => { setActiveGiftCardsFilter('used'); setActiveGiftCardsPage(0); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsFilter === 'used' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Usados
+                                    </button>
+                                    <button 
+                                        onClick={() => { setActiveGiftCardsFilter('unused'); setActiveGiftCardsPage(0); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsFilter === 'unused' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Não Usados
+                                    </button>
+                                </div>
+
+                                <div className="flex items-center bg-slate-100 p-1 rounded-xl">
+                                    <button 
+                                        onClick={() => { setActiveGiftCardsPeriod('all'); setActiveGiftCardsPage(0); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsPeriod === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Sempre
+                                    </button>
+                                    <button 
+                                        onClick={() => { setActiveGiftCardsPeriod('month'); setActiveGiftCardsPage(0); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsPeriod === 'month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Mês Atual
+                                    </button>
+                                    <button 
+                                        onClick={() => { setActiveGiftCardsPeriod('prev_month'); setActiveGiftCardsPage(0); }}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-bold transition-all ${activeGiftCardsPeriod === 'prev_month' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                                    >
+                                        Mês Anterior
+                                    </button>
+                                </div>
+
+                                <button 
+                                    onClick={fetchActiveGiftCards}
+                                    disabled={isLoadingActiveGiftCards}
+                                    className="flex items-center justify-center space-x-2 px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all disabled:opacity-50"
+                                >
+                                    <RefreshCw size={18} className={isLoadingActiveGiftCards ? 'animate-spin' : ''} />
+                                    <span>Atualizar</span>
+                                </button>
+                            </div>
                         </div>
 
                         <div className="overflow-x-auto">
@@ -3478,68 +3524,128 @@ const AdminPage = ({
                                         <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">WhatsApp</th>
                                         <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loja</th>
                                         <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                        <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Data Uso</th>
                                         <th className="p-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Expiração</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {isLoadingActiveGiftCards ? (
                                         <tr>
-                                            <td colSpan={7} className="p-12 text-center">
+                                            <td colSpan={8} className="p-12 text-center">
                                                 <RefreshCw size={32} className="animate-spin text-[#279267] mx-auto mb-2" />
                                                 <p className="text-slate-400 font-bold">Carregando dados...</p>
                                             </td>
                                         </tr>
                                     ) : activeGiftCards.length > 0 ? (
-                                        activeGiftCards.slice(activeGiftCardsPage * 10, (activeGiftCardsPage + 1) * 10).map((card) => (
-                                            <tr key={card.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
-                                                <td className="p-4 font-mono font-bold text-slate-900">{card.card_number}</td>
-                                                <td className="p-4 font-bold text-[#279267]">
-                                                    {card.gift_cards?.value ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(card.gift_cards.value) : 'N/A'}
-                                                </td>
-                                                <td className="p-4 text-sm text-slate-600">{card.customer_name}</td>
-                                                <td className="p-4 text-sm text-slate-600">{formatWhatsApp(card.whatsapp)}</td>
-                                                <td className="p-4 text-sm text-slate-600 font-bold">{card.partners?.name || 'N/A'}</td>
-                                                <td className="p-4">
-                                                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${card.used ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
-                                                        {card.used ? 'USADO' : 'NÃO USADO'}
-                                                    </span>
-                                                </td>
-                                                <td className="p-4 text-sm text-slate-500">
-                                                    {(!card.used && card.expires_at) ? new Date(card.expires_at).toLocaleDateString('pt-BR') : '-'}
-                                                </td>
-                                            </tr>
-                                        ))
+                                        (() => {
+                                            let filtered = [...activeGiftCards];
+                                            
+                                            // Status Filter
+                                            if (activeGiftCardsFilter === 'used') filtered = filtered.filter(c => c.used);
+                                            if (activeGiftCardsFilter === 'unused') filtered = filtered.filter(c => !c.used);
+                                            
+                                            // Period Filter
+                                            if (activeGiftCardsPeriod !== 'all') {
+                                                const now = new Date();
+                                                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                                                const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                                                const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+                                                
+                                                filtered = filtered.filter(c => {
+                                                    const date = new Date(c.created_at);
+                                                    if (activeGiftCardsPeriod === 'month') return date >= startOfMonth;
+                                                    if (activeGiftCardsPeriod === 'prev_month') return date >= startOfPrevMonth && date <= endOfPrevMonth;
+                                                    return true;
+                                                });
+                                            }
+
+                                            const totalPages = Math.ceil(filtered.length / 10);
+                                            const displayData = filtered.slice(activeGiftCardsPage * 10, (activeGiftCardsPage + 1) * 10);
+
+                                            if (displayData.length === 0) {
+                                                return (
+                                                    <tr>
+                                                        <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão encontrado com estes filtros.</td>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return displayData.map((card) => (
+                                                <tr key={card.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                    <td className="p-4 font-mono font-bold text-slate-900">{card.card_number}</td>
+                                                    <td className="p-4 font-bold text-[#279267]">
+                                                        {card.gift_cards?.value ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(card.gift_cards.value) : 'N/A'}
+                                                    </td>
+                                                    <td className="p-4 text-sm text-slate-600">{card.customer_name}</td>
+                                                    <td className="p-4 text-sm text-slate-600">{formatWhatsApp(card.whatsapp)}</td>
+                                                    <td className="p-4 text-sm text-slate-600 font-bold">{card.partners?.name || 'N/A'}</td>
+                                                    <td className="p-4">
+                                                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${card.used ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                                                            {card.used ? 'USADO' : 'NÃO USADO'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-4 text-sm text-slate-500">
+                                                        {card.used_at ? new Date(card.used_at).toLocaleDateString('pt-BR') : '-'}
+                                                    </td>
+                                                    <td className="p-4 text-sm text-slate-500">
+                                                        {(!card.used && card.expires_at) ? new Date(card.expires_at).toLocaleDateString('pt-BR') : '-'}
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })()
                                     ) : (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão ativo encontrado.</td>
+                                            <td colSpan={8} className="p-8 text-center text-slate-400 font-bold">Nenhum cartão ativo encontrado.</td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
 
-                        {activeGiftCards.length > 10 && (
-                            <div className="mt-8 flex items-center justify-center space-x-4">
-                                <button 
-                                    onClick={() => setActiveGiftCardsPage(prev => Math.max(0, prev - 1))}
-                                    disabled={activeGiftCardsPage === 0}
-                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
-                                >
-                                    <ChevronLeft size={24} />
-                                </button>
-                                <div className="flex items-center space-x-2">
-                                    <span className="text-sm font-bold text-slate-900">Página {activeGiftCardsPage + 1}</span>
-                                    <span className="text-xs text-slate-400">de {Math.ceil(activeGiftCards.length / 10)}</span>
-                                </div>
-                                <button 
-                                    onClick={() => setActiveGiftCardsPage(prev => Math.min(Math.ceil(activeGiftCards.length / 10) - 1, prev + 1))}
-                                    disabled={activeGiftCardsPage >= Math.ceil(activeGiftCards.length / 10) - 1}
-                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
-                                >
-                                    <ChevronRight size={24} />
-                                </button>
-                            </div>
-                        )}
+                        {(() => {
+                            let filtered = [...activeGiftCards];
+                            if (activeGiftCardsFilter === 'used') filtered = filtered.filter(c => c.used);
+                            if (activeGiftCardsFilter === 'unused') filtered = filtered.filter(c => !c.used);
+                            if (activeGiftCardsPeriod !== 'all') {
+                                const now = new Date();
+                                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                                const startOfPrevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                                const endOfPrevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+                                filtered = filtered.filter(c => {
+                                    const date = new Date(c.created_at);
+                                    if (activeGiftCardsPeriod === 'month') return date >= startOfMonth;
+                                    if (activeGiftCardsPeriod === 'prev_month') return date >= startOfPrevMonth && date <= endOfPrevMonth;
+                                    return true;
+                                });
+                            }
+                            const totalPages = Math.ceil(filtered.length / 10);
+                            
+                            if (totalPages > 1) {
+                                return (
+                                    <div className="mt-8 flex items-center justify-center space-x-4">
+                                        <button 
+                                            onClick={() => setActiveGiftCardsPage(prev => Math.max(0, prev - 1))}
+                                            disabled={activeGiftCardsPage === 0}
+                                            className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                        >
+                                            <ChevronLeft size={24} />
+                                        </button>
+                                        <div className="flex items-center space-x-2">
+                                            <span className="text-sm font-bold text-slate-900">Página {activeGiftCardsPage + 1}</span>
+                                            <span className="text-xs text-slate-400">de {totalPages}</span>
+                                        </div>
+                                        <button 
+                                            onClick={() => setActiveGiftCardsPage(prev => Math.min(totalPages - 1, prev + 1))}
+                                            disabled={activeGiftCardsPage >= totalPages - 1}
+                                            className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                        >
+                                            <ChevronRight size={24} />
+                                        </button>
+                                    </div>
+                                );
+                            }
+                            return null;
+                        })()}
                     </div>
                 </div>
             )}
