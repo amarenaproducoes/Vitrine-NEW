@@ -234,7 +234,7 @@ const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
     );
 };
 
-const BannerCarousel = ({ banners }: { banners: CommercialBannerData[] }) => {
+const BannerCarousel = ({ banners, onBannerClick }: { banners: CommercialBannerData[], onBannerClick?: (banner: CommercialBannerData) => void }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isPaused, setIsPaused] = useState(false);
 
@@ -273,11 +273,17 @@ const BannerCarousel = ({ banners }: { banners: CommercialBannerData[] }) => {
                         {banners.map((banner) => (
                             <div key={banner.id} className="w-full flex-shrink-0">
                                 {banner.linkUrl ? (
-                                    <a href={banner.linkUrl} target="_blank" rel="noopener noreferrer" className="block">
-                                        <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                                    <a 
+                                        href={banner.linkUrl} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                        className="block"
+                                        onClick={() => onBannerClick?.(banner)}
+                                    >
+                                        <img src={banner.imageUrl} alt={banner.partnerName || "Banner Publicitário"} className="w-full h-auto block" />
                                     </a>
                                 ) : (
-                                    <img src={banner.imageUrl} alt="Banner Publicitário" className="w-full h-auto block" />
+                                    <img src={banner.imageUrl} alt={banner.partnerName || "Banner Publicitário"} className="w-full h-auto block" />
                                 )}
                             </div>
                         ))}
@@ -318,7 +324,7 @@ const BannerCarousel = ({ banners }: { banners: CommercialBannerData[] }) => {
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null }) => {
+const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo, onBannerClick }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null, onBannerClick?: (banner: CommercialBannerData) => void }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
@@ -453,6 +459,11 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     };
 
     const authorizedPartners = partners.filter(p => p.isAuthorized).sort((a, b) => a.orderIndex - b.orderIndex);
+    const handleCategoryClick = (category: string) => {
+        setActiveCategory(category);
+        setSearchTerm(""); // Clear search when category is selected
+    };
+
     const filteredPartners = authorizedPartners.filter(p => {
         const matchesCategory = activeCategory === "Todos" || p.category === activeCategory;
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -493,7 +504,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                     />
                 )}
             </AnimatePresence>
-            <BannerCarousel banners={commercialBanners} />
+            <BannerCarousel banners={commercialBanners} onBannerClick={onBannerClick} />
             <section id="vitrine" className="relative overflow-hidden bg-slate-900 pt-8 pb-10 md:pt-10 md:pb-12">
                 <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-[#279267]/10 rounded-full blur-[120px]"></div>
                 <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c54b4b]/10 rounded-full blur-[120px]"></div>
@@ -564,7 +575,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                     <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-grow">
                         <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
                         {['Todos', ...categories.map(c => c.name)].map(cat => (
-                            <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
+                            <button key={cat} onClick={() => handleCategoryClick(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
                         ))}
                     </div>
                     <div className="relative w-full md:w-80">
@@ -709,7 +720,11 @@ const AdminPage = ({
     fetchActiveGiftCards,
     handleUpdateGiftCard,
     isUpdatingGiftCard,
-    setIsUpdatingGiftCard
+    setIsUpdatingGiftCard,
+    bannerLinks,
+    setBannerLinks,
+    bannerNames,
+    setBannerNames
 }: { 
     partners: Partner[], 
     setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, 
@@ -737,10 +752,16 @@ const AdminPage = ({
     fetchActiveGiftCards: () => Promise<void>,
     handleUpdateGiftCard: (cardNumber: string, field: string, value: any) => Promise<void>,
     isUpdatingGiftCard: string | null,
-    setIsUpdatingGiftCard: React.Dispatch<React.SetStateAction<string | null>>
+    setIsUpdatingGiftCard: React.Dispatch<React.SetStateAction<string | null>>,
+    bannerLinks: {[key: number]: string},
+    setBannerLinks: React.Dispatch<React.SetStateAction<{[key: number]: string}>>,
+    bannerNames: {[key: number]: string},
+    setBannerNames: React.Dispatch<React.SetStateAction<{[key: number]: string}>>
 }) => {
     const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards'>('partners');
     const [giftCardPage, setGiftCardPage] = useState(0);
+    const [cashbackLogsPage, setCashbackLogsPage] = useState(0);
+    const [activeGiftCardsPage, setActiveGiftCardsPage] = useState(0);
     const navigate = useNavigate();
     
     const [welcomeFormData, setWelcomeFormData] = useState({
@@ -1060,11 +1081,6 @@ const AdminPage = ({
         displayId: 0 
     });
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [bannerLinks, setBannerLinks] = useState<{[key: number]: string}>({
-        1: commercialBanners.find(b => b.id === 1)?.linkUrl || '',
-        3: commercialBanners.find(b => b.id === 3)?.linkUrl || '',
-        4: commercialBanners.find(b => b.id === 4)?.linkUrl || ''
-    });
     
     // About Us State
     const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null, mission_vision_values: '' });
@@ -1088,6 +1104,7 @@ const AdminPage = ({
     const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
     const [customerRankingData, setCustomerRankingData] = useState<any[]>([]);
     const [customerRankingPeriod, setCustomerRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
+    const [bannerClickRankingData, setBannerClickRankingData] = useState<any[]>([]);
     const [isRankingLoading, setIsRankingLoading] = useState(false);
     const [rankingError, setRankingError] = useState<string | null>(null);
 
@@ -1354,6 +1371,35 @@ const AdminPage = ({
         } catch (error) {
             logger.error('Global error in fetchRanking:', error);
         } finally {
+            // Fetch Banner Click Ranking
+            try {
+                const { data: bannerClicks, error: bannerError } = await supabase
+                    .from('banner_clicks')
+                    .select('partner_name, banner_link, clicked_at')
+                    .order('clicked_at', { ascending: false });
+                
+                if (bannerError) throw bannerError;
+                
+                // Group by partner and link
+                const bannerRanking: { [key: string]: any } = {};
+                bannerClicks?.forEach((c: any) => {
+                    const key = `${c.partner_name}-${c.banner_link}`;
+                    if (!bannerRanking[key]) {
+                        bannerRanking[key] = {
+                            partner_name: c.partner_name,
+                            banner_link: c.banner_link,
+                            click_count: 0,
+                            last_click: c.clicked_at
+                        };
+                    }
+                    bannerRanking[key].click_count++;
+                });
+                
+                setBannerClickRankingData(Object.values(bannerRanking).sort((a, b) => b.click_count - a.click_count));
+            } catch (err) {
+                logger.error('Error fetching banner click ranking:', err);
+            }
+
             setIsRankingLoading(false);
         }
     };
@@ -1825,7 +1871,10 @@ const AdminPage = ({
                 .getPublicUrl(fileName);
 
             const upsertData: any = { id: id, image_url: publicUrl };
-            if ([1, 3, 4].includes(id)) upsertData.link_url = bannerLinks[id] || '';
+            if ([1, 3, 4].includes(id)) {
+                upsertData.link_url = bannerLinks[id] || '';
+                upsertData.partner_name = bannerNames[id] || '';
+            }
 
             const { error: dbError } = await supabase
                 .from('commercial_banner')
@@ -1834,7 +1883,12 @@ const AdminPage = ({
             if (dbError) throw dbError;
 
             if ([1, 3, 4].includes(id)) {
-                const newBanner = { id: id, imageUrl: publicUrl, linkUrl: bannerLinks[id] || '' };
+                const newBanner = { 
+                    id: id, 
+                    imageUrl: publicUrl, 
+                    linkUrl: bannerLinks[id] || '',
+                    partnerName: bannerNames[id] || ''
+                };
                 setCommercialBanners(prev => {
                     const filtered = prev.filter(b => b.id !== id);
                     return [...filtered, newBanner].sort((a, b) => {
@@ -1857,16 +1911,23 @@ const AdminPage = ({
         try {
             const { error } = await supabase
                 .from('commercial_banner')
-                .update({ link_url: bannerLinks[id] || '' })
+                .update({ 
+                    link_url: bannerLinks[id] || '',
+                    partner_name: bannerNames[id] || ''
+                })
                 .eq('id', id);
             
             if (error) throw error;
             
-            setCommercialBanners(prev => prev.map(b => b.id === id ? { ...b, linkUrl: bannerLinks[id] || '' } : b));
-            alert("Link do banner atualizado!");
+            setCommercialBanners(prev => prev.map(b => b.id === id ? { 
+                ...b, 
+                linkUrl: bannerLinks[id] || '',
+                partnerName: bannerNames[id] || ''
+            } : b));
+            alert("Informações do banner atualizadas!");
         } catch (error) {
-            logger.error('Error updating banner link:', error);
-            alert("Erro ao atualizar link.");
+            logger.error('Error updating banner info:', error);
+            alert("Erro ao atualizar informações.");
         }
     };
 
@@ -2056,6 +2117,16 @@ const AdminPage = ({
                                                     <img src={banner.imageUrl} alt={`Banner ${index + 1}`} className="max-w-full h-full object-contain rounded-lg shadow-sm" />
                                                 </div>
                                                 <div className="flex flex-col space-y-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nome do Parceiro:</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Nome da Empresa" 
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-xs"
+                                                        value={bannerNames[id] || ''}
+                                                        onChange={(e) => setBannerNames(prev => ({ ...prev, [id]: e.target.value }))}
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col space-y-2">
                                                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Link do Banner:</label>
                                                     <div className="flex gap-2">
                                                         <input 
@@ -2079,6 +2150,16 @@ const AdminPage = ({
                                             </div>
                                         ) : (
                                             <div className="space-y-4">
+                                                <div className="flex flex-col space-y-2">
+                                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Nome do Parceiro:</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="Nome da Empresa" 
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-xs"
+                                                        value={bannerNames[id] || ''}
+                                                        onChange={(e) => setBannerNames(prev => ({ ...prev, [id]: e.target.value }))}
+                                                    />
+                                                </div>
                                                 <div className="flex flex-col space-y-2">
                                                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Link do Banner (Opcional):</label>
                                                     <input 
@@ -2914,6 +2995,60 @@ const AdminPage = ({
                                 </table>
                             </div>
                         </div>
+
+                        {/* Banner Clicks Ranking */}
+                        <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
+                            <div className="flex items-center space-x-3 mb-6 sm:mb-8 px-2 sm:px-0">
+                                <div className="bg-purple-100 text-purple-600 p-2 sm:p-3 rounded-xl sm:rounded-2xl">
+                                    <Megaphone size={20} className="sm:w-6 sm:h-6" />
+                                </div>
+                                <div>
+                                    <h2 className="text-lg sm:text-2xl font-black text-slate-900">Cliques em Banners (Home)</h2>
+                                    <p className="text-slate-500 text-[10px] sm:text-sm">Ranking de cliques nos banners do carrossel principal.</p>
+                                </div>
+                            </div>
+
+                            <div className="overflow-x-auto -mx-2 px-2 sm:mx-0 sm:px-0">
+                                <table className="w-full text-left border-collapse min-w-[500px] sm:min-w-full">
+                                    <thead>
+                                        <tr className="border-b border-slate-100">
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Posição</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Parceiro</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest">Link</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Cliques</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-right">Último Clique</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {bannerClickRankingData.length > 0 ? (
+                                            bannerClickRankingData.map((item, index) => (
+                                                <tr key={`${item.partner_name}-${index}`} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4">
+                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {index + 1}
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm text-slate-400 truncate max-w-[150px] sm:max-w-xs">{item.banner_link}</td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="bg-[#279267]/10 text-[#279267] px-3 py-1 rounded-full text-[10px] sm:text-sm font-black">
+                                                            {item.click_count}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-right text-[9px] sm:text-xs text-slate-400">
+                                                        {new Date(item.last_click).toLocaleString('pt-BR')}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr key="empty-banner-clicks">
+                                                <td colSpan={5} className="py-10 sm:py-20 text-center text-slate-400 font-bold text-xs sm:text-base">Nenhum clique em banner registrado.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 )}
 
@@ -3067,7 +3202,7 @@ const AdminPage = ({
                                 </thead>
                                 <tbody>
                                     {cashbackLogs.length > 0 ? (
-                                        cashbackLogs.map((log) => (
+                                        cashbackLogs.slice(cashbackLogsPage * 10, (cashbackLogsPage + 1) * 10).map((log) => (
                                             <tr key={log.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                 <td className="py-3 sm:py-4 px-2 sm:px-4 text-[10px] sm:text-sm text-slate-500">
                                                     {new Date(log.created_at).toLocaleString('pt-BR')}
@@ -3090,6 +3225,29 @@ const AdminPage = ({
                                 </tbody>
                             </table>
                         </div>
+
+                        {cashbackLogs.length > 10 && (
+                            <div className="mt-8 flex items-center justify-center space-x-4">
+                                <button 
+                                    onClick={() => setCashbackLogsPage(prev => Math.max(0, prev - 1))}
+                                    disabled={cashbackLogsPage === 0}
+                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-bold text-slate-900">Página {cashbackLogsPage + 1}</span>
+                                    <span className="text-xs text-slate-400">de {Math.ceil(cashbackLogs.length / 10)}</span>
+                                </div>
+                                <button 
+                                    onClick={() => setCashbackLogsPage(prev => Math.min(Math.ceil(cashbackLogs.length / 10) - 1, prev + 1))}
+                                    disabled={cashbackLogsPage >= Math.ceil(cashbackLogs.length / 10) - 1}
+                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -3332,7 +3490,7 @@ const AdminPage = ({
                                             </td>
                                         </tr>
                                     ) : activeGiftCards.length > 0 ? (
-                                        activeGiftCards.map((card) => (
+                                        activeGiftCards.slice(activeGiftCardsPage * 10, (activeGiftCardsPage + 1) * 10).map((card) => (
                                             <tr key={card.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                 <td className="p-4 font-mono font-bold text-slate-900">{card.card_number}</td>
                                                 <td className="p-4 font-bold text-[#279267]">
@@ -3359,6 +3517,29 @@ const AdminPage = ({
                                 </tbody>
                             </table>
                         </div>
+
+                        {activeGiftCards.length > 10 && (
+                            <div className="mt-8 flex items-center justify-center space-x-4">
+                                <button 
+                                    onClick={() => setActiveGiftCardsPage(prev => Math.max(0, prev - 1))}
+                                    disabled={activeGiftCardsPage === 0}
+                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                >
+                                    <ChevronLeft size={24} />
+                                </button>
+                                <div className="flex items-center space-x-2">
+                                    <span className="text-sm font-bold text-slate-900">Página {activeGiftCardsPage + 1}</span>
+                                    <span className="text-xs text-slate-400">de {Math.ceil(activeGiftCards.length / 10)}</span>
+                                </div>
+                                <button 
+                                    onClick={() => setActiveGiftCardsPage(prev => Math.min(Math.ceil(activeGiftCards.length / 10) - 1, prev + 1))}
+                                    disabled={activeGiftCardsPage >= Math.ceil(activeGiftCards.length / 10) - 1}
+                                    className="p-2 rounded-xl bg-slate-100 text-slate-600 disabled:opacity-30 hover:bg-slate-200 transition-all"
+                                >
+                                    <ChevronRight size={24} />
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
@@ -3945,6 +4126,31 @@ const App = () => {
     const [activeGiftCardsError, setActiveGiftCardsError] = useState<string | null>(null);
     const [isUpdatingGiftCard, setIsUpdatingGiftCard] = useState<string | null>(null);
 
+    const [bannerLinks, setBannerLinks] = useState<{[key: number]: string}>({
+        1: commercialBanners.find(b => b.id === 1)?.linkUrl || '',
+        3: commercialBanners.find(b => b.id === 3)?.linkUrl || '',
+        4: commercialBanners.find(b => b.id === 4)?.linkUrl || ''
+    });
+    const [bannerNames, setBannerNames] = useState<{[key: number]: string}>({
+        1: commercialBanners.find(b => b.id === 1)?.partnerName || '',
+        3: commercialBanners.find(b => b.id === 3)?.partnerName || '',
+        4: commercialBanners.find(b => b.id === 4)?.partnerName || ''
+    });
+
+    const logBannerClick = async (banner: CommercialBannerData) => {
+        try {
+            const ip = await getUserIP();
+            await supabase.from('banner_clicks').insert({
+                banner_id: banner.id,
+                partner_name: banner.partnerName || 'N/A',
+                banner_link: banner.linkUrl || 'N/A',
+                ip_address: ip
+            });
+        } catch (error) {
+            logger.error('Error logging banner click:', error);
+        }
+    };
+
     useEffect(() => {
         // Detect /presente/XXX-TOKEN or /presenteXXX path
         const checkPath = (p: string) => {
@@ -4163,7 +4369,8 @@ const App = () => {
                     .map(b => ({
                         id: b.id,
                         imageUrl: b.image_url,
-                        linkUrl: b.link_url
+                        linkUrl: b.link_url,
+                        partnerName: b.partner_name
                     }))
                     .sort((a, b) => {
                         // Maintain order: 1, 3, 4
@@ -4172,6 +4379,16 @@ const App = () => {
                     });
                 
                 setCommercialBanners(carouselBanners);
+                
+                // Update bannerLinks and bannerNames states
+                const links: {[key: number]: string} = {};
+                const names: {[key: number]: string} = {};
+                carouselBanners.forEach(b => {
+                    links[b.id] = b.linkUrl || '';
+                    names[b.id] = b.partnerName || '';
+                });
+                setBannerLinks(prev => ({ ...prev, ...links }));
+                setBannerNames(prev => ({ ...prev, ...names }));
                 
                 const logoBanner = bannerRes.data.find(b => b.id === 2);
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
@@ -4260,7 +4477,7 @@ const App = () => {
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
-                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} />} />
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} onBannerClick={logBannerClick} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
@@ -4296,6 +4513,10 @@ const App = () => {
                                     handleUpdateGiftCard={handleUpdateGiftCard}
                                     isUpdatingGiftCard={isUpdatingGiftCard}
                                     setIsUpdatingGiftCard={setIsUpdatingGiftCard}
+                                    bannerLinks={bannerLinks}
+                                    setBannerLinks={setBannerLinks}
+                                    bannerNames={bannerNames}
+                                    setBannerNames={setBannerNames}
                                 />
                             </ProtectedRoute>
                         } />
@@ -4309,7 +4530,7 @@ const App = () => {
                                 <SecurityLogsPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} />} />
+                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} onBannerClick={logBannerClick} />} />
                     </Routes>
                     <Footer logoUrl={headerLogo} />
                     <CommercialBanner position="bottom" />

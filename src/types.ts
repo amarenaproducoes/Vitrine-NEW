@@ -107,6 +107,7 @@ export interface CommercialBannerData {
   id: number;
   imageUrl: string;
   linkUrl?: string | null;
+  partnerName?: string | null;
 }
 
 export interface FeaturedCoupon {
