@@ -13,6 +13,7 @@ import { formatWhatsApp, getCleanWhatsApp } from '../lib/format';
 
 interface PartnerCardProps {
   partner: Partner;
+  isFlat?: boolean;
   welcomeData?: {
     custom_coupon: string;
     custom_description: string;
@@ -21,7 +22,7 @@ interface PartnerCardProps {
   };
 }
 
-const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData }) => {
+const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat = false }) => {
   const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>(welcomeData?.autoOpen ? 'input' : 'hidden');
   const [whatsapp, setWhatsapp] = useState('');
   const [customerName, setCustomerName] = useState('');
@@ -407,7 +408,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData }) => {
   };
 
   return (
-    <div id={`partner-card-${partner.id}`} className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-100 flex flex-col h-full">
+    <div id={`partner-card-${partner.id}`} className={`group bg-white rounded-2xl overflow-hidden transition-all duration-300 flex flex-col h-full ${isFlat ? '' : 'shadow-sm hover:shadow-xl border border-slate-100'}`}>
       <div className="relative overflow-hidden block aspect-[9/16] bg-slate-100">
         <AnimatePresence mode="wait">
           <motion.div

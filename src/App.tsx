@@ -29,7 +29,7 @@ import WelcomePage from './components/WelcomePage';
 import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -327,6 +327,9 @@ const BannerCarousel = ({ banners, onBannerClick }: { banners: CommercialBannerD
 const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo, onBannerClick }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null, onBannerClick?: (banner: CommercialBannerData) => void }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
+    const [expandedPartnerId, setExpandedPartnerId] = useState<string | null>(null);
+    const [partnersPage, setPartnersPage] = useState(1);
+    const PARTNERS_PER_PAGE = 10;
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
     const [showRoulette, setShowRoulette] = useState(false);
@@ -469,6 +472,14 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
         const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesCategory && matchesSearch;
     });
+
+    const totalPartnersPages = Math.ceil(filteredPartners.length / PARTNERS_PER_PAGE);
+    const paginatedPartners = filteredPartners.slice((partnersPage - 1) * PARTNERS_PER_PAGE, partnersPage * PARTNERS_PER_PAGE);
+
+    useEffect(() => {
+        setPartnersPage(1);
+        setExpandedPartnerId(null);
+    }, [searchTerm, activeCategory]);
     
     return (
         <main className="flex-grow">
@@ -517,14 +528,14 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
 
             <section className="py-6 bg-white border-b border-slate-100">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center space-x-2 mb-8">
+                    <div className="flex items-center space-x-2 mb-4">
                         <div className="bg-[#c54b4b] text-white p-2 rounded-lg shadow-lg shadow-red-500/20">
                             <Trophy size={18} />
                         </div>
                         <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cupons em Destaque da Semana</h2>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {[0, 1, 2, 3, 4, 5].map((idx) => {
                             const coupon = featuredCoupons.find(c => c.slot_id === idx + 1);
                             const partner = partners.find(p => p.id === coupon?.partner_id);
@@ -551,9 +562,9 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                             }
                                         }, 300);
                                     }}
-                                    className="flex items-center p-4 bg-slate-50 border border-slate-100 rounded-2xl hover:border-[#279267] hover:bg-green-50 transition-all group text-left"
+                                    className="flex items-center p-2.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-[#279267] hover:bg-green-50 transition-all group text-left"
                                 >
-                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-slate-200 flex-shrink-0 mr-4">
+                                    <div className="w-10 h-10 rounded-xl overflow-hidden bg-white border border-slate-200 flex-shrink-0 mr-3">
                                         <img src={partner.imageUrl} alt={partner.name} className="w-full h-full object-cover" />
                                     </div>
                                     <div className="flex-grow min-w-0">
@@ -603,8 +614,53 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
 
             <section id="results-grid" className="py-8 bg-gray-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                        {filteredPartners.length > 0 ? filteredPartners.map((partner) => (<PartnerCard key={partner.id} partner={partner} />)) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {paginatedPartners.length > 0 ? paginatedPartners.map((partner) => (
+                            <div key={partner.id} className="flex flex-col">
+                                <button 
+                                    onClick={() => {
+                                        const isExpanding = expandedPartnerId !== partner.id;
+                                        setExpandedPartnerId(isExpanding ? partner.id : null);
+                                        if (isExpanding) {
+                                            setTimeout(() => {
+                                                const element = document.getElementById(`partner-card-${partner.id}`);
+                                                if (element) {
+                                                    const offset = 120;
+                                                    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                                                    window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
+                                                }
+                                            }, 100);
+                                        }
+                                    }}
+                                    className={`flex items-center p-3 bg-white border rounded-2xl transition-all group text-left shadow-sm hover:shadow-md ${expandedPartnerId === partner.id ? 'border-[#279267] bg-green-50 ring-2 ring-[#279267]/10' : 'border-slate-100'}`}
+                                >
+                                    <div className="w-12 h-12 rounded-xl overflow-hidden bg-white border border-slate-200 flex-shrink-0 mr-4">
+                                        <img src={partner.imageUrl} alt={partner.name} className="w-full h-full object-cover" />
+                                    </div>
+                                    <div className="flex-grow min-w-0">
+                                        <h4 className="text-sm font-bold text-slate-900 group-hover:text-[#279267] transition-colors leading-tight break-words">{partner.name}</h4>
+                                        <p className="text-[10px] font-black text-[#279267] uppercase tracking-widest mt-0.5">{partner.category}</p>
+                                    </div>
+                                    <div className={`transition-transform duration-300 ${expandedPartnerId === partner.id ? 'rotate-90' : ''}`}>
+                                        <ChevronRight size={20} className="text-slate-300 group-hover:text-[#279267]" />
+                                    </div>
+                                </button>
+                                
+                                <AnimatePresence>
+                                    {expandedPartnerId === partner.id && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                                            animate={{ height: 'auto', opacity: 1, marginTop: 16 }}
+                                            exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                                            transition={{ duration: 0.5, ease: [0.04, 0.62, 0.23, 0.98] }}
+                                            className="overflow-hidden origin-top bg-white rounded-2xl border border-slate-100 shadow-lg"
+                                        >
+                                            <PartnerCard partner={partner} isFlat={true} />
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        )) : (
                             <div className="col-span-full py-20 text-center">
                                 <div className="text-slate-300 mb-4 flex justify-center"><Store size={64} strokeWidth={1} /></div>
                                 <h3 className="text-xl font-bold text-slate-400">
@@ -614,6 +670,45 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                             </div>
                         )}
                     </div>
+
+                    {totalPartnersPages > 1 && (
+                        <div className="mt-12 flex justify-center items-center space-x-2">
+                            <button 
+                                onClick={() => {
+                                    setPartnersPage(prev => Math.max(1, prev - 1));
+                                    document.getElementById('results-grid')?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                disabled={partnersPage === 1}
+                                className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+                            >
+                                <ChevronLeft size={20} />
+                            </button>
+                            <div className="flex items-center space-x-1">
+                                {Array.from({ length: totalPartnersPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => {
+                                            setPartnersPage(page);
+                                            document.getElementById('results-grid')?.scrollIntoView({ behavior: 'smooth' });
+                                        }}
+                                        className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${partnersPage === page ? 'bg-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border border-slate-200 text-slate-500 hover:border-[#279267]/20'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                ))}
+                            </div>
+                            <button 
+                                onClick={() => {
+                                    setPartnersPage(prev => Math.min(totalPartnersPages, prev + 1));
+                                    document.getElementById('results-grid')?.scrollIntoView({ behavior: 'smooth' });
+                                }}
+                                disabled={partnersPage === totalPartnersPages}
+                                className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 disabled:opacity-50 hover:bg-slate-50 transition-colors"
+                            >
+                                <ChevronRight size={20} />
+                            </button>
+                        </div>
+                    )}
 
                     {featuredPartner && (
                         <div 
