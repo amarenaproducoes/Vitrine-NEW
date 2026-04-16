@@ -20,6 +20,7 @@ export interface Partner {
   isAuthorized: boolean;
   cashbackEnabled: boolean;
   orderIndex: number;
+  page_number?: number;
   displayId?: number;
   googleReviewLink?: string;
   websiteUrl?: string;

@@ -324,7 +324,7 @@ const BannerCarousel = ({ banners, onBannerClick }: { banners: CommercialBannerD
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo, onBannerClick }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null, onBannerClick?: (banner: CommercialBannerData) => void }) => {
+const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo, partnerAccessCounts, onBannerClick }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null, partnerAccessCounts: Record<string, number>, onBannerClick?: (banner: CommercialBannerData) => void }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedPartnerId, setExpandedPartnerId] = useState<string | null>(null);
@@ -473,8 +473,26 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
         return matchesCategory && matchesSearch;
     });
 
-    const totalPartnersPages = Math.ceil(filteredPartners.length / PARTNERS_PER_PAGE);
-    const paginatedPartners = filteredPartners.slice((partnersPage - 1) * PARTNERS_PER_PAGE, partnersPage * PARTNERS_PER_PAGE);
+    // Sort partners by page_number first, then by access count ranking
+    const sortedPartners = [...filteredPartners].sort((a, b) => {
+        const pageA = a.page_number || 1;
+        const pageB = b.page_number || 1;
+        if (pageA !== pageB) return pageA - pageB;
+
+        const countA = partnerAccessCounts[a.id] || 0;
+        const countB = partnerAccessCounts[b.id] || 0;
+        return countB - countA;
+    });
+
+    // Determine total pages based on the maximum page_number assigned to any authorized partner
+    // OR based on the number of filtered partners if they are all on the same page
+    const maxAssignedPage = Math.max(1, ...authorizedPartners.map(p => p.page_number || 1));
+    const totalPartnersPages = activeCategory === "Todos" && !searchTerm ? maxAssignedPage : Math.ceil(sortedPartners.length / PARTNERS_PER_PAGE);
+
+    // If searching or filtering by category, use traditional pagination, otherwise use assigned pages
+    const paginatedPartners = (searchTerm || activeCategory !== "Todos") 
+        ? sortedPartners.slice((partnersPage - 1) * PARTNERS_PER_PAGE, partnersPage * PARTNERS_PER_PAGE)
+        : sortedPartners.filter(p => (p.page_number || 1) === partnersPage);
 
     useEffect(() => {
         setPartnersPage(1);
@@ -1117,14 +1135,30 @@ const AdminPage = ({
     };
     
     // Coupon Mass Edit State
-    const [couponEdits, setCouponEdits] = useState<{[key: string]: { orderIndex: number, coupon: string, couponDescription: string }}>({});
+    const [couponEdits, setCouponEdits] = useState<{[key: string]: { orderIndex: number, pageNumber: number, coupon: string, couponDescription: string }}>({});
 
     const handleSaveCoupons = async () => {
         setIsSubmitting(true);
         try {
+            // First, validate 10 partners per page limit
+            const pageCounts: { [key: number]: number } = {};
+            
+            // Calculate current counts from existing partners
+            partners.forEach(p => {
+                const page = couponEdits[p.id]?.pageNumber || p.page_number || 1;
+                pageCounts[page] = (pageCounts[page] || 0) + 1;
+            });
+
+            // Check if any page exceeds 10
+            const overlimitPage = Object.entries(pageCounts).find(([_, count]) => count > 10);
+            if (overlimitPage) {
+                throw new Error(`A página ${overlimitPage[0]} já possui 10 parceiros. Limite atingido.`);
+            }
+
             const updates = Object.entries(couponEdits).map(([id, edit]) => ({
                 id,
                 order_index: edit.orderIndex,
+                page_number: edit.pageNumber,
                 coupon: edit.coupon,
                 coupon_description: edit.couponDescription
             }));
@@ -1132,6 +1166,7 @@ const AdminPage = ({
             for (const update of updates) {
                 const { error } = await supabase.from('partners').update({
                     order_index: update.order_index,
+                    page_number: update.page_number,
                     coupon: update.coupon,
                     coupon_description: update.coupon_description
                 }).eq('id', update.id);
@@ -1143,12 +1178,13 @@ const AdminPage = ({
                     return {
                         ...p,
                         orderIndex: couponEdits[p.id].orderIndex,
+                        page_number: couponEdits[p.id].pageNumber,
                         coupon: couponEdits[p.id].coupon,
                         couponDescription: couponEdits[p.id].couponDescription
                     };
                 }
                 return p;
-            }).sort((a, b) => a.orderIndex - b.orderIndex));
+            }));
 
             setCouponEdits({});
             alert("Cupons e sequências atualizados com sucesso!");
@@ -1160,10 +1196,11 @@ const AdminPage = ({
         }
     };
 
-    const handleCouponChange = (partnerId: string, field: 'orderIndex' | 'coupon' | 'couponDescription', value: any) => {
+    const handleCouponChange = (partnerId: string, field: 'orderIndex' | 'pageNumber' | 'coupon' | 'couponDescription', value: any) => {
         setCouponEdits(prev => {
             const existing = prev[partnerId] || { 
                 orderIndex: partners.find(p => p.id === partnerId)?.orderIndex || 0,
+                pageNumber: partners.find(p => p.id === partnerId)?.page_number || 1,
                 coupon: partners.find(p => p.id === partnerId)?.coupon || '',
                 couponDescription: partners.find(p => p.id === partnerId)?.couponDescription || ''
             };
@@ -1199,6 +1236,7 @@ const AdminPage = ({
         cashbackEnabled: boolean, 
         giftCardEnabled: boolean,
         orderIndex: number, 
+        page_number: number,
         displayId: number
     }>({ 
         name: '', 
@@ -1221,6 +1259,7 @@ const AdminPage = ({
         cashbackEnabled: true, 
         giftCardEnabled: false,
         orderIndex: 0, 
+        page_number: 1,
         displayId: 0 
     });
     const [editingId, setEditingId] = useState<string | null>(null);
@@ -1732,8 +1771,15 @@ const AdminPage = ({
                 cashback_enabled: formData.cashbackEnabled,
                 gift_card_enabled: formData.giftCardEnabled,
                 order_index: formData.orderIndex,
+                page_number: formData.page_number,
                 display_id: formData.displayId
             };
+
+            // Validate 10 partners per page limit
+            const partnersInSamePage = partners.filter(p => (p.page_number || 1) === formData.page_number && p.id !== editingId);
+            if (partnersInSamePage.length >= 10) {
+                throw new Error(`A página ${formData.page_number} já possui 10 parceiros. Limite atingido.`);
+            }
 
             console.log('FULL DATA BEING SENT TO SUPABASE:');
             console.dir(partnerData);
@@ -1856,6 +1902,7 @@ const AdminPage = ({
             cashbackEnabled: true, 
             giftCardEnabled: false,
             orderIndex: 0, 
+            page_number: 1,
             displayId: nextId 
         });
         setEditingId(null);
@@ -1886,6 +1933,7 @@ const AdminPage = ({
             cashbackEnabled: partner.cashbackEnabled,
             giftCardEnabled: partner.giftCardEnabled || false,
             orderIndex: partner.orderIndex,
+            page_number: partner.page_number || 1,
             displayId: partner.displayId || 0
         });
         setEditingId(partner.id);
@@ -2374,6 +2422,18 @@ const AdminPage = ({
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
+                                        <div className="flex flex-col space-y-1">
+                                            <label htmlFor="pageNumber" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Página</label>
+                                            <input 
+                                                type="number" 
+                                                id="pageNumber"
+                                                min="1"
+                                                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
+                                                placeholder="Página" 
+                                                value={formData.page_number} 
+                                                onChange={e => setFormData({...formData, page_number: parseInt(e.target.value) || 1})} 
+                                            />
+                                        </div>
                                         <div className="flex flex-col space-y-1">
                                             <label htmlFor="orderIndex" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Sequência</label>
                                             <input 
@@ -3423,6 +3483,7 @@ const AdminPage = ({
                             <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Parceiro</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Página</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-32">Sequência</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Código do Cupom</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Descrição do Benefício</th>
@@ -3433,6 +3494,7 @@ const AdminPage = ({
                                     partners.map((partner) => {
                                         const currentEdit = couponEdits[partner.id] || {
                                             orderIndex: partner.orderIndex,
+                                            pageNumber: partner.page_number || 1,
                                             coupon: partner.coupon || '',
                                             couponDescription: partner.couponDescription || ''
                                         };
@@ -3446,6 +3508,15 @@ const AdminPage = ({
                                                             <p className="text-[10px] font-black text-[#279267] uppercase tracking-widest">{partner.category}</p>
                                                         </div>
                                                     </div>
+                                                </td>
+                                                <td className="p-4">
+                                                    <input 
+                                                        type="number" 
+                                                        min="1"
+                                                        value={currentEdit.pageNumber}
+                                                        onChange={(e) => handleCouponChange(partner.id, 'pageNumber', parseInt(e.target.value) || 1)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                    />
                                                 </td>
                                                 <td className="p-4">
                                                     <input 
@@ -4310,6 +4381,7 @@ const App = () => {
     const [featuredCoupons, setFeaturedCoupons] = useState<FeaturedCoupon[]>([]);
     const [welcomeMessages, setWelcomeMessages] = useState<WelcomeMessage[]>([]);
     const [welcomeAccessCounts, setWelcomeAccessCounts] = useState<Record<string, number>>({});
+    const [partnerAccessCounts, setPartnerAccessCounts] = useState<Record<string, number>>({});
     const [couponCampaigns, setCouponCampaigns] = useState<CouponCampaign[]>([]);
     const [couponCampaignAccessCounts, setCouponCampaignAccessCounts] = useState<Record<string, number>>({});
     const [loading, setLoading] = useState(true);
@@ -4495,7 +4567,7 @@ const App = () => {
 
     const fetchData = async () => {
         try {
-            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes] = await Promise.all([
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
                 supabase.from('partners').select('*').order('order_index', { ascending: true }),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
@@ -4503,7 +4575,8 @@ const App = () => {
                 supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }),
                 supabase.from('welcome_access_logs').select('ref_id'),
                 supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
-                supabase.from('coupon_campaign_access_logs').select('ref_id')
+                supabase.from('coupon_campaign_access_logs').select('ref_id'),
+                supabase.from('partner_access_logs').select('partner_id')
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
@@ -4530,6 +4603,7 @@ const App = () => {
                     cashbackEnabled: p.cashback_enabled ?? true,
                     giftCardEnabled: p.gift_card_enabled ?? false,
                     orderIndex: p.order_index ?? 0,
+                    page_number: p.page_number || 1,
                     displayId: p.display_id || 0
                 }));
                 setPartners(mappedPartners);
@@ -4565,6 +4639,14 @@ const App = () => {
                     counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
                 });
                 setCouponCampaignAccessCounts(counts);
+            }
+
+            if (partnerAccessLogsRes.data) {
+                const counts: Record<string, number> = {};
+                partnerAccessLogsRes.data.forEach(log => {
+                    counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
+                });
+                setPartnerAccessCounts(counts);
             }
 
             if (bannerRes.data) {
@@ -4681,7 +4763,7 @@ const App = () => {
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
-                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} onBannerClick={logBannerClick} />} />
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/login" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
@@ -4734,7 +4816,7 @@ const App = () => {
                                 <SecurityLogsPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} onBannerClick={logBannerClick} />} />
+                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} />} />
                     </Routes>
                     <Footer logoUrl={headerLogo} />
                     <CommercialBanner position="bottom" />
