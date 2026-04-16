@@ -699,16 +699,18 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
         )}
         
         <div className="grid grid-cols-2 gap-2">
-          <a 
-            href={partner.link}
-            target="_blank" 
-            rel="noopener noreferrer"
-            onMouseDown={() => trackClick('instagram')}
-            className="inline-flex items-center justify-center w-full bg-slate-100 group-hover:bg-[#279267] text-slate-800 group-hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 text-center leading-tight"
-          >
-            Instagram
-            <ExternalLink className="ml-1.5 w-3 h-3" />
-          </a>
+          {partner.link && (
+            <a 
+              href={partner.link}
+              target="_blank" 
+              rel="noopener noreferrer"
+              onMouseDown={() => trackClick('instagram')}
+              className="inline-flex items-center justify-center w-full bg-slate-100 group-hover:bg-[#279267] text-slate-800 group-hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 text-center leading-tight"
+            >
+              Instagram
+              <ExternalLink className="ml-1.5 w-3 h-3" />
+            </a>
+          )}
           
           {partner.whatsappLink && (
             <a 

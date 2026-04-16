@@ -29,8 +29,7 @@ export const PARTNERS_MOCK: Partner[] = [
     link: 'https://instagram.com',
     coupon: 'BELLA10',
     isAuthorized: true,
-    cashbackEnabled: true,
-    orderIndex: 1
+    cashbackEnabled: true
   },
   {
     id: '2',
@@ -42,8 +41,7 @@ export const PARTNERS_MOCK: Partner[] = [
     imageUrl: 'https://picsum.photos/seed/car/800/600',
     link: 'https://google.com',
     isAuthorized: true,
-    cashbackEnabled: true,
-    orderIndex: 2
+    cashbackEnabled: true
   },
   {
     id: '3',
@@ -55,8 +53,7 @@ export const PARTNERS_MOCK: Partner[] = [
     imageUrl: 'https://picsum.photos/seed/fashion/800/600',
     link: 'https://whatsapp.com',
     isAuthorized: true,
-    cashbackEnabled: true,
-    orderIndex: 3
+    cashbackEnabled: true
   }
 ];
 

@@ -397,7 +397,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                 couponDescription: partner.coupon_description,
                                 isAuthorized: partner.is_authorized,
                                 cashbackEnabled: partner.cashback_enabled,
-                                orderIndex: partner.order_index,
+                                page_number: partner.page_number || 1,
                                 displayId: partner.display_id
                             });
                             setShowWelcomeModal(true);
@@ -461,7 +461,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
         }
     };
 
-    const authorizedPartners = partners.filter(p => p.isAuthorized).sort((a, b) => a.orderIndex - b.orderIndex);
+    const authorizedPartners = partners.filter(p => p.isAuthorized);
     const handleCategoryClick = (category: string) => {
         setActiveCategory(category);
         setSearchTerm(""); // Clear search when category is selected
@@ -473,7 +473,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
         return matchesCategory && matchesSearch;
     });
 
-    // Sort partners by page_number first, then by access count ranking
+    // Sort partners by page_number first, then by monthly access count ranking
     const sortedPartners = [...filteredPartners].sort((a, b) => {
         const pageA = a.page_number || 1;
         const pageB = b.page_number || 1;
@@ -493,6 +493,18 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     const paginatedPartners = (searchTerm || activeCategory !== "Todos") 
         ? sortedPartners.slice((partnersPage - 1) * PARTNERS_PER_PAGE, partnersPage * PARTNERS_PER_PAGE)
         : sortedPartners.filter(p => (p.page_number || 1) === partnersPage);
+
+    const scrollToPartnersTop = () => {
+        const element = document.getElementById('results-grid');
+        if (element) {
+            const offset = 160; // Offset for sticky headers (Vitrine header + Filter bar)
+            const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+            window.scrollTo({
+                top: elementPosition - offset,
+                behavior: 'smooth'
+            });
+        }
+    };
 
     useEffect(() => {
         setPartnersPage(1);
@@ -694,7 +706,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                             <button 
                                 onClick={() => {
                                     setPartnersPage(prev => Math.max(1, prev - 1));
-                                    document.getElementById('results-grid')?.scrollIntoView({ behavior: 'smooth' });
+                                    scrollToPartnersTop();
                                 }}
                                 disabled={partnersPage === 1}
                                 className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 disabled:opacity-50 hover:bg-slate-50 transition-colors"
@@ -707,7 +719,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                         key={page}
                                         onClick={() => {
                                             setPartnersPage(page);
-                                            document.getElementById('results-grid')?.scrollIntoView({ behavior: 'smooth' });
+                                            scrollToPartnersTop();
                                         }}
                                         className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${partnersPage === page ? 'bg-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border border-slate-200 text-slate-500 hover:border-[#279267]/20'}`}
                                     >
@@ -718,7 +730,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                             <button 
                                 onClick={() => {
                                     setPartnersPage(prev => Math.min(totalPartnersPages, prev + 1));
-                                    document.getElementById('results-grid')?.scrollIntoView({ behavior: 'smooth' });
+                                    scrollToPartnersTop();
                                 }}
                                 disabled={partnersPage === totalPartnersPages}
                                 className="p-2 rounded-xl border border-slate-200 bg-white text-slate-400 disabled:opacity-50 hover:bg-slate-50 transition-colors"
@@ -1135,7 +1147,7 @@ const AdminPage = ({
     };
     
     // Coupon Mass Edit State
-    const [couponEdits, setCouponEdits] = useState<{[key: string]: { orderIndex: number, pageNumber: number, coupon: string, couponDescription: string }}>({});
+    const [couponEdits, setCouponEdits] = useState<{[key: string]: { pageNumber: number, coupon: string, couponDescription: string }}>({});
 
     const handleSaveCoupons = async () => {
         setIsSubmitting(true);
@@ -1157,7 +1169,6 @@ const AdminPage = ({
 
             const updates = Object.entries(couponEdits).map(([id, edit]) => ({
                 id,
-                order_index: edit.orderIndex,
                 page_number: edit.pageNumber,
                 coupon: edit.coupon,
                 coupon_description: edit.couponDescription
@@ -1165,7 +1176,6 @@ const AdminPage = ({
 
             for (const update of updates) {
                 const { error } = await supabase.from('partners').update({
-                    order_index: update.order_index,
                     page_number: update.page_number,
                     coupon: update.coupon,
                     coupon_description: update.coupon_description
@@ -1177,7 +1187,6 @@ const AdminPage = ({
                 if (couponEdits[p.id]) {
                     return {
                         ...p,
-                        orderIndex: couponEdits[p.id].orderIndex,
                         page_number: couponEdits[p.id].pageNumber,
                         coupon: couponEdits[p.id].coupon,
                         couponDescription: couponEdits[p.id].couponDescription
@@ -1187,7 +1196,7 @@ const AdminPage = ({
             }));
 
             setCouponEdits({});
-            alert("Cupons e sequências atualizados com sucesso!");
+            alert("Cupons e páginas atualizados com sucesso!");
         } catch (error: any) {
             logger.error('Error saving coupons:', error);
             alert(`Erro ao salvar: ${error.message}`);
@@ -1196,10 +1205,9 @@ const AdminPage = ({
         }
     };
 
-    const handleCouponChange = (partnerId: string, field: 'orderIndex' | 'pageNumber' | 'coupon' | 'couponDescription', value: any) => {
+    const handleCouponChange = (partnerId: string, field: 'pageNumber' | 'coupon' | 'couponDescription', value: any) => {
         setCouponEdits(prev => {
             const existing = prev[partnerId] || { 
-                orderIndex: partners.find(p => p.id === partnerId)?.orderIndex || 0,
                 pageNumber: partners.find(p => p.id === partnerId)?.page_number || 1,
                 coupon: partners.find(p => p.id === partnerId)?.coupon || '',
                 couponDescription: partners.find(p => p.id === partnerId)?.couponDescription || ''
@@ -1235,7 +1243,6 @@ const AdminPage = ({
         isAuthorized: boolean, 
         cashbackEnabled: boolean, 
         giftCardEnabled: boolean,
-        orderIndex: number, 
         page_number: number,
         displayId: number
     }>({ 
@@ -1258,7 +1265,6 @@ const AdminPage = ({
         isAuthorized: true, 
         cashbackEnabled: true, 
         giftCardEnabled: false,
-        orderIndex: 0, 
         page_number: 1,
         displayId: 0 
     });
@@ -1286,6 +1292,8 @@ const AdminPage = ({
     const [cashbackLogs, setCashbackLogs] = useState<CashbackLog[]>([]);
     const [customerRankingData, setCustomerRankingData] = useState<any[]>([]);
     const [customerRankingPeriod, setCustomerRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
+    const [rankingPage, setRankingPage] = useState(1);
+    const RANKING_PER_PAGE = 10;
     const [bannerClickRankingData, setBannerClickRankingData] = useState<any[]>([]);
     const [isRankingLoading, setIsRankingLoading] = useState(false);
     const [rankingError, setRankingError] = useState<string | null>(null);
@@ -1381,6 +1389,10 @@ const AdminPage = ({
         }
     }, [partners, editingId]);
 
+    useEffect(() => {
+        setRankingPage(1);
+    }, [partnerRankingPeriod]);
+
     const fetchRanking = async () => {
         setIsRankingLoading(true);
         setRankingError(null);
@@ -1416,7 +1428,7 @@ const AdminPage = ({
                         };
                     }));
 
-                    setRankingData(ranking.sort((a, b) => b.count - a.count).slice(0, 10));
+                    setRankingData(ranking.sort((a, b) => b.count - a.count));
                 }
             } catch (err) {
                 logger.error('Error fetching partner ranking:', err);
@@ -1770,7 +1782,6 @@ const AdminPage = ({
                 is_authorized: formData.isAuthorized,
                 cashback_enabled: formData.cashbackEnabled,
                 gift_card_enabled: formData.giftCardEnabled,
-                order_index: formData.orderIndex,
                 page_number: formData.page_number,
                 display_id: formData.displayId
             };
@@ -1813,7 +1824,7 @@ const AdminPage = ({
                         websiteUrl: formData.websiteUrl || '',
                         id: editingId, 
                         displayId: partnerData.display_id || p.displayId || 0
-                    } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                    } : p));
                 } else {
                     console.log('Update response data:', data);
                     console.log('DB returned video_url:', data.video_url);
@@ -1825,7 +1836,7 @@ const AdminPage = ({
                         websiteUrl: data.website_url || '',
                         id: editingId, 
                         displayId: data.display_id 
-                    } : p).sort((a, b) => a.orderIndex - b.orderIndex));
+                    } : p));
                 }
                 alert("Parceiro atualizado com sucesso!");
             } else {
@@ -1854,7 +1865,7 @@ const AdminPage = ({
                         id: 'temp-' + Date.now(), // Fallback ID if DB didn't return one
                         displayId: partnerData.display_id || formData.displayId || 0
                     };
-                    setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
+                    setPartners(prev => [newPartner, ...prev]);
                 } else {
                     console.log('Insert response data:', data);
                     const newPartner: Partner = { 
@@ -1866,7 +1877,7 @@ const AdminPage = ({
                         id: data.id, 
                         displayId: data.display_id 
                     };
-                    setPartners(prev => [newPartner, ...prev].sort((a, b) => a.orderIndex - b.orderIndex));
+                    setPartners(prev => [newPartner, ...prev]);
                 }
                 alert("Parceiro salvo com sucesso!");
             }
@@ -1901,7 +1912,6 @@ const AdminPage = ({
             isAuthorized: true, 
             cashbackEnabled: true, 
             giftCardEnabled: false,
-            orderIndex: 0, 
             page_number: 1,
             displayId: nextId 
         });
@@ -1932,7 +1942,6 @@ const AdminPage = ({
             isAuthorized: partner.isAuthorized,
             cashbackEnabled: partner.cashbackEnabled,
             giftCardEnabled: partner.giftCardEnabled || false,
-            orderIndex: partner.orderIndex,
             page_number: partner.page_number || 1,
             displayId: partner.displayId || 0
         });
@@ -2421,30 +2430,17 @@ const AdminPage = ({
                                             <label htmlFor="giftCardEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Presente</label>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="flex flex-col space-y-1">
-                                            <label htmlFor="pageNumber" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Página</label>
-                                            <input 
-                                                type="number" 
-                                                id="pageNumber"
-                                                min="1"
-                                                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
-                                                placeholder="Página" 
-                                                value={formData.page_number} 
-                                                onChange={e => setFormData({...formData, page_number: parseInt(e.target.value) || 1})} 
-                                            />
-                                        </div>
-                                        <div className="flex flex-col space-y-1">
-                                            <label htmlFor="orderIndex" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Sequência</label>
-                                            <input 
-                                                type="number" 
-                                                id="orderIndex"
-                                                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
-                                                placeholder="Ordem" 
-                                                value={formData.orderIndex} 
-                                                onChange={e => setFormData({...formData, orderIndex: parseInt(e.target.value) || 0})} 
-                                            />
-                                        </div>
+                                    <div className="flex flex-col space-y-1">
+                                        <label htmlFor="pageNumber" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Página da Vitrine</label>
+                                        <input 
+                                            type="number" 
+                                            id="pageNumber"
+                                            min="1"
+                                            className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
+                                            placeholder="Página (1-10)" 
+                                            value={formData.page_number} 
+                                            onChange={e => setFormData({...formData, page_number: parseInt(e.target.value) || 1})} 
+                                        />
                                     </div>
                                     <div className="flex flex-col space-y-1">
                                         <label htmlFor="displayId" className="text-[10px] font-bold text-slate-500 uppercase ml-1">ID para QR Code (Número Único)</label>
@@ -2881,7 +2877,7 @@ const AdminPage = ({
                             </div>
                             <div>
                                 <h2 className="text-lg sm:text-2xl font-black text-slate-900">Ranking de Parceiros</h2>
-                                <p className="text-slate-500 text-[10px] sm:text-sm">Top 10 parceiros mais acessados.</p>
+                                <p className="text-slate-500 text-[10px] sm:text-sm">Ranking completo de acessos (cliques em cards e QR).</p>
                             </div>
                         </div>
                         <div className="flex items-center bg-slate-100 p-1 rounded-xl w-fit overflow-x-auto no-scrollbar">
@@ -2918,11 +2914,11 @@ const AdminPage = ({
                             </thead>
                             <tbody>
                                 {rankingData.length > 0 ? (
-                                    rankingData.map((item, index) => (
+                                    rankingData.slice((rankingPage - 1) * RANKING_PER_PAGE, rankingPage * RANKING_PER_PAGE).map((item, index) => (
                                         <tr key={item.id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                             <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                    {index + 1}
+                                                <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${((rankingPage - 1) * RANKING_PER_PAGE + index) === 0 ? 'bg-amber-400 text-white' : ((rankingPage - 1) * RANKING_PER_PAGE + index) === 1 ? 'bg-slate-300 text-white' : ((rankingPage - 1) * RANKING_PER_PAGE + index) === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                    {(rankingPage - 1) * RANKING_PER_PAGE + index + 1}
                                                 </div>
                                             </td>
                                             <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base truncate max-w-[120px] sm:max-w-none">{item.name}</td>
@@ -2941,6 +2937,24 @@ const AdminPage = ({
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    <div className="mt-6 flex justify-between items-center px-4 py-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <button 
+                            onClick={() => setRankingPage(prev => Math.max(1, prev - 1))}
+                            disabled={rankingPage === 1}
+                            className="p-2 rounded-lg hover:bg-white disabled:opacity-50 transition-colors text-slate-600"
+                        >
+                            <ChevronLeft size={20} />
+                        </button>
+                        <span className="text-xs font-bold text-slate-600">Página {rankingPage} de {Math.max(1, Math.ceil(rankingData.length / RANKING_PER_PAGE))}</span>
+                        <button 
+                            onClick={() => setRankingPage(prev => Math.min(Math.ceil(rankingData.length / RANKING_PER_PAGE), prev + 1))}
+                            disabled={rankingPage === Math.max(1, Math.ceil(rankingData.length / RANKING_PER_PAGE))}
+                            className="p-2 rounded-lg hover:bg-white disabled:opacity-50 transition-colors text-slate-600"
+                        >
+                            <ChevronRight size={20} />
+                        </button>
                     </div>
 
                     <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
@@ -3459,8 +3473,8 @@ const AdminPage = ({
                 <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
                     <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
-                            <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-2">Gestão de Cupons e Sequência</h2>
-                            <p className="text-slate-500 text-xs sm:text-base">Altere a sequência de exibição, o código do cupom e a descrição do benefício em massa.</p>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900 mb-2">Gestão de Cupons e Páginas</h2>
+                            <p className="text-slate-500 text-xs sm:text-base">Altere a página de exibição, o código do cupom e a descrição do benefício em massa.</p>
                         </div>
                         <button 
                             onClick={handleSaveCoupons}
@@ -3481,10 +3495,9 @@ const AdminPage = ({
                     <div className="overflow-x-auto rounded-xl border border-slate-200">
                         <table className="w-full text-left border-collapse min-w-[800px]">
                             <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
+                                <tr>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Parceiro</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Página</th>
-                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-32">Sequência</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Código do Cupom</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Descrição do Benefício</th>
                                 </tr>
@@ -3493,7 +3506,6 @@ const AdminPage = ({
                                 {partners.length > 0 ? (
                                     partners.map((partner) => {
                                         const currentEdit = couponEdits[partner.id] || {
-                                            orderIndex: partner.orderIndex,
                                             pageNumber: partner.page_number || 1,
                                             coupon: partner.coupon || '',
                                             couponDescription: partner.couponDescription || ''
@@ -3515,14 +3527,6 @@ const AdminPage = ({
                                                         min="1"
                                                         value={currentEdit.pageNumber}
                                                         onChange={(e) => handleCouponChange(partner.id, 'pageNumber', parseInt(e.target.value) || 1)}
-                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
-                                                    />
-                                                </td>
-                                                <td className="p-4">
-                                                    <input 
-                                                        type="number" 
-                                                        value={currentEdit.orderIndex}
-                                                        onChange={(e) => handleCouponChange(partner.id, 'orderIndex', parseInt(e.target.value) || 0)}
                                                         className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
                                                     />
                                                 </td>
@@ -4567,8 +4571,11 @@ const App = () => {
 
     const fetchData = async () => {
         try {
+            const now = new Date();
+            const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
             const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
-                supabase.from('partners').select('*').order('order_index', { ascending: true }),
+                supabase.from('partners').select('*'),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
@@ -4576,7 +4583,7 @@ const App = () => {
                 supabase.from('welcome_access_logs').select('ref_id'),
                 supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
                 supabase.from('coupon_campaign_access_logs').select('ref_id'),
-                supabase.from('partner_access_logs').select('partner_id')
+                supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth)
             ]);
 
             if (partnersRes.error) throw partnersRes.error;
@@ -4602,7 +4609,6 @@ const App = () => {
                     isAuthorized: p.is_authorized ?? true,
                     cashbackEnabled: p.cashback_enabled ?? true,
                     giftCardEnabled: p.gift_card_enabled ?? false,
-                    orderIndex: p.order_index ?? 0,
                     page_number: p.page_number || 1,
                     displayId: p.display_id || 0
                 }));
