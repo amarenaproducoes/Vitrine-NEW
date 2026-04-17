@@ -4749,11 +4749,10 @@ const App = () => {
         setLoading(true);
         try {
             const now = new Date();
-            const cacheBuster = now.getTime(); // Cache busting para forçar dados novos
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
             const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
-                supabase.from('partners').select('*').not('id', 'is', null), // Força bypass de cache em alguns provedores
+                supabase.from('partners').select('*').not('id', 'is', null),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
@@ -4763,6 +4762,12 @@ const App = () => {
                 supabase.from('coupon_campaign_access_logs').select('ref_id'),
                 supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth)
             ]);
+
+            if (partnersRes.error) throw new Error(`Erro Parceiros: ${partnersRes.error.message}`);
+            if (categoriesRes.error) throw new Error(`Erro Categorias: ${categoriesRes.error.message}`);
+
+            if (partnersRes.data) setPartners(partnersRes.data);
+            if (categoriesRes.data) setCategories(categoriesRes.data);
 
             if (partnersRes.error) throw partnersRes.error;
             if (categoriesRes.error) throw categoriesRes.error;
@@ -4949,6 +4954,10 @@ const App = () => {
                 <AnalyticsTracker />
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
+                    {/* Tarja de Diagnóstico Interno */}
+                    <div className="bg-yellow-400 text-yellow-900 text-[9px] font-black py-1 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600">
+                        SITE ATUALIZADO (v1.0.9L) • DADOS SUPABASE ATIVOS
+                    </div>
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
