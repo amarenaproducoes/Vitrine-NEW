@@ -4488,6 +4488,16 @@ const App = () => {
     const [passwordError, setPasswordError] = useState('');
 
     useEffect(() => {
+        // Força a limpeza de Service Workers antigos (OneSignal/PWA)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then((registrations) => {
+                for (const registration of registrations) {
+                    registration.unregister();
+                    console.log('Service Worker antigo removido para atualização forçada.');
+                }
+            });
+        }
+
         const savedAuth = localStorage.getItem('app_authorized');
         if (savedAuth === 'true') {
             setIsPasswordVerified(true);
