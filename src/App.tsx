@@ -4955,8 +4955,22 @@ const App = () => {
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
                     {/* Tarja de Diagnóstico Interno */}
-                    <div className="bg-yellow-400 text-yellow-900 text-[9px] font-black py-1 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600">
-                        SITE ATUALIZADO (v1.0.9L) • DADOS SUPABASE ATIVOS
+                    <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex justify-center items-center gap-4">
+                        <span>v1.0.9L • {partners.length} PARCEIROS • {categories.length} CAT</span>
+                        <button 
+                            onClick={async () => {
+                                localStorage.clear();
+                                sessionStorage.clear();
+                                if ('serviceWorker' in navigator) {
+                                    const regs = await navigator.serviceWorker.getRegistrations();
+                                    for(let r of regs) r.unregister();
+                                }
+                                window.location.reload(true);
+                            }}
+                            className="bg-red-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-red-700 transition-colors"
+                        >
+                            LIMPAR CACHE FORÇADO
+                        </button>
                     </div>
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
