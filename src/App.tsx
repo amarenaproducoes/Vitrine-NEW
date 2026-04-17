@@ -1954,10 +1954,10 @@ const AdminPage = ({
     };
 
     const handleGenerateAIDescription = async () => {
-        const geminiKey = typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined;
+        const geminiKey = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || import.meta.env.VITE_GEMINI_API_KEY;
         
         if (!geminiKey) {
-            alert("API Key do Gemini não configurada.");
+            alert("API Key do Gemini não configurada. Certifique-se de configurar GEMINI_API_KEY no servidor ou VITE_GEMINI_API_KEY no arquivo .env antes da build.");
             return;
         }
 
