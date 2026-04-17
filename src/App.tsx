@@ -1956,8 +1956,10 @@ const AdminPage = ({
     const handleGenerateAIDescription = async () => {
         const geminiKey = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || import.meta.env.VITE_GEMINI_API_KEY;
         
-        if (!geminiKey) {
-            alert("API Key do Gemini não configurada. Certifique-se de configurar GEMINI_API_KEY no servidor ou VITE_GEMINI_API_KEY no arquivo .env antes da build.");
+        console.log("Tentando gerar descrição com IA...");
+        if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY" || geminiKey.length < 10) {
+            console.error("Chave do Gemini inválida ou vazia:", geminiKey);
+            alert("A chave VITE_GEMINI_API_KEY não foi encontrada ou é inválida. Se você usa Hostinger, certifique-se de definir essa variável ANTES de realizar o build/deploy.");
             return;
         }
 
@@ -1968,9 +1970,11 @@ const AdminPage = ({
 
         setIsGeneratingAI(true);
         try {
+            // Chave identificada, iniciando SDK
             const ai = new GoogleGenerativeAI(geminiKey);
             const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
             
+            console.log("Enviando prompt para o Gemini 1.5 Flash...");
             const prompt = `
                 Como especialista em marketing local, crie uma descrição curta (máximo 400 caracteres) e impactante para o parceiro abaixo no site da vitrine "Aparece aí por aqui".
                 
@@ -2002,9 +2006,14 @@ const AdminPage = ({
                 setFormData(prev => ({ ...prev, description: text.trim() || '' }));
             }
         } catch (error: any) {
-            console.error('Erro ao gerar descrição com IA:', error);
+            console.error('Erro detalhado do Gemini:', error);
             const errorMessage = error.message || "Erro desconhecido";
-            alert(`Erro ao gerar sugestão: ${errorMessage}. Verifique se a chave VITE_GEMINI_API_KEY está correta na Hostinger.`);
+            
+            if (errorMessage.includes("Failed to fetch")) {
+                alert("Erro: 'Failed to Fetch'. Isso geralmente acontece quando um AdBlocker ou extensão de privacidade bloqueia a conexão com o Google AI. Tente desativar extensões ou use uma aba anônima.");
+            } else {
+                alert(`Erro ao gerar sugestão: ${errorMessage}.`);
+            }
         } finally {
             setIsGeneratingAI(false);
         }
@@ -4723,12 +4732,14 @@ const App = () => {
     };
 
     const fetchData = async () => {
+        setLoading(true);
         try {
             const now = new Date();
+            const cacheBuster = now.getTime(); // Cache busting para forçar dados novos
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
             const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
-                supabase.from('partners').select('*'),
+                supabase.from('partners').select('*').not('id', 'is', null), // Força bypass de cache em alguns provedores
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
