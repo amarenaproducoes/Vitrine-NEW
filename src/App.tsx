@@ -30,7 +30,7 @@ import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'framer-motion';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -1959,7 +1959,7 @@ const AdminPage = ({
         console.log("Tentando gerar descrição com IA...");
         if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY" || geminiKey.length < 10) {
             console.error("Chave do Gemini inválida ou vazia:", geminiKey);
-            alert("A chave VITE_GEMINI_API_KEY não foi encontrada ou é inválida. Se você usa Hostinger, certifique-se de definir essa variável ANTES de realizar o build/deploy.");
+            alert("A chave VITE_GEMINI_API_KEY não foi encontrada ou é inválida. Se você usa Hostinger, certifique-se de definir essa variável ANTES de realizar o build/deploy e no painel da Hostinger.");
             return;
         }
 
@@ -1970,11 +1970,10 @@ const AdminPage = ({
 
         setIsGeneratingAI(true);
         try {
-            // Chave identificada, iniciando SDK
-            const ai = new GoogleGenerativeAI(geminiKey);
-            const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+            // Inicializando o SDK correto
+            const ai = new GoogleGenAI({ apiKey: geminiKey });
             
-            console.log("Enviando prompt para o Gemini 1.5 Flash...");
+            console.log("Enviando prompt para o Gemini 3 Flash Preview...");
             const prompt = `
                 Como especialista em marketing local, crie uma descrição curta (máximo 400 caracteres) e impactante para o parceiro abaixo no site da vitrine "Aparece aí por aqui".
                 
@@ -1998,9 +1997,12 @@ const AdminPage = ({
                 Retorne APENAS o texto da descrição, sem títulos ou introduções.
             `;
 
-            const result = await model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
+            
+            const text = response.text;
 
             if (text) {
                 setFormData(prev => ({ ...prev, description: text.trim() || '' }));
@@ -2011,6 +2013,8 @@ const AdminPage = ({
             
             if (errorMessage.includes("Failed to fetch")) {
                 alert("Erro: 'Failed to Fetch'. Isso geralmente acontece quando um AdBlocker ou extensão de privacidade bloqueia a conexão com o Google AI. Tente desativar extensões ou use uma aba anônima.");
+            } else if (errorMessage.includes("404")) {
+                alert("Erro 404: O modelo de IA não foi encontrado. Isso pode ser uma instabilidade temporária do serviço do Google ou o modelo selecionado foi atualizado.");
             } else {
                 alert(`Erro ao gerar sugestão: ${errorMessage}.`);
             }
