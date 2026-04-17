@@ -30,6 +30,7 @@ import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'motion/react';
+import { GoogleGenAI } from "@google/genai";
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -577,20 +578,28 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                     key={idx}
                                     onClick={() => {
                                         setSearchTerm(partner.name);
-                                        // Aguarda a busca ser aplicada e desce direto até o card do parceiro
+                                        setActiveCategory("Todos");
+                                        setPartnersPage(1);
+                                        
+                                        // Aguarda a aplicação dos filtros e renderização do card
                                         setTimeout(() => {
-                                            const cardElement = document.getElementById(`partner-card-${partner.id}`);
-                                            if (cardElement) {
-                                                const offset = 100; // Altura do header fixo
-                                                const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
-                                                const offsetPosition = elementPosition - offset;
-
-                                                window.scrollTo({
-                                                    top: offsetPosition,
-                                                    behavior: 'smooth'
-                                                });
-                                            }
-                                        }, 300);
+                                            setExpandedPartnerId(partner.id);
+                                            
+                                            // Aguarda o início da expansão para calcular a posição final
+                                            setTimeout(() => {
+                                                const cardElement = document.getElementById(`partner-card-${partner.id}`);
+                                                if (cardElement) {
+                                                    const offset = 180; // Compensação para o header e barra de busca fixos
+                                                    const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
+                                                    const offsetPosition = elementPosition - offset;
+                                                    
+                                                    window.scrollTo({
+                                                        top: offsetPosition,
+                                                        behavior: 'smooth'
+                                                    });
+                                                }
+                                            }, 100);
+                                        }, 400);
                                     }}
                                     className="flex items-center p-2.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-[#279267] hover:bg-green-50 transition-all group text-left"
                                 >
@@ -646,7 +655,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {paginatedPartners.length > 0 ? paginatedPartners.map((partner) => (
-                            <div key={partner.id} className="flex flex-col">
+                            <div key={partner.id} id={`partner-card-${partner.id}`} className="flex flex-col">
                                 <button 
                                     onClick={() => {
                                         const isExpanding = expandedPartnerId !== partner.id;
@@ -1244,7 +1253,8 @@ const AdminPage = ({
         cashbackEnabled: boolean, 
         giftCardEnabled: boolean,
         page_number: number,
-        displayId: number
+        displayId: number,
+        aiObservations: string
     }>({ 
         name: '', 
         category: categories.length > 0 ? categories[0].name : '', 
@@ -1266,8 +1276,11 @@ const AdminPage = ({
         cashbackEnabled: true, 
         giftCardEnabled: false,
         page_number: 1,
-        displayId: 0 
+        displayId: 0,
+        aiObservations: ''
     });
+
+    const [isGeneratingAI, setIsGeneratingAI] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     
     // About Us State
@@ -1913,10 +1926,65 @@ const AdminPage = ({
             cashbackEnabled: true, 
             giftCardEnabled: false,
             page_number: 1,
-            displayId: nextId 
+            displayId: nextId,
+            aiObservations: ''
         });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+
+    const handleGenerateAIDescription = async () => {
+        if (!process.env.GEMINI_API_KEY) {
+            alert("API Key do Gemini não configurada.");
+            return;
+        }
+
+        if (!formData.name) {
+            alert("Por favor, preencha pelo menos o nome da empresa.");
+            return;
+        }
+
+        setIsGeneratingAI(true);
+        try {
+            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            
+            const prompt = `
+                Como especialista em marketing local, crie uma descrição curta (máximo 400 caracteres) e impactante para o parceiro abaixo no site da vitrine "Aparece aí por aqui".
+                
+                Dados do Parceiro:
+                - Nome: ${formData.name}
+                - Categoria: ${formData.category}
+                - Atividade: ${formData.activity}
+                - Endereço: ${formData.address}
+                - Instagram: ${formData.link}
+                - Site: ${formData.websiteUrl}
+                - Observações Adicionais: ${formData.aiObservations}
+                
+                Instruções:
+                1. Explore o que o comércio oferece de benefício na região.
+                2. Destaque o diferencial do local.
+                3. Convença o cliente que vai entrar no site a visitar o local.
+                4. O tom deve ser convidativo, profissional e amigável.
+                5. Use emojis moderadamente.
+                6. Foque na unidade de bairro e economia local.
+                
+                Retorne APENAS o texto da descrição, sem títulos ou introduções.
+            `;
+
+            const response = await ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
+
+            if (response.text) {
+                setFormData(prev => ({ ...prev, description: response.text?.trim() || '' }));
+            }
+        } catch (error) {
+            logger.error('Erro ao gerar descrição com IA:', error);
+            alert("Erro ao gerar sugestão. Tente novamente.");
+        } finally {
+            setIsGeneratingAI(false);
+        }
     };
 
     const handleEdit = (partner: Partner) => {
@@ -1943,7 +2011,8 @@ const AdminPage = ({
             cashbackEnabled: partner.cashbackEnabled,
             giftCardEnabled: partner.giftCardEnabled || false,
             page_number: partner.page_number || 1,
-            displayId: partner.displayId || 0
+            displayId: partner.displayId || 0,
+            aiObservations: ''
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2460,7 +2529,40 @@ const AdminPage = ({
                                     </select>
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Atividade (Ex: Pizzaria)" value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Endereço" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-                                    <textarea rows={2} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                                    
+                                    <div className="space-y-2 border-t border-slate-100 pt-4">
+                                        <div className="flex flex-col space-y-1">
+                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center">
+                                                <Sparkles size={10} className="mr-1 text-[#279267]" />
+                                                Observações para a IA (Opcional)
+                                            </label>
+                                            <textarea 
+                                                rows={2} 
+                                                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] text-xs" 
+                                                placeholder="Ex: Focamos em alunos iniciantes, preço justo..." 
+                                                value={formData.aiObservations} 
+                                                onChange={e => setFormData({...formData, aiObservations: e.target.value})} 
+                                            />
+                                        </div>
+                                        <button 
+                                            type="button"
+                                            onClick={handleGenerateAIDescription}
+                                            disabled={isGeneratingAI || !formData.name}
+                                            className="w-full py-2 bg-gradient-to-r from-[#279267] to-[#1e7250] text-white text-[11px] font-black rounded-xl hover:shadow-lg transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
+                                        >
+                                            {isGeneratingAI ? (
+                                                <RefreshCw size={14} className="animate-spin" />
+                                            ) : (
+                                                <Sparkles size={14} />
+                                            )}
+                                            <span>SUGERIR DESCRIÇÃO COM IA</span>
+                                        </button>
+                                    </div>
+
+                                    <div className="flex flex-col space-y-1">
+                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Descrição do Parceiro (Final)</label>
+                                        <textarea rows={3} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                                    </div>
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram (Opcional)" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do WhatsApp (wa.me/...)" value={formData.whatsappLink} onChange={e => setFormData({...formData, whatsappLink: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link de Avaliação do Google" value={formData.googleReviewLink} onChange={e => setFormData({...formData, googleReviewLink: e.target.value})} />
