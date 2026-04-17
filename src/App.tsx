@@ -2001,9 +2001,10 @@ const AdminPage = ({
             if (text) {
                 setFormData(prev => ({ ...prev, description: text.trim() || '' }));
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro ao gerar descrição com IA:', error);
-            alert("Erro ao gerar sugestão. Tente novamente.");
+            const errorMessage = error.message || "Erro desconhecido";
+            alert(`Erro ao gerar sugestão: ${errorMessage}. Verifique se a chave VITE_GEMINI_API_KEY está correta na Hostinger.`);
         } finally {
             setIsGeneratingAI(false);
         }
