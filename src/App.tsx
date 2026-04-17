@@ -29,7 +29,7 @@ import WelcomePage from './components/WelcomePage';
 import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -74,39 +74,34 @@ const GlobalAuthGuard = () => {
     const location = useLocation();
 
     useEffect(() => {
-        try {
-            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-                if (session?.user) {
-                    const email = session.user.email?.toLowerCase();
-                    if (!AUTHORIZED_EMAILS.includes(email || '')) {
-                        // Log unauthorized access attempt immediately
-                        logger.security({
-                            type: 'unauthorized_access',
-                            severity: 'high',
-                            details: { 
-                                user_email: session.user.email,
-                                attempted_path: location.pathname,
-                                method: 'global_guard'
-                            }
-                        });
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+            if (session?.user) {
+                const email = session.user.email?.toLowerCase();
+                if (!AUTHORIZED_EMAILS.includes(email || '')) {
+                    // Log unauthorized access attempt immediately
+                    logger.security({
+                        type: 'unauthorized_access',
+                        severity: 'high',
+                        details: { 
+                            user_email: session.user.email,
+                            attempted_path: location.pathname,
+                            method: 'global_guard'
+                        }
+                    });
 
-                        // Se não for autorizado, desloga imediatamente
-                        await supabase.auth.signOut();
-                        
-                        // Redireciona para a tela de login com a mensagem de erro
-                        navigate('/login', { 
-                            replace: true, 
-                            state: { error: `E-mail ${session.user.email} não autorizado.` } 
-                        });
-                    }
+                    // Se não for autorizado, desloga imediatamente
+                    await supabase.auth.signOut();
+                    
+                    // Redireciona para a tela de login com a mensagem de erro
+                    navigate('/login', { 
+                        replace: true, 
+                        state: { error: `E-mail ${session.user.email} não autorizado.` } 
+                    });
                 }
-            });
+            }
+        });
 
-            return () => subscription.unsubscribe();
-        } catch (err) {
-            console.error('Erro no AuthGuard:', err);
-            return () => {};
-        }
+        return () => subscription.unsubscribe();
     }, [navigate, location]);
 
     return null;
@@ -495,9 +490,14 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     const totalPartnersPages = activeCategory === "Todos" && !searchTerm ? maxAssignedPage : Math.ceil(sortedPartners.length / PARTNERS_PER_PAGE);
 
     // If searching or filtering by category, use traditional pagination, otherwise use assigned pages
-    const paginatedPartners = (searchTerm || activeCategory !== "Todos") 
+    let paginatedPartners = (searchTerm || activeCategory !== "Todos") 
         ? sortedPartners.slice((partnersPage - 1) * PARTNERS_PER_PAGE, partnersPage * PARTNERS_PER_PAGE)
         : sortedPartners.filter(p => (p.page_number || 1) === partnersPage);
+
+    // Dynamic Fallback: If the assigned page is empty but we have partners, show the first available page of results
+    if (paginatedPartners.length === 0 && sortedPartners.length > 0) {
+        paginatedPartners = sortedPartners.slice(0, PARTNERS_PER_PAGE);
+    }
 
     const scrollToPartnersTop = () => {
         const element = document.getElementById('results-grid');
@@ -513,7 +513,6 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
 
     useEffect(() => {
         setPartnersPage(1);
-        setExpandedPartnerId(null);
     }, [searchTerm, activeCategory]);
     
     return (
@@ -583,27 +582,21 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                     onClick={() => {
                                         setSearchTerm(partner.name);
                                         setActiveCategory("Todos");
-                                        setPartnersPage(1);
-                                        
-                                        // Aguarda a aplicação dos filtros e renderização do card
+                                        setExpandedPartnerId(partner.id);
+                                        // Aguarda a busca ser aplicada e desce direto até o card do parceiro
                                         setTimeout(() => {
-                                            setExpandedPartnerId(partner.id);
-                                            
-                                            // Aguarda o início da expansão para calcular a posição final
-                                            setTimeout(() => {
-                                                const cardElement = document.getElementById(`partner-card-${partner.id}`);
-                                                if (cardElement) {
-                                                    const offset = 180; // Compensação para o header e barra de busca fixos
-                                                    const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
-                                                    const offsetPosition = elementPosition - offset;
-                                                    
-                                                    window.scrollTo({
-                                                        top: offsetPosition,
-                                                        behavior: 'smooth'
-                                                    });
-                                                }
-                                            }, 100);
-                                        }, 400);
+                                            const cardElement = document.getElementById(`partner-card-${partner.id}`);
+                                            if (cardElement) {
+                                                const offset = 160; // Altura do header fixo + filtros
+                                                const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
+                                                const offsetPosition = elementPosition - offset;
+
+                                                window.scrollTo({
+                                                    top: offsetPosition,
+                                                    behavior: 'smooth'
+                                                });
+                                            }
+                                        }, 300);
                                     }}
                                     className="flex items-center p-2.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-[#279267] hover:bg-green-50 transition-all group text-left"
                                 >
@@ -659,8 +652,9 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         {paginatedPartners.length > 0 ? paginatedPartners.map((partner) => (
-                            <div key={partner.id} id={`partner-card-${partner.id}`} className="flex flex-col">
+                            <div key={partner.id} className="flex flex-col">
                                 <button 
+                                    id={`partner-card-${partner.id}`}
                                     onClick={() => {
                                         const isExpanding = expandedPartnerId !== partner.id;
                                         setExpandedPartnerId(isExpanding ? partner.id : null);
@@ -668,7 +662,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                             setTimeout(() => {
                                                 const element = document.getElementById(`partner-card-${partner.id}`);
                                                 if (element) {
-                                                    const offset = 120;
+                                                    const offset = 160; // Mesma constante aplicada aqui
                                                     const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
                                                     window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
                                                 }
@@ -758,27 +752,19 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                             onClick={() => {
                                 setSearchTerm(featuredPartner.name);
                                 setActiveCategory("Todos");
-                                setPartnersPage(1);
+                                setExpandedPartnerId(featuredPartner.id);
                                 
-                                // Aguarda a aplicação dos filtros e renderização do card
                                 setTimeout(() => {
-                                    setExpandedPartnerId(featuredPartner.id);
-                                    
-                                    // Aguarda o início da expansão para calcular a posição final
-                                    setTimeout(() => {
-                                        const cardElement = document.getElementById(`partner-card-${featuredPartner.id}`);
-                                        if (cardElement) {
-                                            const offset = 180; // Compensação para o header e barra de busca fixos
-                                            const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
-                                            const offsetPosition = elementPosition - offset;
-                                            
-                                            window.scrollTo({
-                                                top: offsetPosition,
-                                                behavior: 'smooth'
-                                            });
-                                        }
-                                    }, 100);
-                                }, 400);
+                                    const element = document.getElementById(`partner-card-${featuredPartner.id}`);
+                                    if (element) {
+                                        const offset = 160;
+                                        const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                                        window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
+                                    } else {
+                                        const resultsGrid = document.getElementById('results-grid');
+                                        if (resultsGrid) resultsGrid.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                }, 300);
                             }}
                             className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden cursor-pointer hover:bg-slate-800 transition-all group"
                         >
@@ -1277,8 +1263,7 @@ const AdminPage = ({
         cashbackEnabled: boolean, 
         giftCardEnabled: boolean,
         page_number: number,
-        displayId: number,
-        aiObservations: string
+        displayId: number
     }>({ 
         name: '', 
         category: categories.length > 0 ? categories[0].name : '', 
@@ -1300,11 +1285,8 @@ const AdminPage = ({
         cashbackEnabled: true, 
         giftCardEnabled: false,
         page_number: 1,
-        displayId: 0,
-        aiObservations: ''
+        displayId: 0 
     });
-
-    const [isGeneratingAI, setIsGeneratingAI] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     
     // About Us State
@@ -1950,19 +1932,10 @@ const AdminPage = ({
             cashbackEnabled: true, 
             giftCardEnabled: false,
             page_number: 1,
-            displayId: nextId,
-            aiObservations: ''
+            displayId: nextId 
         });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
-    };
-
-    const handleGenerateAIDescription = async () => {
-        alert("A geração de IA foi temporariamente desativada para testes de conectividade no celular (v1.0.9Y).");
-        /*
-        const geminiKey = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || import.meta.env.VITE_GEMINI_API_KEY;
-        ... rest of code ...
-        */
     };
 
     const handleEdit = (partner: Partner) => {
@@ -1989,8 +1962,7 @@ const AdminPage = ({
             cashbackEnabled: partner.cashbackEnabled,
             giftCardEnabled: partner.giftCardEnabled || false,
             page_number: partner.page_number || 1,
-            displayId: partner.displayId || 0,
-            aiObservations: ''
+            displayId: partner.displayId || 0
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2507,40 +2479,7 @@ const AdminPage = ({
                                     </select>
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Atividade (Ex: Pizzaria)" value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Endereço" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-                                    
-                                    <div className="space-y-2 border-t border-slate-100 pt-4">
-                                        <div className="flex flex-col space-y-1">
-                                            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center">
-                                                <Sparkles size={10} className="mr-1 text-[#279267]" />
-                                                Observações para a IA (Opcional)
-                                            </label>
-                                            <textarea 
-                                                rows={2} 
-                                                className="w-full px-4 py-2 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] text-xs" 
-                                                placeholder="Ex: Focamos em alunos iniciantes, preço justo..." 
-                                                value={formData.aiObservations} 
-                                                onChange={e => setFormData({...formData, aiObservations: e.target.value})} 
-                                            />
-                                        </div>
-                                        <button 
-                                            type="button"
-                                            onClick={handleGenerateAIDescription}
-                                            disabled={isGeneratingAI || !formData.name}
-                                            className="w-full py-2 bg-gradient-to-r from-[#279267] to-[#1e7250] text-white text-[11px] font-black rounded-xl hover:shadow-lg transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
-                                        >
-                                            {isGeneratingAI ? (
-                                                <RefreshCw size={14} className="animate-spin" />
-                                            ) : (
-                                                <Sparkles size={14} />
-                                            )}
-                                            <span>SUGERIR DESCRIÇÃO COM IA</span>
-                                        </button>
-                                    </div>
-
-                                    <div className="flex flex-col space-y-1">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Descrição do Parceiro (Final)</label>
-                                        <textarea rows={3} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-                                    </div>
+                                    <textarea rows={2} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram (Opcional)" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do WhatsApp (wa.me/...)" value={formData.whatsappLink} onChange={e => setFormData({...formData, whatsappLink: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link de Avaliação do Google" value={formData.googleReviewLink} onChange={e => setFormData({...formData, googleReviewLink: e.target.value})} />
@@ -4425,29 +4364,40 @@ const AdminPage = ({
 };
 
 const App = () => {
-    const [partners, setPartners] = useState<Partner[]>([]);
-    const [categories, setCategories] = useState<Category[]>([]);
-    const APP_VERSION = 'v1.1.0';
+    const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+    const [passwordInput, setPasswordInput] = useState('');
+    const [passwordError, setPasswordError] = useState('');
 
     useEffect(() => {
-        const refreshApp = async () => {
-            const savedVersion = localStorage.getItem('app_force_version');
-            if (savedVersion !== APP_VERSION) {
-                localStorage.clear();
-                sessionStorage.clear();
-                if ('serviceWorker' in navigator) {
-                    const regs = await navigator.serviceWorker.getRegistrations();
-                    for (let r of regs) await r.unregister();
-                }
-                const cacheNames = await caches.keys();
-                for (let name of cacheNames) await caches.delete(name);
-                localStorage.setItem('app_force_version', APP_VERSION);
-                window.location.reload();
-            }
-        };
-        refreshApp();
+        const savedAuth = localStorage.getItem('app_authorized');
+        if (savedAuth === 'true') {
+            setIsPasswordVerified(true);
+        }
     }, []);
-    const [fetchError, setFetchError] = useState<string | null>(null);
+
+    const handlePasswordSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (passwordInput === 'Ama23') {
+            localStorage.setItem('app_authorized', 'true');
+            setIsPasswordVerified(true);
+            setPasswordError('');
+            logger.security({
+                type: 'successful_login',
+                severity: 'low',
+                details: { method: 'global_password' }
+            });
+        } else {
+            setPasswordError('Senha incorreta. Tente novamente.');
+            logger.security({
+                type: 'failed_password',
+                severity: 'medium',
+                details: { attempted_password: passwordInput }
+            });
+        }
+    };
+
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
@@ -4619,117 +4569,54 @@ const App = () => {
     const fetchFeaturedPartner = async () => {
         try {
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            
-            // Combine data from access logs and clicks for a better "most accessed" metric
-            const [accessLogsRes, clicksRes] = await Promise.all([
-                supabase
-                    .from('partner_access_logs')
-                    .select('partner_id')
-                    .gte('created_at', sevenDaysAgo),
-                supabase
-                    .from('partner_clicks')
-                    .select('partner_id')
-                    .gte('created_at', sevenDaysAgo)
-            ]);
+            const { data: accessLogs } = await supabase
+                .from('partner_access_logs')
+                .select('partner_id')
+                .gte('created_at', sevenDaysAgo);
 
-            if (accessLogsRes.error || clicksRes.error) {
-                console.warn('RLS ou erro ao buscar logs para o ranking:', accessLogsRes.error || clicksRes.error);
-            }
-
-            const allLogs = [...(accessLogsRes.data || []), ...(clicksRes.data || [])];
-            
-            if (allLogs.length === 0) {
-                console.log('Nenhum log de acesso ou clique encontrado nos últimos 7 dias.');
-                // Fallback: If no logs in 7 days, try to pick one randomly or just don't show
-                return;
-            }
-
-            const counts: { [key: string]: number } = {};
-            allLogs.forEach(log => {
-                if (log.partner_id) {
+            if (accessLogs && accessLogs.length > 0) {
+                const counts: { [key: string]: number } = {};
+                accessLogs.forEach(log => {
                     counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
-                }
-            });
-
-            if (Object.keys(counts).length === 0) return;
-
-            const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-            const topPartner = partners.find(p => p.id === topPartnerId);
-            
-            if (topPartner) {
-                setFeaturedPartner(topPartner);
-            } else {
-                console.warn('ID do parceiro de destaque não encontrado na lista atual:', topPartnerId);
+                });
+                const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+                const topPartner = partners.find(p => p.id === topPartnerId);
+                if (topPartner) setFeaturedPartner(topPartner);
             }
         } catch (error) {
             logger.error('Error fetching featured partner:', error);
         }
     };
 
-    const fetchData = async (retryCount = 0) => {
-        setLoading(true);
-        setFetchError(null);
+    const fetchData = async () => {
+        const timeoutId = setTimeout(() => {
+            if (loading) {
+                console.warn('FetchData taking too long, forcing loading to false');
+                setLoading(false);
+            }
+        }, 12000); // 12s absolute timeout
+
         try {
-            console.log(`Busca de dados iniciada (Tentativa ${retryCount + 1})...`);
-            
-            const url = import.meta.env.VITE_SUPABASE_URL;
-            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-            if (!url || !key) {
-                throw new Error('Configuração do banco de dados (URL/KEY) ausente.');
-            }
-
-            // Teste de conectividade básico antes de tudo
-            try {
-                const probe = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
-                console.log('Sinal do servidor detectado.');
-            } catch (e) {
-                console.warn('Servidor parece inacessível pelo navegador.', e);
-            }
-            
             const now = new Date();
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-            // Vamos buscar em blocos para não sobrecarregar navegadores mobile
-            const fetchTable = async <T,>(promise: any, tableName: string) => {
-                try {
-                    const result = await promise;
-                    if (result.error) throw result.error;
-                    return result.data as T;
-                } catch (err: any) {
-                    console.error(`Erro na tabela ${tableName}:`, err);
-                    throw new Error(`${tableName}: ${err.message || 'Erro de rede'}`);
-                }
-            };
-
-            // Bloco 1: Core (Parceiros e Categorias)
-            const [partnersData, categoriesData] = await Promise.all([
-                fetchTable(supabase.from('partners').select('*').not('id', 'is', null).order('name'), 'Parceiros'),
-                fetchTable(supabase.from('categories').select('*').order('name', { ascending: true }), 'Categorias')
+            // 1. Fetch CRITICAL UI data first
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, couponCampaignsRes, welcomeMessagesRes] = await Promise.all([
+                supabase.from('partners').select('*'),
+                supabase.from('categories').select('*').order('name', { ascending: true }),
+                supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
+                supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
+                supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
+                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false })
             ]);
 
-            // Bloco 2: UI (Banners e Cupons)
-            const [bannerData, featuredCouponsData] = await Promise.all([
-                fetchTable(supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]), 'Banners'),
-                fetchTable(supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }), 'Cupons de Destaque')
-            ]);
+            // Handle Critical Errors
+            if (partnersRes.error) logger.error('Error fetching partners:', partnersRes.error);
+            if (categoriesRes.error) logger.error('Error fetching categories:', categoriesRes.error);
 
-            // Bloco 3: Mensagens e Campanhas
-            const [welcomeMessagesData, couponCampaignsData] = await Promise.all([
-                fetchTable(supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }), 'Mensagens de Boas-vindas'),
-                fetchTable(supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }), 'Campanhas de Cupons')
-            ]);
-
-            // Bloco 4: Logs (Geralmente mais pesados, deixamos por último)
-            const [welcomeAccessLogsData, couponCampaignAccessLogsData, partnerAccessLogsData] = await Promise.all([
-                fetchTable<any[]>(supabase.from('welcome_access_logs').select('ref_id'), 'Logs Boas-vindas'),
-                fetchTable<any[]>(supabase.from('coupon_campaign_access_logs').select('ref_id'), 'Logs Campanhas'),
-                fetchTable<any[]>(supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth), 'Logs Parceiros')
-            ]);
-
-            // Processamento dos dados
-            if (partnersData) {
-                const mappedPartners: Partner[] = (partnersData as any[]).map(p => ({
+            // Process Critical Data
+            if (partnersRes.data) {
+                const mappedPartners: Partner[] = partnersRes.data.map(p => ({
                     id: p.id,
                     name: p.name,
                     category: p.category,
@@ -4754,38 +4641,13 @@ const App = () => {
                 setPartners(mappedPartners);
             }
 
-            if (categoriesData) setCategories(categoriesData as Category[]);
-            if (featuredCouponsData) setFeaturedCoupons(featuredCouponsData as any[]);
-            if (welcomeMessagesData) setWelcomeMessages(welcomeMessagesData as WelcomeMessage[]);
-            if (couponCampaignsData) setCouponCampaigns(couponCampaignsData as CouponCampaign[]);
+            if (categoriesRes.data) setCategories(categoriesRes.data);
+            if (featuredCouponsRes.data) setFeaturedCoupons(featuredCouponsRes.data);
+            if (welcomeMessagesRes.data) setWelcomeMessages(welcomeMessagesRes.data);
+            if (couponCampaignsRes.data) setCouponCampaigns(couponCampaignsRes.data);
 
-            if (welcomeAccessLogsData) {
-                const counts: Record<string, number> = {};
-                (welcomeAccessLogsData as any[]).forEach(log => {
-                    counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
-                });
-                setWelcomeAccessCounts(counts);
-            }
-
-            if (couponCampaignAccessLogsData) {
-                const counts: Record<string, number> = {};
-                (couponCampaignAccessLogsData as any[]).forEach(log => {
-                    counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
-                });
-                setCouponCampaignAccessCounts(counts);
-            }
-
-            if (partnerAccessLogsData) {
-                const counts: Record<string, number> = {};
-                (partnerAccessLogsData as any[]).forEach(log => {
-                    counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
-                });
-                setPartnerAccessCounts(counts);
-            }
-
-            if (bannerData) {
-                const bData = bannerData as any[];
-                const carouselBanners = bData
+            if (bannerRes.data) {
+                const carouselBanners = bannerRes.data
                     .filter(b => [1, 3, 4].includes(b.id))
                     .map(b => ({
                         id: b.id,
@@ -4809,40 +4671,98 @@ const App = () => {
                 setBannerLinks(prev => ({ ...prev, ...links }));
                 setBannerNames(prev => ({ ...prev, ...names }));
                 
-                const logoBanner = bData.find(b => b.id === 2);
+                const logoBanner = bannerRes.data.find(b => b.id === 2);
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
-        } catch (error: any) {
-            console.error('Erro ao carregar dados:', error);
-            
-            // Auto-re-tentativa simples para erros de rede exporádicos
-            if (retryCount < 2 && (error.message.includes('fetch') || error.message.includes('network'))) {
-                setTimeout(() => fetchData(retryCount + 1), 1000);
-                return;
+
+            // 2. DATA LOADED - release the spinner immediately for better mobile CX
+            setLoading(false);
+            clearTimeout(timeoutId);
+
+            // 3. Fetch NON-CRITICAL stats in the background
+            const [welcomeAccessLogsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
+                supabase.from('welcome_access_logs').select('ref_id'),
+                supabase.from('coupon_campaign_access_logs').select('ref_id'),
+                supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth)
+            ]);
+
+            if (welcomeAccessLogsRes.data) {
+                const counts: Record<string, number> = {};
+                welcomeAccessLogsRes.data.forEach(log => { counts[log.ref_id] = (counts[log.ref_id] || 0) + 1; });
+                setWelcomeAccessCounts(counts);
             }
 
-            let msg = error.message || 'Erro desconhecido';
-            if (msg.includes('Failed to fetch')) {
-                msg = 'BLOQUEIO DE REDE: O navegador do celular não consegue falar com o banco de dados. Isso geralmente acontece por AdBlockers no celular, modo de economia de dados ou Wi-Fi restrito.';
+            if (couponCampaignAccessLogsRes.data) {
+                const counts: Record<string, number> = {};
+                couponCampaignAccessLogsRes.data.forEach(log => { counts[log.ref_id] = (counts[log.ref_id] || 0) + 1; });
+                setCouponCampaignAccessCounts(counts);
             }
-            setFetchError(msg);
+
+            if (partnerAccessLogsRes.data) {
+                const counts: Record<string, number> = {};
+                partnerAccessLogsRes.data.forEach(log => { counts[log.partner_id] = (counts[log.partner_id] || 0) + 1; });
+                setPartnerAccessCounts(counts);
+            }
+
+        } catch (error) {
             logger.error('Error fetching data:', error);
-        } finally {
             setLoading(false);
+            clearTimeout(timeoutId);
         }
     };
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col">
                 <div className="w-12 h-12 border-4 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Sincronizando com Supabase...</p>
+            </div>
+        );
+    }
+
+    if (!isPasswordVerified) {
+        return (
+            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
+                <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center mt-8">
+                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                        <Lock className="text-slate-900" size={32} />
+                    </div>
+                    <h1 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Ambiente de Testes</h1>
+                    <p className="text-slate-500 mb-8 font-medium">Digite a senha para acessar a plataforma.</p>
+                    
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                        <div className="relative">
+                            <input
+                                type="password"
+                                value={passwordInput}
+                                onChange={(e) => setPasswordInput(e.target.value)}
+                                placeholder="Digite a senha"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all text-center font-bold"
+                                autoFocus
+                            />
+                        </div>
+                        {passwordError && (
+                            <p className="text-red-500 text-sm font-bold">{passwordError}</p>
+                        )}
+                        <button
+                            type="submit"
+                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
+                        >
+                            Entrar
+                        </button>
+                    </form>
+                    
+                    <p className="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                        Aparece aí por aqui • Vila Formosa
+                    </p>
+                </div>
             </div>
         );
     }
 
     return (
         <GoogleReCaptchaProvider 
-            reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'}
+            reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
             language="pt-BR"
         >
             <Router>
@@ -4866,44 +4786,6 @@ const App = () => {
                 <AnalyticsTracker />
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
-                    {/* Tarja de Diagnóstico Interno */}
-                    <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex flex-col items-center">
-                        <div className="flex justify-center items-center gap-4">
-                            <span>v1.1.0 • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
-                            <button 
-                                onClick={() => fetchData()}
-                                className="bg-green-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-green-700 transition-colors"
-                            >
-                                BUSCAR NOVO
-                            </button>
-                            <button 
-                                onClick={async () => {
-                                    if (window.confirm('Isso vai apagar sua senha salva e recarregar o site do zero absoluto. Continuar?')) {
-                                        localStorage.clear();
-                                        sessionStorage.clear();
-                                        const cachesKeys = await caches.keys();
-                                        for (const key of cachesKeys) await caches.delete(key);
-                                        if ('serviceWorker' in navigator) {
-                                            const regs = await navigator.serviceWorker.getRegistrations();
-                                            for(let r of regs) r.unregister();
-                                        }
-                                        window.location.reload();
-                                    }
-                                }}
-                                className="bg-red-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-red-700 transition-colors"
-                            >
-                                RESET TOTAL
-                            </button>
-                        </div>
-                        {fetchError && (
-                            <div className="flex flex-col items-center">
-                                <div className="text-red-600 font-bold mt-1 bg-white/70 px-2 py-1 rounded max-w-[90vw] break-all border border-red-300">
-                                    🚨 {fetchError}
-                                </div>
-                                <div className="text-[7px] text-yellow-800 mt-0.5">DICA: Verifique se o seu AdBlock ou navegador está bloqueando o domínio .supabase.co</div>
-                            </div>
-                        )}
-                    </div>
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>

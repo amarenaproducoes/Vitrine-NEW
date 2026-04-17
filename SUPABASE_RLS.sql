@@ -92,8 +92,6 @@ CREATE POLICY "Public Read" ON cashback_configs FOR SELECT TO anon, authenticate
 CREATE POLICY "Public Read" ON active_gift_cards FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public Read" ON customers FOR SELECT TO anon, authenticated USING (true);
 CREATE POLICY "Public Read" ON gift_cards FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Public Read" ON partner_access_logs FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Public Read" ON partner_clicks FOR SELECT TO anon, authenticated USING (true);
 
 -- Escrita Pública (Apenas Inserção)
 CREATE POLICY "Public Insert" ON partner_access_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
