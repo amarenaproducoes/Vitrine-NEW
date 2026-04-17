@@ -6,7 +6,8 @@ DECLARE
     read_tables TEXT[] := ARRAY[
         'partners', 'categories', 'commercial_banner', 'featured_coupons', 
         'about_config', 'success_cases', 'welcome_messages', 'coupon_campaigns', 
-        'cashback_configs', 'active_gift_cards', 'customers', 'gift_cards'
+        'cashback_configs', 'active_gift_cards', 'customers', 'gift_cards',
+        'partner_access_logs', 'partner_clicks'
     ];
     insert_tables TEXT[] := ARRAY[
         'partner_access_logs', 'partner_clicks', 'partner_shares', 'unlocked_coupons', 

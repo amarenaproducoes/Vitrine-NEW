@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ExternalLink, MapPin, Navigation, Gift, CheckCircle2, MessageCircle, Phone, Share2, AlertCircle, ChevronLeft, ChevronRight, Play, Star, Globe } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import * as htmlToImage from 'html-to-image';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
 import { Link } from 'react-router-dom';

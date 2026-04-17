@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Gift, User, Store, CheckCircle2, AlertCircle, X, Download, ShieldCheck, ExternalLink, Info } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Partner, GiftCard } from '../types';

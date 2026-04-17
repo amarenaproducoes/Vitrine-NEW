@@ -29,8 +29,8 @@ import WelcomePage from './components/WelcomePage';
 import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AnimatePresence, motion } from 'motion/react';
-import { GoogleGenAI } from "@google/genai";
+import { AnimatePresence, motion } from 'framer-motion';
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -753,8 +753,28 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                         <div 
                             onClick={() => {
                                 setSearchTerm(featuredPartner.name);
-                                const element = document.getElementById('results-grid');
-                                if (element) element.scrollIntoView({ behavior: 'smooth' });
+                                setActiveCategory("Todos");
+                                setPartnersPage(1);
+                                
+                                // Aguarda a aplicação dos filtros e renderização do card
+                                setTimeout(() => {
+                                    setExpandedPartnerId(featuredPartner.id);
+                                    
+                                    // Aguarda o início da expansão para calcular a posição final
+                                    setTimeout(() => {
+                                        const cardElement = document.getElementById(`partner-card-${featuredPartner.id}`);
+                                        if (cardElement) {
+                                            const offset = 180; // Compensação para o header e barra de busca fixos
+                                            const elementPosition = cardElement.getBoundingClientRect().top + window.pageYOffset;
+                                            const offsetPosition = elementPosition - offset;
+                                            
+                                            window.scrollTo({
+                                                top: offsetPosition,
+                                                behavior: 'smooth'
+                                            });
+                                        }
+                                    }, 100);
+                                }, 400);
                             }}
                             className="mt-8 p-6 bg-slate-900 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl overflow-hidden cursor-pointer hover:bg-slate-800 transition-all group"
                         >
@@ -1934,7 +1954,9 @@ const AdminPage = ({
     };
 
     const handleGenerateAIDescription = async () => {
-        if (!process.env.GEMINI_API_KEY) {
+        const geminiKey = typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined;
+        
+        if (!geminiKey) {
             alert("API Key do Gemini não configurada.");
             return;
         }
@@ -1946,7 +1968,8 @@ const AdminPage = ({
 
         setIsGeneratingAI(true);
         try {
-            const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+            const ai = new GoogleGenerativeAI(geminiKey);
+            const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
             
             const prompt = `
                 Como especialista em marketing local, crie uma descrição curta (máximo 400 caracteres) e impactante para o parceiro abaixo no site da vitrine "Aparece aí por aqui".
@@ -1971,16 +1994,15 @@ const AdminPage = ({
                 Retorne APENAS o texto da descrição, sem títulos ou introduções.
             `;
 
-            const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
-                contents: prompt,
-            });
+            const result = await model.generateContent(prompt);
+            const response = await result.response;
+            const text = response.text();
 
-            if (response.text) {
-                setFormData(prev => ({ ...prev, description: response.text?.trim() || '' }));
+            if (text) {
+                setFormData(prev => ({ ...prev, description: text.trim() || '' }));
             }
         } catch (error) {
-            logger.error('Erro ao gerar descrição com IA:', error);
+            console.error('Erro ao gerar descrição com IA:', error);
             alert("Erro ao gerar sugestão. Tente novamente.");
         } finally {
             setIsGeneratingAI(false);
@@ -4652,19 +4674,47 @@ const App = () => {
     const fetchFeaturedPartner = async () => {
         try {
             const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-            const { data: accessLogs } = await supabase
-                .from('partner_access_logs')
-                .select('partner_id')
-                .gte('created_at', sevenDaysAgo);
+            
+            // Combine data from access logs and clicks for a better "most accessed" metric
+            const [accessLogsRes, clicksRes] = await Promise.all([
+                supabase
+                    .from('partner_access_logs')
+                    .select('partner_id')
+                    .gte('created_at', sevenDaysAgo),
+                supabase
+                    .from('partner_clicks')
+                    .select('partner_id')
+                    .gte('created_at', sevenDaysAgo)
+            ]);
 
-            if (accessLogs && accessLogs.length > 0) {
-                const counts: { [key: string]: number } = {};
-                accessLogs.forEach(log => {
+            if (accessLogsRes.error || clicksRes.error) {
+                console.warn('RLS ou erro ao buscar logs para o ranking:', accessLogsRes.error || clicksRes.error);
+            }
+
+            const allLogs = [...(accessLogsRes.data || []), ...(clicksRes.data || [])];
+            
+            if (allLogs.length === 0) {
+                console.log('Nenhum log de acesso ou clique encontrado nos últimos 7 dias.');
+                // Fallback: If no logs in 7 days, try to pick one randomly or just don't show
+                return;
+            }
+
+            const counts: { [key: string]: number } = {};
+            allLogs.forEach(log => {
+                if (log.partner_id) {
                     counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
-                });
-                const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
-                const topPartner = partners.find(p => p.id === topPartnerId);
-                if (topPartner) setFeaturedPartner(topPartner);
+                }
+            });
+
+            if (Object.keys(counts).length === 0) return;
+
+            const topPartnerId = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+            const topPartner = partners.find(p => p.id === topPartnerId);
+            
+            if (topPartner) {
+                setFeaturedPartner(topPartner);
+            } else {
+                console.warn('ID do parceiro de destaque não encontrado na lista atual:', topPartnerId);
             }
         } catch (error) {
             logger.error('Error fetching featured partner:', error);
@@ -4844,7 +4894,7 @@ const App = () => {
 
     return (
         <GoogleReCaptchaProvider 
-            reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY}
+            reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'}
             language="pt-BR"
         >
             <Router>
