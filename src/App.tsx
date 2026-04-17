@@ -4919,8 +4919,9 @@ const App = () => {
                     </p>
                 </div>
             </div>
-        );
-    }
+        </div>
+    );
+}
 
     return (
         <GoogleReCaptchaProvider 
