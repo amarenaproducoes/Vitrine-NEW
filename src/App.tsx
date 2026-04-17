@@ -4483,50 +4483,28 @@ const AdminPage = ({
 };
 
 const App = () => {
-    const [isPasswordVerified, setIsPasswordVerified] = useState(false);
-    const [passwordInput, setPasswordInput] = useState('');
-    const [passwordError, setPasswordError] = useState('');
-
-    useEffect(() => {
-        // Força a limpeza de Service Workers antigos (OneSignal/PWA)
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then((registrations) => {
-                for (const registration of registrations) {
-                    registration.unregister();
-                    console.log('Service Worker antigo removido para atualização forçada.');
-                }
-            });
-        }
-
-        const savedAuth = localStorage.getItem('app_authorized_v3');
-        if (savedAuth === 'true') {
-            setIsPasswordVerified(true);
-        }
-    }, []);
-
-    const handlePasswordSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (passwordInput === 'Ama23') {
-            localStorage.setItem('app_authorized_v3', 'true');
-            setIsPasswordVerified(true);
-            setPasswordError('');
-            logger.security({
-                type: 'successful_login',
-                severity: 'low',
-                details: { method: 'global_password' }
-            });
-        } else {
-            setPasswordError('Senha incorreta. Tente novamente.');
-            logger.security({
-                type: 'failed_password',
-                severity: 'medium',
-                details: { attempted_password: passwordInput }
-            });
-        }
-    };
-
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const APP_VERSION = 'v1.0.9V';
+
+    useEffect(() => {
+        const refreshApp = async () => {
+            const savedVersion = localStorage.getItem('app_force_version');
+            if (savedVersion !== APP_VERSION) {
+                localStorage.clear();
+                sessionStorage.clear();
+                if ('serviceWorker' in navigator) {
+                    const regs = await navigator.serviceWorker.getRegistrations();
+                    for (let r of regs) await r.unregister();
+                }
+                const cacheNames = await caches.keys();
+                for (let name of cacheNames) await caches.delete(name);
+                localStorage.setItem('app_force_version', APP_VERSION);
+                window.location.reload();
+            }
+        };
+        refreshApp();
+    }, []);
     const [fetchError, setFetchError] = useState<string | null>(null);
     const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
@@ -4750,9 +4728,14 @@ const App = () => {
         setLoading(true);
         setFetchError(null);
         try {
-            // Log de depuração básico (visível apenas no console por enquanto)
-            console.log('Iniciando busca de dados...');
+            console.log('Iniciando busca de dados (v1.0.9U)...');
             
+            // Verificação de URL
+            const url = import.meta.env.VITE_SUPABASE_URL;
+            if (!url) {
+                throw new Error('VITE_SUPABASE_URL não está configurada nos Secrets.');
+            }
+
             const now = new Date();
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -4891,51 +4874,6 @@ const App = () => {
         );
     }
 
-    if (!isPasswordVerified) {
-        return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center p-4">
-                <div className="max-w-md w-full">
-                    <div className="mb-4 bg-yellow-400 text-yellow-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest text-center animate-pulse border-2 border-yellow-600">
-                        DEPLOY-CHECK: v1.0.9-IA-ATIVADA
-                    </div>
-                    <div className="bg-white rounded-3xl shadow-2xl p-8 text-center">
-                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                        <Lock className="text-slate-900" size={32} />
-                    </div>
-                    <h1 className="text-2xl font-black text-slate-900 mb-2 uppercase tracking-tight">Ambiente de Testes</h1>
-                    <p className="text-slate-500 mb-8 font-medium">Digite a senha para acessar a plataforma.</p>
-                    
-                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                        <div className="relative">
-                            <input
-                                type="password"
-                                value={passwordInput}
-                                onChange={(e) => setPasswordInput(e.target.value)}
-                                placeholder="Digite a senha"
-                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-slate-900 focus:border-slate-900 outline-none transition-all text-center font-bold"
-                                autoFocus
-                            />
-                        </div>
-                        {passwordError && (
-                            <p className="text-red-500 text-sm font-bold">{passwordError}</p>
-                        )}
-                        <button
-                            type="submit"
-                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-black uppercase tracking-widest hover:bg-slate-800 transition-all shadow-lg shadow-slate-900/20"
-                        >
-                            Entrar
-                        </button>
-                    </form>
-                    
-                    <p className="mt-8 text-[10px] text-slate-400 font-bold uppercase tracking-widest">
-                        Aparece aí por aqui • Vila Formosa
-                    </p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
     return (
         <GoogleReCaptchaProvider 
             reCaptchaKey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'}
@@ -4965,7 +4903,7 @@ const App = () => {
                     {/* Tarja de Diagnóstico Interno */}
                     <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex flex-col items-center">
                         <div className="flex justify-center items-center gap-4">
-                            <span>v1.0.9L • {partners.length} PARCEIROS • {categories.length} CAT</span>
+                            <span>v1.0.9V • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
                             <button 
                                 onClick={fetchData}
                                 className="bg-green-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-green-700 transition-colors"
@@ -4974,13 +4912,17 @@ const App = () => {
                             </button>
                             <button 
                                 onClick={async () => {
-                                    localStorage.clear();
-                                    sessionStorage.clear();
-                                    if ('serviceWorker' in navigator) {
-                                        const regs = await navigator.serviceWorker.getRegistrations();
-                                        for(let r of regs) r.unregister();
+                                    if (window.confirm('Isso vai apagar sua senha salva e recarregar o site do zero absoluto. Continuar?')) {
+                                        localStorage.clear();
+                                        sessionStorage.clear();
+                                        const cachesKeys = await caches.keys();
+                                        for (const key of cachesKeys) await caches.delete(key);
+                                        if ('serviceWorker' in navigator) {
+                                            const regs = await navigator.serviceWorker.getRegistrations();
+                                            for(let r of regs) r.unregister();
+                                        }
+                                        window.location.reload();
                                     }
-                                    window.location.reload();
                                 }}
                                 className="bg-red-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-red-700 transition-colors"
                             >
@@ -4988,14 +4930,11 @@ const App = () => {
                             </button>
                         </div>
                         {fetchError && (
-                            <div className="text-red-600 font-bold mt-1 bg-white/50 px-2 rounded">
-                                ERRO: {fetchError}
-                            </div>
-                        )}
-                        {/* Verificação básica de ENV no cliente */}
-                        {!(import.meta.env.VITE_SUPABASE_URL) && (
-                            <div className="text-red-700 font-black text-[7px] mt-0.5">
-                                AVISO: VITE_SUPABASE_URL NÃO DETECTADA
+                            <div className="flex flex-col items-center">
+                                <div className="text-red-600 font-bold mt-1 bg-white/70 px-2 py-1 rounded max-w-[90vw] break-all border border-red-300">
+                                    🚨 {fetchError}
+                                </div>
+                                <div className="text-[7px] text-yellow-800 mt-0.5">DICA: Verifique se o seu AdBlock ou navegador está bloqueando o domínio .supabase.co</div>
                             </div>
                         )}
                     </div>
