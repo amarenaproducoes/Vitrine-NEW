@@ -30,7 +30,6 @@ import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'framer-motion';
-import { GoogleGenAI } from "@google/genai";
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -1959,73 +1958,11 @@ const AdminPage = ({
     };
 
     const handleGenerateAIDescription = async () => {
+        alert("A geração de IA foi temporariamente desativada para testes de conectividade no celular (v1.0.9Y).");
+        /*
         const geminiKey = (typeof process !== 'undefined' ? process.env.GEMINI_API_KEY : undefined) || import.meta.env.VITE_GEMINI_API_KEY;
-        
-        console.log("Tentando gerar descrição com IA...");
-        if (!geminiKey || geminiKey === "MY_GEMINI_API_KEY" || geminiKey.length < 10) {
-            console.error("Chave do Gemini inválida ou vazia:", geminiKey);
-            alert("A chave VITE_GEMINI_API_KEY não foi encontrada ou é inválida. Se você usa Hostinger, certifique-se de definir essa variável ANTES de realizar o build/deploy e no painel da Hostinger.");
-            return;
-        }
-
-        if (!formData.name) {
-            alert("Por favor, preencha pelo menos o nome da empresa.");
-            return;
-        }
-
-        setIsGeneratingAI(true);
-        try {
-            // Inicializando o SDK correto
-            const ai = new GoogleGenAI({ apiKey: geminiKey });
-            
-            console.log("Enviando prompt para o Gemini 3 Flash Preview...");
-            const prompt = `
-                Como especialista em marketing local, crie uma descrição curta (máximo 400 caracteres) e impactante para o parceiro abaixo no site da vitrine "Aparece aí por aqui".
-                
-                Dados do Parceiro:
-                - Nome: ${formData.name}
-                - Categoria: ${formData.category}
-                - Atividade: ${formData.activity}
-                - Endereço: ${formData.address}
-                - Instagram: ${formData.link}
-                - Site: ${formData.websiteUrl}
-                - Observações Adicionais: ${formData.aiObservations}
-                
-                Instruções:
-                1. Explore o que o comércio oferece de benefício na região.
-                2. Destaque o diferencial do local.
-                3. Convença o cliente que vai entrar no site a visitar o local.
-                4. O tom deve ser convidativo, profissional e amigável.
-                5. Use emojis moderadamente.
-                6. Foque na unidade de bairro e economia local.
-                
-                Retorne APENAS o texto da descrição, sem títulos ou introduções.
-            `;
-
-            const response = await ai.models.generateContent({
-                model: "gemini-3-flash-preview",
-                contents: prompt,
-            });
-            
-            const text = response.text;
-
-            if (text) {
-                setFormData(prev => ({ ...prev, description: text.trim() || '' }));
-            }
-        } catch (error: any) {
-            console.error('Erro detalhado do Gemini:', error);
-            const errorMessage = error.message || "Erro desconhecido";
-            
-            if (errorMessage.includes("Failed to fetch")) {
-                alert("Erro: 'Failed to Fetch'. Isso geralmente acontece quando um AdBlocker ou extensão de privacidade bloqueia a conexão com o Google AI. Tente desativar extensões ou use uma aba anônima.");
-            } else if (errorMessage.includes("404")) {
-                alert("Erro 404: O modelo de IA não foi encontrado. Isso pode ser uma instabilidade temporária do serviço do Google ou o modelo selecionado foi atualizado.");
-            } else {
-                alert(`Erro ao gerar sugestão: ${errorMessage}.`);
-            }
-        } finally {
-            setIsGeneratingAI(false);
-        }
+        ... rest of code ...
+        */
     };
 
     const handleEdit = (partner: Partner) => {
@@ -4490,7 +4427,7 @@ const AdminPage = ({
 const App = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const APP_VERSION = 'v1.0.9X';
+    const APP_VERSION = 'v1.0.9Y';
 
     useEffect(() => {
         const refreshApp = async () => {
@@ -4733,29 +4670,8 @@ const App = () => {
         setLoading(true);
         setFetchError(null);
         try {
-            console.log('Iniciando busca de dados (v1.0.9X)...');
+            console.log('Busca simples (v1.0.9Y)...');
             
-            // Verificação de URL
-            const url = import.meta.env.VITE_SUPABASE_URL;
-            if (!url) {
-                throw new Error('VITE_SUPABASE_URL não configurada.');
-            }
-
-            // Teste de conexão rápida para diagnóstico
-            const pingStart = Date.now();
-            try {
-                await fetch(`${url}/rest/v1/`, { 
-                    method: 'GET', 
-                    headers: { 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '' },
-                    mode: 'cors',
-                    credentials: 'omit'
-                });
-                console.log(`Ping Supabase OK: ${Date.now() - pingStart}ms`);
-            } catch (pingErr: any) {
-                console.warn('Ping de diagnóstico falhou:', pingErr);
-                // Não trava o app, mas loga o erro de rede real
-            }
-
             const now = new Date();
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
@@ -4927,7 +4843,7 @@ const App = () => {
                     {/* Tarja de Diagnóstico Interno */}
                     <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex flex-col items-center">
                         <div className="flex justify-center items-center gap-4">
-                            <span>v1.0.9X • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
+                            <span>v1.0.9Y • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
                             <button 
                                 onClick={fetchData}
                                 className="bg-green-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-green-700 transition-colors"
