@@ -75,34 +75,39 @@ const GlobalAuthGuard = () => {
     const location = useLocation();
 
     useEffect(() => {
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-            if (session?.user) {
-                const email = session.user.email?.toLowerCase();
-                if (!AUTHORIZED_EMAILS.includes(email || '')) {
-                    // Log unauthorized access attempt immediately
-                    logger.security({
-                        type: 'unauthorized_access',
-                        severity: 'high',
-                        details: { 
-                            user_email: session.user.email,
-                            attempted_path: location.pathname,
-                            method: 'global_guard'
-                        }
-                    });
+        try {
+            const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+                if (session?.user) {
+                    const email = session.user.email?.toLowerCase();
+                    if (!AUTHORIZED_EMAILS.includes(email || '')) {
+                        // Log unauthorized access attempt immediately
+                        logger.security({
+                            type: 'unauthorized_access',
+                            severity: 'high',
+                            details: { 
+                                user_email: session.user.email,
+                                attempted_path: location.pathname,
+                                method: 'global_guard'
+                            }
+                        });
 
-                    // Se não for autorizado, desloga imediatamente
-                    await supabase.auth.signOut();
-                    
-                    // Redireciona para a tela de login com a mensagem de erro
-                    navigate('/login', { 
-                        replace: true, 
-                        state: { error: `E-mail ${session.user.email} não autorizado.` } 
-                    });
+                        // Se não for autorizado, desloga imediatamente
+                        await supabase.auth.signOut();
+                        
+                        // Redireciona para a tela de login com a mensagem de erro
+                        navigate('/login', { 
+                            replace: true, 
+                            state: { error: `E-mail ${session.user.email} não autorizado.` } 
+                        });
+                    }
                 }
-            }
-        });
+            });
 
-        return () => subscription.unsubscribe();
+            return () => subscription.unsubscribe();
+        } catch (err) {
+            console.error('Erro no AuthGuard:', err);
+            return () => {};
+        }
     }, [navigate, location]);
 
     return null;
@@ -4485,7 +4490,7 @@ const AdminPage = ({
 const App = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const APP_VERSION = 'v1.0.9V';
+    const APP_VERSION = 'v1.0.9X';
 
     useEffect(() => {
         const refreshApp = async () => {
@@ -4728,12 +4733,27 @@ const App = () => {
         setLoading(true);
         setFetchError(null);
         try {
-            console.log('Iniciando busca de dados (v1.0.9U)...');
+            console.log('Iniciando busca de dados (v1.0.9X)...');
             
             // Verificação de URL
             const url = import.meta.env.VITE_SUPABASE_URL;
             if (!url) {
-                throw new Error('VITE_SUPABASE_URL não está configurada nos Secrets.');
+                throw new Error('VITE_SUPABASE_URL não configurada.');
+            }
+
+            // Teste de conexão rápida para diagnóstico
+            const pingStart = Date.now();
+            try {
+                await fetch(`${url}/rest/v1/`, { 
+                    method: 'GET', 
+                    headers: { 'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY || '' },
+                    mode: 'cors',
+                    credentials: 'omit'
+                });
+                console.log(`Ping Supabase OK: ${Date.now() - pingStart}ms`);
+            } catch (pingErr: any) {
+                console.warn('Ping de diagnóstico falhou:', pingErr);
+                // Não trava o app, mas loga o erro de rede real
             }
 
             const now = new Date();
@@ -4859,7 +4879,11 @@ const App = () => {
             }
         } catch (error: any) {
             console.error('Erro ao carregar dados:', error);
-            setFetchError(error.message || 'Erro desconhecido');
+            let msg = error.message || 'Erro desconhecido';
+            if (msg.includes('Failed to fetch')) {
+                msg = 'BLOQUEIO DE REDE: O navegador do celular não consegue falar com o banco de dados. Tente usar o 4G ou desative bloqueadores do navegador.';
+            }
+            setFetchError(msg);
             logger.error('Error fetching data:', error);
         } finally {
             setLoading(false);
@@ -4903,7 +4927,7 @@ const App = () => {
                     {/* Tarja de Diagnóstico Interno */}
                     <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex flex-col items-center">
                         <div className="flex justify-center items-center gap-4">
-                            <span>v1.0.9V • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
+                            <span>v1.0.9X • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
                             <button 
                                 onClick={fetchData}
                                 className="bg-green-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-green-700 transition-colors"

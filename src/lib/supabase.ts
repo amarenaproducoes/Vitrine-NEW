@@ -7,7 +7,17 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase URL or Anon Key is missing. Database features will not work.');
 }
 
-export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder');
+export const supabase = createClient(supabaseUrl || 'https://placeholder.supabase.co', supabaseAnonKey || 'placeholder', {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true,
+    storage: window.localStorage
+  },
+  global: {
+    fetch: (url: string | URL | Request, options?: RequestInit) => fetch(url, options)
+  }
+});
 
 export const AUTHORIZED_EMAILS = [
   'amarena.producoes@gmail.com',

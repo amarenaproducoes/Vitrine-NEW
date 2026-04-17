@@ -79,7 +79,11 @@ const LoginPage: React.FC = () => {
 
       if (authError) throw authError;
     } catch (err: any) {
-      setError('Erro ao tentar entrar com o Google: ' + (err.message || 'Erro desconhecido'));
+      let msg = err.message || 'Erro desconhecido';
+      if (msg.includes('Failed to fetch')) {
+        msg = 'O celular está bloqueando a conexão com o banco de dados. Tente usar outra rede (4G/Wi-Fi) ou desativar bloqueadores do navegador.';
+      }
+      setError('Erro ao tentar entrar com o Google: ' + msg);
       setLoading(false);
     }
   };
