@@ -4527,6 +4527,7 @@ const App = () => {
 
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [fetchError, setFetchError] = useState<string | null>(null);
     const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
@@ -4747,12 +4748,16 @@ const App = () => {
 
     const fetchData = async () => {
         setLoading(true);
+        setFetchError(null);
         try {
+            // Log de depuração básico (visível apenas no console por enquanto)
+            console.log('Iniciando busca de dados...');
+            
             const now = new Date();
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
             const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
-                supabase.from('partners').select('*').not('id', 'is', null),
+                supabase.from('partners').select('*').not('id', 'is', null).order('name'),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
@@ -4763,8 +4768,9 @@ const App = () => {
                 supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth)
             ]);
 
-            if (partnersRes.error) throw new Error(`Erro Parceiros: ${partnersRes.error.message}`);
-            if (categoriesRes.error) throw new Error(`Erro Categorias: ${categoriesRes.error.message}`);
+            if (partnersRes.error) throw new Error(`Parceiros: ${partnersRes.error.message}`);
+            if (categoriesRes.error) throw new Error(`Categorias: ${categoriesRes.error.message}`);
+            if (bannerRes.error) throw new Error(`Banners: ${bannerRes.error.message}`);
 
             if (partnersRes.data) setPartners(partnersRes.data);
             if (categoriesRes.data) setCategories(categoriesRes.data);
@@ -4868,7 +4874,9 @@ const App = () => {
                 const logoBanner = bannerRes.data.find(b => b.id === 2);
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
-        } catch (error) {
+        } catch (error: any) {
+            console.error('Erro ao carregar dados:', error);
+            setFetchError(error.message || 'Erro desconhecido');
             logger.error('Error fetching data:', error);
         } finally {
             setLoading(false);
@@ -4955,22 +4963,41 @@ const App = () => {
                 <ScrollToTop />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
                     {/* Tarja de Diagnóstico Interno */}
-                    <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex justify-center items-center gap-4">
-                        <span>v1.0.9L • {partners.length} PARCEIROS • {categories.length} CAT</span>
-                        <button 
-                            onClick={async () => {
-                                localStorage.clear();
-                                sessionStorage.clear();
-                                if ('serviceWorker' in navigator) {
-                                    const regs = await navigator.serviceWorker.getRegistrations();
-                                    for(let r of regs) r.unregister();
-                                }
-                                window.location.reload(true);
-                            }}
-                            className="bg-red-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-red-700 transition-colors"
-                        >
-                            LIMPAR CACHE FORÇADO
-                        </button>
+                    <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex flex-col items-center">
+                        <div className="flex justify-center items-center gap-4">
+                            <span>v1.0.9L • {partners.length} PARCEIROS • {categories.length} CAT</span>
+                            <button 
+                                onClick={fetchData}
+                                className="bg-green-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-green-700 transition-colors"
+                            >
+                                BUSCAR NOVO
+                            </button>
+                            <button 
+                                onClick={async () => {
+                                    localStorage.clear();
+                                    sessionStorage.clear();
+                                    if ('serviceWorker' in navigator) {
+                                        const regs = await navigator.serviceWorker.getRegistrations();
+                                        for(let r of regs) r.unregister();
+                                    }
+                                    window.location.reload();
+                                }}
+                                className="bg-red-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-red-700 transition-colors"
+                            >
+                                RESET TOTAL
+                            </button>
+                        </div>
+                        {fetchError && (
+                            <div className="text-red-600 font-bold mt-1 bg-white/50 px-2 rounded">
+                                ERRO: {fetchError}
+                            </div>
+                        )}
+                        {/* Verificação básica de ENV no cliente */}
+                        {!(import.meta.env.VITE_SUPABASE_URL) && (
+                            <div className="text-red-700 font-black text-[7px] mt-0.5">
+                                AVISO: VITE_SUPABASE_URL NÃO DETECTADA
+                            </div>
+                        )}
                     </div>
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
