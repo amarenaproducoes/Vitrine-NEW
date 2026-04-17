@@ -4427,7 +4427,7 @@ const AdminPage = ({
 const App = () => {
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
-    const APP_VERSION = 'v1.0.9Y';
+    const APP_VERSION = 'v1.1.0';
 
     useEffect(() => {
         const refreshApp = async () => {
@@ -4666,39 +4666,70 @@ const App = () => {
         }
     };
 
-    const fetchData = async () => {
+    const fetchData = async (retryCount = 0) => {
         setLoading(true);
         setFetchError(null);
         try {
-            console.log('Busca simples (v1.0.9Y)...');
+            console.log(`Busca de dados iniciada (Tentativa ${retryCount + 1})...`);
+            
+            const url = import.meta.env.VITE_SUPABASE_URL;
+            const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+            if (!url || !key) {
+                throw new Error('Configuração do banco de dados (URL/KEY) ausente.');
+            }
+
+            // Teste de conectividade básico antes de tudo
+            try {
+                const probe = await fetch(url, { method: 'HEAD', mode: 'no-cors' });
+                console.log('Sinal do servidor detectado.');
+            } catch (e) {
+                console.warn('Servidor parece inacessível pelo navegador.', e);
+            }
             
             const now = new Date();
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, welcomeMessagesRes, welcomeAccessLogsRes, couponCampaignsRes, couponCampaignAccessLogsRes, partnerAccessLogsRes] = await Promise.all([
-                supabase.from('partners').select('*').not('id', 'is', null).order('name'),
-                supabase.from('categories').select('*').order('name', { ascending: true }),
-                supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
-                supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
-                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }),
-                supabase.from('welcome_access_logs').select('ref_id'),
-                supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
-                supabase.from('coupon_campaign_access_logs').select('ref_id'),
-                supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth)
+            // Vamos buscar em blocos para não sobrecarregar navegadores mobile
+            const fetchTable = async <T,>(promise: any, tableName: string) => {
+                try {
+                    const result = await promise;
+                    if (result.error) throw result.error;
+                    return result.data as T;
+                } catch (err: any) {
+                    console.error(`Erro na tabela ${tableName}:`, err);
+                    throw new Error(`${tableName}: ${err.message || 'Erro de rede'}`);
+                }
+            };
+
+            // Bloco 1: Core (Parceiros e Categorias)
+            const [partnersData, categoriesData] = await Promise.all([
+                fetchTable(supabase.from('partners').select('*').not('id', 'is', null).order('name'), 'Parceiros'),
+                fetchTable(supabase.from('categories').select('*').order('name', { ascending: true }), 'Categorias')
             ]);
 
-            if (partnersRes.error) throw new Error(`Parceiros: ${partnersRes.error.message}`);
-            if (categoriesRes.error) throw new Error(`Categorias: ${categoriesRes.error.message}`);
-            if (bannerRes.error) throw new Error(`Banners: ${bannerRes.error.message}`);
+            // Bloco 2: UI (Banners e Cupons)
+            const [bannerData, featuredCouponsData] = await Promise.all([
+                fetchTable(supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]), 'Banners'),
+                fetchTable(supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }), 'Cupons de Destaque')
+            ]);
 
-            if (partnersRes.data) setPartners(partnersRes.data);
-            if (categoriesRes.data) setCategories(categoriesRes.data);
+            // Bloco 3: Mensagens e Campanhas
+            const [welcomeMessagesData, couponCampaignsData] = await Promise.all([
+                fetchTable(supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }), 'Mensagens de Boas-vindas'),
+                fetchTable(supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }), 'Campanhas de Cupons')
+            ]);
 
-            if (partnersRes.error) throw partnersRes.error;
-            if (categoriesRes.error) throw categoriesRes.error;
-            
-            if (partnersRes.data) {
-                const mappedPartners: Partner[] = partnersRes.data.map(p => ({
+            // Bloco 4: Logs (Geralmente mais pesados, deixamos por último)
+            const [welcomeAccessLogsData, couponCampaignAccessLogsData, partnerAccessLogsData] = await Promise.all([
+                fetchTable<any[]>(supabase.from('welcome_access_logs').select('ref_id'), 'Logs Boas-vindas'),
+                fetchTable<any[]>(supabase.from('coupon_campaign_access_logs').select('ref_id'), 'Logs Campanhas'),
+                fetchTable<any[]>(supabase.from('partner_access_logs').select('partner_id').gte('created_at', firstDayOfMonth), 'Logs Parceiros')
+            ]);
+
+            // Processamento dos dados
+            if (partnersData) {
+                const mappedPartners: Partner[] = (partnersData as any[]).map(p => ({
                     id: p.id,
                     name: p.name,
                     category: p.category,
@@ -4723,48 +4754,38 @@ const App = () => {
                 setPartners(mappedPartners);
             }
 
-            if (categoriesRes.data) {
-                setCategories(categoriesRes.data);
-            }
+            if (categoriesData) setCategories(categoriesData as Category[]);
+            if (featuredCouponsData) setFeaturedCoupons(featuredCouponsData as any[]);
+            if (welcomeMessagesData) setWelcomeMessages(welcomeMessagesData as WelcomeMessage[]);
+            if (couponCampaignsData) setCouponCampaigns(couponCampaignsData as CouponCampaign[]);
 
-            if (featuredCouponsRes.data) {
-                setFeaturedCoupons(featuredCouponsRes.data);
-            }
-
-            if (welcomeMessagesRes.data) {
-                setWelcomeMessages(welcomeMessagesRes.data);
-            }
-
-            if (welcomeAccessLogsRes.data) {
+            if (welcomeAccessLogsData) {
                 const counts: Record<string, number> = {};
-                welcomeAccessLogsRes.data.forEach(log => {
+                (welcomeAccessLogsData as any[]).forEach(log => {
                     counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
                 });
                 setWelcomeAccessCounts(counts);
             }
 
-            if (couponCampaignsRes.data) {
-                setCouponCampaigns(couponCampaignsRes.data);
-            }
-
-            if (couponCampaignAccessLogsRes.data) {
+            if (couponCampaignAccessLogsData) {
                 const counts: Record<string, number> = {};
-                couponCampaignAccessLogsRes.data.forEach(log => {
+                (couponCampaignAccessLogsData as any[]).forEach(log => {
                     counts[log.ref_id] = (counts[log.ref_id] || 0) + 1;
                 });
                 setCouponCampaignAccessCounts(counts);
             }
 
-            if (partnerAccessLogsRes.data) {
+            if (partnerAccessLogsData) {
                 const counts: Record<string, number> = {};
-                partnerAccessLogsRes.data.forEach(log => {
+                (partnerAccessLogsData as any[]).forEach(log => {
                     counts[log.partner_id] = (counts[log.partner_id] || 0) + 1;
                 });
                 setPartnerAccessCounts(counts);
             }
 
-            if (bannerRes.data) {
-                const carouselBanners = bannerRes.data
+            if (bannerData) {
+                const bData = bannerData as any[];
+                const carouselBanners = bData
                     .filter(b => [1, 3, 4].includes(b.id))
                     .map(b => ({
                         id: b.id,
@@ -4773,14 +4794,12 @@ const App = () => {
                         partnerName: b.partner_name
                     }))
                     .sort((a, b) => {
-                        // Maintain order: 1, 3, 4
                         const order = { 1: 0, 3: 1, 4: 2 };
                         return (order[a.id as keyof typeof order] || 0) - (order[b.id as keyof typeof order] || 0);
                     });
                 
                 setCommercialBanners(carouselBanners);
                 
-                // Update bannerLinks and bannerNames states
                 const links: {[key: number]: string} = {};
                 const names: {[key: number]: string} = {};
                 carouselBanners.forEach(b => {
@@ -4790,14 +4809,21 @@ const App = () => {
                 setBannerLinks(prev => ({ ...prev, ...links }));
                 setBannerNames(prev => ({ ...prev, ...names }));
                 
-                const logoBanner = bannerRes.data.find(b => b.id === 2);
+                const logoBanner = bData.find(b => b.id === 2);
                 if (logoBanner) setHeaderLogo(logoBanner.image_url);
             }
         } catch (error: any) {
             console.error('Erro ao carregar dados:', error);
+            
+            // Auto-re-tentativa simples para erros de rede exporádicos
+            if (retryCount < 2 && (error.message.includes('fetch') || error.message.includes('network'))) {
+                setTimeout(() => fetchData(retryCount + 1), 1000);
+                return;
+            }
+
             let msg = error.message || 'Erro desconhecido';
             if (msg.includes('Failed to fetch')) {
-                msg = 'BLOQUEIO DE REDE: O navegador do celular não consegue falar com o banco de dados. Tente usar o 4G ou desative bloqueadores do navegador.';
+                msg = 'BLOQUEIO DE REDE: O navegador do celular não consegue falar com o banco de dados. Isso geralmente acontece por AdBlockers no celular, modo de economia de dados ou Wi-Fi restrito.';
             }
             setFetchError(msg);
             logger.error('Error fetching data:', error);
@@ -4843,9 +4869,9 @@ const App = () => {
                     {/* Tarja de Diagnóstico Interno */}
                     <div className="bg-yellow-400 text-yellow-900 text-[10px] font-black py-2 text-center uppercase tracking-widest fixed top-0 w-full z-[100] border-b border-yellow-600 shadow-md flex flex-col items-center">
                         <div className="flex justify-center items-center gap-4">
-                            <span>v1.0.9Y • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
+                            <span>v1.1.0 • {partners.length} PARC • URL: {import.meta.env.VITE_SUPABASE_URL ? 'OK (' + import.meta.env.VITE_SUPABASE_URL.substring(0, 10) + '...' + import.meta.env.VITE_SUPABASE_URL.slice(-8) + ')' : '!! SEM URL !!'}</span>
                             <button 
-                                onClick={fetchData}
+                                onClick={() => fetchData()}
                                 className="bg-green-600 text-white px-2 py-0.5 rounded text-[8px] hover:bg-green-700 transition-colors"
                             >
                                 BUSCAR NOVO
