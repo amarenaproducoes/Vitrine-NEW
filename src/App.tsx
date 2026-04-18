@@ -1744,9 +1744,9 @@ const AdminPage = ({
             } else {
                 alert('Não foi possível gerar a descrição no momento.');
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error generating description:', error);
-            alert('Erro ao gerar descrição.');
+            alert(error?.message || 'Erro ao gerar descrição.');
         } finally {
             setIsGeneratingDescription(false);
         }

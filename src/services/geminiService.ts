@@ -5,7 +5,10 @@ export class AgencyAssistant {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    console.log("Initializing GoogleGenAI in geminiService.");
+    const key = process.env.GEMINI_API_KEY;
+    console.log("process.env.GEMINI_API_KEY typeof:", typeof key, "length:", key ? key.length : "undefined");
+    this.ai = new GoogleGenAI({ apiKey: key });
   }
 
   async getAdvice(userInput: string) {
@@ -52,9 +55,9 @@ Diretrizes OBRIGATÓRIAS:
         },
       });
       return response.text?.trim() || "";
-    } catch (error) {
-      logger.error("Gemini Error - generatePartnerDescription:", error);
-      return "";
+    } catch (error: any) {
+      console.error("Gemini Error - generatePartnerDescription:", error?.message, error);
+      throw new Error(error?.message || "Não foi possível gerar a descrição. Verifique sua chave de acesso (GEMINI_API_KEY) e tente novamente.");
     }
   }
 }
