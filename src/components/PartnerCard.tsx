@@ -208,9 +208,10 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
                           
             if (!onesignalId) {
                 // Wait briefly just in case it takes a moment to assign the id
-                for (let i = 0; i < 15; i++) {
+                console.log("Aguardando ID do OneSignal...");
+                for (let i = 0; i < 25; i++) { // Increase wait time to 5 seconds
                   await new Promise(resolve => setTimeout(resolve, 200));
-                  const lateId = OneSignal.User.onesignalId || OneSignal.User.PushSubscription?.id;
+                  const lateId = OneSignal.User.onesignalId || OneSignal.User.PushSubscription?.id || (OneSignal.User as any).subscriptionId;
                   if (lateId) {
                     onesignalId = lateId;
                     break;

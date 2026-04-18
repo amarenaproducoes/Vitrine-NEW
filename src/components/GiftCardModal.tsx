@@ -218,9 +218,10 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
                         (OneSignal.User as any).subscriptionId;
                         
           if (!onesignalId) {
-              for (let i = 0; i < 15; i++) {
+              console.log("Aguardando ID do OneSignal...");
+              for (let i = 0; i < 25; i++) {
                 await new Promise(resolve => setTimeout(resolve, 200));
-                const lateId = OneSignal.User.onesignalId || OneSignal.User.PushSubscription?.id;
+                const lateId = OneSignal.User.onesignalId || OneSignal.User.PushSubscription?.id || (OneSignal.User as any).subscriptionId;
                 if (lateId) {
                   onesignalId = lateId;
                   break;
