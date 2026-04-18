@@ -504,19 +504,29 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
         
         <div className="flex items-start justify-between gap-2 mb-4">
           <div className="flex items-start space-x-2 text-slate-500 text-xs">
-            <MapPin size={14} className="mt-0.5 flex-shrink-0 text-[#c54b4b]" />
-            <span className="leading-snug">{partner.address}</span>
+            {partner.is_online_only ? (
+              <Globe size={14} className="mt-0.5 flex-shrink-0 text-[#279267]" />
+            ) : (
+              <MapPin size={14} className="mt-0.5 flex-shrink-0 text-[#c54b4b]" />
+            )}
+            <span className="leading-snug">
+              {partner.is_online_only 
+                ? "Esse parceiro atende exclusivamente pelo Whatsapp. Entrar em contato pelo link abaixo!" 
+                : partner.address}
+            </span>
           </div>
-          <a 
-            href={googleMapsUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex-shrink-0 flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-bold text-[10px] uppercase tracking-wider transition-colors"
-            title="Abrir no Google Maps"
-          >
-            <Navigation size={12} />
-            <span>Como chegar</span>
-          </a>
+          {!partner.is_online_only && (
+            <a 
+              href={googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-shrink-0 flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-bold text-[10px] uppercase tracking-wider transition-colors"
+              title="Abrir no Google Maps"
+            >
+              <Navigation size={12} />
+              <span>Como chegar</span>
+            </a>
+          )}
         </div>
 
         <p className={`text-slate-600 text-sm leading-relaxed flex-grow ${partner.coupon ? 'mb-2' : 'mb-6'}`}>
@@ -546,11 +556,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
             {unlockStep === 'input' && (
               <div className="flex flex-col items-center animate-in fade-in duration-200 w-full space-y-4">
                 <div className="text-center">
-                  <span className="text-slate-700 font-bold text-xs mb-1 block">Para liberar o seu benefício, digite o seu Whatsapp e ganhe:</span>
+                  <span className="text-slate-700 font-bold text-xs mb-1.5 block">Para liberar o seu benefício, digite o seu Whatsapp e ganhe:</span>
                   {(welcomeData?.custom_description || partner.couponDescription) && (
-                    <span className="text-[#279267] font-black text-[11px] sm:text-xs mb-3 block bg-white px-2 py-1.5 rounded-md border border-green-100 shadow-sm w-full break-words">
-                      {welcomeData?.custom_description || partner.couponDescription}
-                    </span>
+                    <div className="bg-[#e8f5e9] mb-5 p-3.5 sm:p-4 rounded-xl border-2 border-[#279267]/30 shadow-sm mx-auto w-full max-w-[95%]">
+                      <span className="text-[#1e6043] font-black text-[14px] sm:text-[15px] block break-words leading-tight uppercase tracking-tight">
+                        {welcomeData?.custom_description || partner.couponDescription}
+                      </span>
+                    </div>
                   )}
                 </div>
 
@@ -661,15 +673,23 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
                   <span className="text-[#279267] font-bold text-sm">Cupom Desbloqueado!</span>
                 </div>
                 
-                <div className="flex items-center justify-center space-x-1.5 mb-3 px-4 py-1 bg-white rounded-full border border-slate-200 shadow-sm whitespace-nowrap">
-                  <Phone size={10} className="text-slate-400 flex-shrink-0" />
-                  <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">{whatsapp}</span>
+                <div className="flex items-center justify-center space-x-2.5 mb-5 px-6 py-2.5 bg-[#f8fafc] rounded-full border-2 border-slate-200 shadow-sm whitespace-nowrap min-w-[200px]">
+                  <Phone size={16} className="text-slate-500 flex-shrink-0" />
+                  <span className="text-[15px] sm:text-base font-black text-slate-700 whitespace-nowrap tracking-wide">{whatsapp}</span>
                 </div>
 
-                {(welcomeData?.custom_description || partner.couponDescription) && (
-                  <p className="text-[10px] sm:text-[11px] text-slate-700 font-medium mb-2 break-words">{welcomeData?.custom_description || partner.couponDescription}</p>
-                )}
-                <div className="w-full py-2.5 bg-white rounded-lg border-2 border-[#279267] mb-1 select-all shadow-sm">
+                <div className="w-full mb-5">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block mb-1">Seu prêmio garantido:</span>
+                  {(welcomeData?.custom_description || partner.couponDescription) && (
+                    <div className="bg-[#e8f5e9] w-full p-4 rounded-xl border-2 border-[#279267]/30 shadow-sm flex items-center justify-center">
+                      <span className="text-[#1e6043] font-black text-[14px] sm:text-[16px] block max-w-full break-words text-center leading-tight uppercase tracking-tight">
+                        {welcomeData?.custom_description || partner.couponDescription}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="w-full py-2.5 bg-white rounded-xl border-2 border-dashed border-[#279267] mb-2 select-all shadow-sm">
                   <span className="text-lg font-mono font-black text-slate-800 tracking-wider">{welcomeData?.custom_coupon || partner.coupon}</span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-medium">Apresente este código no estabelecimento</span>

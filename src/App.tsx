@@ -1251,6 +1251,7 @@ const AdminPage = ({
         description: string,
         observations: string,
         address: string, 
+        is_online_only: boolean,
         imageUrl: string, 
         imageFile: File | null, 
         images: string[],
@@ -1274,6 +1275,7 @@ const AdminPage = ({
         description: '', 
         observations: '',
         address: '', 
+        is_online_only: false,
         imageUrl: '', 
         imageFile: null, 
         images: ['', '', '', ''],
@@ -1823,6 +1825,7 @@ const AdminPage = ({
                 activity: formData.activity,
                 description: formData.description,
                 address: formData.address,
+                is_online_only: formData.is_online_only,
                 image_url: finalImageUrl,
                 images: finalImages.filter(img => img && img.startsWith('http')),
                 video_url: formData.videoUrl || null,
@@ -1952,6 +1955,7 @@ const AdminPage = ({
             description: '', 
             observations: '',
             address: '', 
+            is_online_only: false,
             imageUrl: '', 
             imageFile: null, 
             images: ['', '', '', ''],
@@ -1983,6 +1987,7 @@ const AdminPage = ({
             description: partner.description,
             observations: '',
             address: partner.address,
+            is_online_only: partner.is_online_only || false,
             imageUrl: partner.imageUrl,
             imageFile: null,
             images: partner.images ? [...partner.images, '', '', '', ''].slice(0, 4) : ['', '', '', ''],
@@ -2514,7 +2519,36 @@ const AdminPage = ({
                                         {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                     </select>
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Atividade (Ex: Pizzaria)" value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
-                                    <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Endereço" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
+                                    
+                                    <div className="flex flex-col space-y-2">
+                                        <label className="flex items-center space-x-3 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.is_online_only} 
+                                                onChange={e => {
+                                                    const isChecked = e.target.checked;
+                                                    setFormData({
+                                                        ...formData, 
+                                                        is_online_only: isChecked,
+                                                        address: isChecked ? '' : formData.address // clear address if online only
+                                                    });
+                                                }}
+                                                className="w-5 h-5 text-[#279267] rounded focus:ring-0 cursor-pointer"
+                                            />
+                                            <span className="font-bold text-slate-700 text-sm">Apenas online (Sem endereço físico)</span>
+                                        </label>
+                                        
+                                        {!formData.is_online_only && (
+                                            <input 
+                                                required 
+                                                type="text" 
+                                                className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" 
+                                                placeholder="Endereço" 
+                                                value={formData.address} 
+                                                onChange={e => setFormData({...formData, address: e.target.value})} 
+                                            />
+                                        )}
+                                    </div>
                                     
                                     <div className="bg-[#279267]/5 border border-[#279267]/20 p-4 rounded-xl space-y-3">
                                         <div className="flex items-center justify-between flex-wrap gap-2">

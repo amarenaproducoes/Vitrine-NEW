@@ -24,6 +24,7 @@ export interface Partner {
   googleReviewLink?: string;
   websiteUrl?: string;
   giftCardEnabled?: boolean;
+  is_online_only?: boolean;
 }
 
 export interface GiftCard {
