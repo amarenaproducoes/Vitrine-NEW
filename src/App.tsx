@@ -1167,7 +1167,7 @@ const AdminPage = ({
     };
     
     // Coupon Mass Edit State
-    const [couponEdits, setCouponEdits] = useState<{[key: string]: { pageNumber: number, coupon: string, couponDescription: string }}>({});
+    const [couponEdits, setCouponEdits] = useState<{[key: string]: { pageNumber: number | null | '', coupon: string, couponDescription: string, isAuthorized: boolean }}>({});
 
     const handleSaveCoupons = async () => {
         setIsSubmitting(true);
@@ -1177,28 +1177,36 @@ const AdminPage = ({
             
             // Calculate current counts from existing partners
             partners.forEach(p => {
-                const page = couponEdits[p.id]?.pageNumber || p.page_number || 1;
-                pageCounts[page] = (pageCounts[page] || 0) + 1;
+                const edit = couponEdits[p.id];
+                const isAuth = edit !== undefined ? edit.isAuthorized : p.isAuthorized;
+                const pageNum = edit !== undefined ? edit.pageNumber : p.page_number;
+                
+                // Only count authorized partners with a valid page number
+                if (isAuth && pageNum !== null && pageNum !== '' && pageNum !== undefined) {
+                    pageCounts[pageNum as number] = (pageCounts[pageNum as number] || 0) + 1;
+                }
             });
 
             // Check if any page exceeds 10
             const overlimitPage = Object.entries(pageCounts).find(([_, count]) => count > 10);
             if (overlimitPage) {
-                throw new Error(`A página ${overlimitPage[0]} já possui 10 parceiros. Limite atingido.`);
+                throw new Error(`A página ${overlimitPage[0]} já possui 10 parceiros autorizados. Limite atingido.`);
             }
 
             const updates = Object.entries(couponEdits).map(([id, edit]) => ({
                 id,
-                page_number: edit.pageNumber,
+                page_number: edit.pageNumber === '' ? null : edit.pageNumber,
                 coupon: edit.coupon,
-                coupon_description: edit.couponDescription
+                coupon_description: edit.couponDescription,
+                is_authorized: edit.isAuthorized
             }));
 
             for (const update of updates) {
                 const { error } = await supabase.from('partners').update({
                     page_number: update.page_number,
                     coupon: update.coupon,
-                    coupon_description: update.coupon_description
+                    coupon_description: update.coupon_description,
+                    is_authorized: update.is_authorized
                 }).eq('id', update.id);
                 if (error) throw error;
             }
@@ -1207,16 +1215,17 @@ const AdminPage = ({
                 if (couponEdits[p.id]) {
                     return {
                         ...p,
-                        page_number: couponEdits[p.id].pageNumber,
+                        page_number: couponEdits[p.id].pageNumber === '' ? undefined : (couponEdits[p.id].pageNumber as number),
                         coupon: couponEdits[p.id].coupon,
-                        couponDescription: couponEdits[p.id].couponDescription
+                        couponDescription: couponEdits[p.id].couponDescription,
+                        isAuthorized: couponEdits[p.id].isAuthorized
                     };
                 }
                 return p;
             }));
 
             setCouponEdits({});
-            alert("Cupons e páginas atualizados com sucesso!");
+            alert("Cupons, autorizações e páginas atualizados com sucesso!");
         } catch (error: any) {
             logger.error('Error saving coupons:', error);
             alert(`Erro ao salvar: ${error.message}`);
@@ -1225,19 +1234,26 @@ const AdminPage = ({
         }
     };
 
-    const handleCouponChange = (partnerId: string, field: 'pageNumber' | 'coupon' | 'couponDescription', value: any) => {
+    const handleCouponChange = (partnerId: string, field: 'pageNumber' | 'coupon' | 'couponDescription' | 'isAuthorized', value: any) => {
         setCouponEdits(prev => {
+            const partner = partners.find(p => p.id === partnerId);
             const existing = prev[partnerId] || { 
-                pageNumber: partners.find(p => p.id === partnerId)?.page_number || 1,
-                coupon: partners.find(p => p.id === partnerId)?.coupon || '',
-                couponDescription: partners.find(p => p.id === partnerId)?.couponDescription || ''
+                pageNumber: partner?.page_number ?? 1,
+                coupon: partner?.coupon || '',
+                couponDescription: partner?.couponDescription || '',
+                isAuthorized: partner?.isAuthorized ?? true
             };
+            
+            const updated = { ...existing, [field]: value };
+            
+            // If authorization is turned off, clear the page number automatically
+            if (field === 'isAuthorized' && value === false) {
+                updated.pageNumber = '';
+            }
+            
             return {
                 ...prev,
-                [partnerId]: {
-                    ...existing,
-                    [field]: value
-                }
+                [partnerId]: updated
             };
         });
     };
@@ -3616,6 +3632,7 @@ const AdminPage = ({
                             <thead>
                                 <tr>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Parceiro</th>
+                                    <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-24 text-center">Autorizado</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Página</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48">Código do Cupom</th>
                                     <th className="p-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-1/3">Descrição do Benefício</th>
@@ -3625,28 +3642,38 @@ const AdminPage = ({
                                 {partners.length > 0 ? (
                                     partners.map((partner) => {
                                         const currentEdit = couponEdits[partner.id] || {
-                                            pageNumber: partner.page_number || 1,
+                                            pageNumber: partner.page_number ?? 1,
                                             coupon: partner.coupon || '',
-                                            couponDescription: partner.couponDescription || ''
+                                            couponDescription: partner.couponDescription || '',
+                                            isAuthorized: partner.isAuthorized ?? true
                                         };
                                         return (
-                                            <tr key={partner.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <tr key={partner.id} className={`hover:bg-slate-50/50 transition-colors ${!currentEdit.isAuthorized ? 'opacity-60' : ''}`}>
                                                 <td className="p-4">
                                                     <div className="flex items-center space-x-3">
-                                                        <img src={partner.imageUrl} alt={partner.name} className="w-10 h-10 rounded-lg object-cover border border-slate-200" />
+                                                        <img src={partner.imageUrl} alt={partner.name} className={`w-10 h-10 rounded-lg object-cover border border-slate-200 ${!currentEdit.isAuthorized ? 'grayscale' : ''}`} />
                                                         <div>
                                                             <p className="font-bold text-slate-900 text-sm">{partner.name}</p>
                                                             <p className="text-[10px] font-black text-[#279267] uppercase tracking-widest">{partner.category}</p>
                                                         </div>
                                                     </div>
                                                 </td>
+                                                <td className="p-4 text-center">
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={currentEdit.isAuthorized}
+                                                        onChange={(e) => handleCouponChange(partner.id, 'isAuthorized', e.target.checked)}
+                                                        className="w-5 h-5 text-[#279267] rounded focus:ring-0 cursor-pointer"
+                                                    />
+                                                </td>
                                                 <td className="p-4">
                                                     <input 
                                                         type="number" 
                                                         min="1"
-                                                        value={currentEdit.pageNumber}
-                                                        onChange={(e) => handleCouponChange(partner.id, 'pageNumber', parseInt(e.target.value) || 1)}
-                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm"
+                                                        value={currentEdit.pageNumber === null ? '' : currentEdit.pageNumber}
+                                                        disabled={!currentEdit.isAuthorized}
+                                                        onChange={(e) => handleCouponChange(partner.id, 'pageNumber', e.target.value === '' ? '' : parseInt(e.target.value) || 1)}
+                                                        className="w-full px-3 py-2 rounded-lg bg-white border border-slate-200 outline-none focus:border-[#279267] text-sm disabled:bg-slate-100 disabled:text-transparent"
                                                     />
                                                 </td>
                                                 <td className="p-4">
