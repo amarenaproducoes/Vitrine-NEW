@@ -330,6 +330,16 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedPartnerId, setExpandedPartnerId] = useState<string | null>(null);
     const [partnersPage, setPartnersPage] = useState(1);
+    
+    // Horizontal scroll refs and logic for categories
+    const categoriesScrollRef = useRef<HTMLDivElement>(null);
+    const scrollCategories = (direction: 'left' | 'right') => {
+        if (categoriesScrollRef.current) {
+            const scrollAmount = 300;
+            categoriesScrollRef.current.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+        }
+    };
+    
     const PARTNERS_PER_PAGE = 10;
     const [roulettePartner, setRoulettePartner] = useState<Partner | null>(null);
     const [cashbackConfigs, setCashbackConfigs] = useState<CashbackConfig[]>([]);
@@ -620,11 +630,30 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
 
             <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-grow">
-                        <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider"><Filter size={16} className="mr-2" /> Filtrar:</div>
-                        {['Todos', ...categories.map(c => c.name)].map(cat => (
-                            <button key={cat} onClick={() => handleCategoryClick(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
-                        ))}
+                    <div className="flex items-center flex-grow min-w-0 relative group">
+                        <div className="flex items-center text-slate-400 mr-4 font-bold text-sm uppercase tracking-wider flex-shrink-0">
+                            <Filter size={16} className="mr-2" /> Filtrar:
+                        </div>
+                        <button 
+                            onClick={() => scrollCategories('left')}
+                            className="absolute left-24 z-10 p-1.5 bg-white border border-slate-200 rounded-full shadow-md text-slate-500 hover:text-[#279267] hidden md:group-hover:flex items-center justify-center translate-y-[-50%] top-1/2"
+                        >
+                            <ChevronLeft size={16} />
+                        </button>
+                        <div 
+                            ref={categoriesScrollRef}
+                            className="flex items-center space-x-2 overflow-x-auto no-scrollbar whitespace-nowrap flex-grow scroll-smooth"
+                        >
+                            {['Todos', ...categories.map(c => c.name)].map(cat => (
+                                <button key={cat} onClick={() => handleCategoryClick(cat)} className={`px-5 py-2 rounded-full text-xs font-bold transition-all border flex-shrink-0 ${activeCategory === cat ? 'bg-[#279267] border-[#279267] text-white shadow-lg shadow-[#279267]/20' : 'bg-white border-slate-200 text-slate-500 hover:border-[#279267]/20 hover:text-[#279267]'}`}>{cat}</button>
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => scrollCategories('right')}
+                            className="absolute right-0 z-10 p-1.5 bg-white border border-slate-200 rounded-full shadow-md text-slate-500 hover:text-[#279267] hidden md:group-hover:flex items-center justify-center translate-y-[-50%] top-1/2 -mr-3"
+                        >
+                            <ChevronRight size={16} />
+                        </button>
                     </div>
                     <div className="relative w-full md:w-80">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

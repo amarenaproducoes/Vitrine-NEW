@@ -196,49 +196,42 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
       // 2. Create/Update customer
       let onesignalId = null;
       try {
-        if ((window.OneSignal || OneSignal) && (window as any).isOneSignalInitialized) {
-          const os = window.OneSignal || OneSignal;
+        if ((window as any).isOneSignalInitialized) {
+          await OneSignal.login(cleanWhatsapp);
+          OneSignal.User.addTag("whatsapp", cleanWhatsapp);
+          OneSignal.User.addTag("name", customerName.trim());
           
-          // Add tags immediately so they are queued
-          os.User.addTag("whatsapp", cleanWhatsapp);
-          os.User.addTag("name", customerName.trim());
-
-          // Link external ID via alias (v16 way)
           try {
-            (os.User as any).addAlias("external_id", cleanWhatsapp);
+            (OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
           } catch (aliasErr) {
             console.warn("Erro ao adicionar alias:", aliasErr);
           }
 
-          // Trigger native prompt if not already subscribed and not blocked
-          if (!hasOneSignalId && os.Notifications.permissionNative === 'default') {
-            try {
-              await Promise.race([
-                os.Notifications.requestPermission(),
-                new Promise(resolve => setTimeout(resolve, 2000))
-              ]);
-            } catch (permErr) {
-              console.warn("Aviso: Solicitação de permissão ignorada ou bloqueada pelo navegador.");
-            }
+          if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {
+            OneSignal.Notifications.requestPermission().catch(err => {
+              console.warn("Aviso: Solicitação de permissão ignorada.", err);
+            });
           }
-
-          // Try to get the ID, wait up to 5 seconds
-          for (let i = 0; i < 25; i++) {
-            // Try different ways to get the ID depending on SDK state
-            const subId = os.User?.onesignalId || 
-                          os.User?.PushSubscription?.id || 
-                          (os as any).User?.subscriptionId;
-                          
-            if (subId) {
-              onesignalId = subId;
-              console.log("ID OneSignal capturado com sucesso:", onesignalId);
-              break;
-            }
-            await new Promise(resolve => setTimeout(resolve, 200));
-          }
-
+          
+          onesignalId = OneSignal.User.onesignalId || 
+                        OneSignal.User.PushSubscription?.id || 
+                        (OneSignal.User as any).subscriptionId;
+                        
           if (!onesignalId) {
-            console.warn("Aviso: OneSignal inicializou mas o ID de inscrição ainda não está disponível.");
+              for (let i = 0; i < 15; i++) {
+                await new Promise(resolve => setTimeout(resolve, 200));
+                const lateId = OneSignal.User.onesignalId || OneSignal.User.PushSubscription?.id;
+                if (lateId) {
+                  onesignalId = lateId;
+                  break;
+                }
+              }
+          }
+
+          if (onesignalId) {
+              console.log("ID OneSignal capturado com sucesso:", onesignalId);
+          } else {
+              console.warn("Aviso: O ID do OneSignal não foi gerado a tempo.");
           }
         }
       } catch (e) {

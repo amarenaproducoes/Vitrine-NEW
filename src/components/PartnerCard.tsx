@@ -9,6 +9,7 @@ import { Partner } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
+import OneSignal from 'react-onesignal';
 import { formatWhatsApp, getCleanWhatsApp } from '../lib/format';
 
 interface PartnerCardProps {
@@ -180,45 +181,47 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
       try {
         let onesignalId = null;
         try {
-          if (window.OneSignal && (window as any).isOneSignalInitialized) {
-            // Add tags immediately so they are queued
-            window.OneSignal.User.addTag("whatsapp", cleanWhatsapp);
-            window.OneSignal.User.addTag("name", customerName.trim());
+          if ((window as any).isOneSignalInitialized) {
+            // Log in the user to identify them centrally
+            await OneSignal.login(cleanWhatsapp);
+            OneSignal.User.addTag("whatsapp", cleanWhatsapp);
+            OneSignal.User.addTag("name", customerName.trim());
             
-            // Link external ID via alias (v16 way)
+            // Link external ID via alias just to be sure
             try {
-              (window.OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
+              (OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
             } catch (aliasErr) {
               console.warn("Erro ao adicionar alias:", aliasErr);
             }
 
-            // Trigger native prompt if not already subscribed and not blocked
-            if (!hasOneSignalId && window.OneSignal.Notifications.permissionNative === 'default') {
-              try {
-                await Promise.race([
-                  window.OneSignal.Notifications.requestPermission(),
-                  new Promise(resolve => setTimeout(resolve, 2000))
-                ]);
-              } catch (permErr) {
-                console.warn("Aviso: Solicitação de permissão ignorada ou bloqueada pelo navegador.");
-              }
+            // Trigger prompt asynchronously (do not block execution!)
+            if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {
+              OneSignal.Notifications.requestPermission().catch(err => {
+                console.warn("Aviso: Solicitação de permissão ignorada.", err);
+              });
             }
             
-            // Try to get the ID, wait up to 5 seconds
-            for (let i = 0; i < 25; i++) {
-              const subId = window.OneSignal.User?.onesignalId || 
-                            window.OneSignal.User?.PushSubscription?.id ||
-                            (window.OneSignal.User as any)?.subscriptionId;
-              if (subId) {
-                onesignalId = subId;
-                console.log("ID OneSignal capturado:", onesignalId);
-                break;
-              }
-              await new Promise(resolve => setTimeout(resolve, 200));
+            // ID should theoretically be available synchronously now
+            onesignalId = OneSignal.User.onesignalId || 
+                          OneSignal.User.PushSubscription?.id || 
+                          (OneSignal.User as any).subscriptionId;
+                          
+            if (!onesignalId) {
+                // Wait briefly just in case it takes a moment to assign the id
+                for (let i = 0; i < 15; i++) {
+                  await new Promise(resolve => setTimeout(resolve, 200));
+                  const lateId = OneSignal.User.onesignalId || OneSignal.User.PushSubscription?.id;
+                  if (lateId) {
+                    onesignalId = lateId;
+                    break;
+                  }
+                }
             }
 
-            if (!onesignalId) {
-              console.warn("Aviso: OneSignal inicializou mas o ID de inscrição ainda não está disponível.");
+            if (onesignalId) {
+                console.log("ID OneSignal capturado com sucesso:", onesignalId);
+            } else {
+                console.warn("Aviso: O ID do OneSignal não foi gerado a tempo.");
             }
           }
         } catch (e) {
