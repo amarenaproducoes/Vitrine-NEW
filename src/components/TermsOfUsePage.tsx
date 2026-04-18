@@ -90,16 +90,15 @@ const TermsOfUsePage: React.FC = () => {
             <section>
               <div className="flex items-center space-x-3 mb-4">
                 <AlertCircle className="text-[#279267]" size={24} />
-                <h2 className="text-xl font-bold text-slate-900">5. Limitação de Responsabilidade</h2>
+                <h2 className="text-xl font-bold text-slate-900">5. Compromisso com a Estabilidade e Segurança</h2>
               </div>
               <p className="mb-4">
-                A <strong>Aparece aí por aqui</strong> atua como intermediária na divulgação de ofertas. Portanto:
+                A <strong>Aparece aí por aqui</strong> utiliza infraestrutura de ponta, incluindo proteção de borda fornecida pela Cloudflare, para garantir a máxima estabilidade do serviço para nossos usuários e parceiros lojistas. No entanto:
               </p>
               <ul className="list-disc pl-6 space-y-2">
+                <li>Esforçamo-nos para manter o site disponível 24/7, mas não nos responsabilizamos por instabilidades decorrentes de falhas globais na internet ou ataques de hackers que superem as medidas de segurança atuais.</li>
                 <li>Não nos responsabilizamos pela qualidade, entrega ou validade dos produtos e serviços oferecidos pelos parceiros anunciados.</li>
                 <li>A validade de cupons e cashbacks é de inteira responsabilidade do estabelecimento parceiro.</li>
-                <li>Não garantimos que o site estará disponível de forma ininterrupta ou livre de erros técnicos eventuais.</li>
-                <li>Não nos responsabilizamos por danos decorrentes do uso indevido da plataforma por parte do usuário.</li>
               </ul>
             </section>
 
@@ -164,8 +163,9 @@ const TermsOfUsePage: React.FC = () => {
 
             <div className="pt-8 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-400">
-                Última atualização: 10 de Abril de 2026.<br />
-                Aparece aí por aqui - Todos os direitos reservados.
+                Última atualização: 17 de Abril de 2026.<br />
+                Aparece aí por aqui - Sistema de Segurança em Camadas.<br />
+                Todos os direitos reservados.
               </p>
             </div>
           </div>

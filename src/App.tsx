@@ -44,6 +44,7 @@ import { supabase, AUTHORIZED_EMAILS } from './lib/supabase';
 import { getUserIP } from './lib/ip';
 import { logger } from './lib/logger';
 import { formatWhatsApp } from './lib/format';
+import { AgencyAssistant } from './services/geminiService';
 import Editor, { 
     Toolbar, 
     BtnBold, 
@@ -1242,11 +1243,13 @@ const AdminPage = ({
     };
     
     // Partner Form State
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
     const [formData, setFormData] = useState<{
         name: string, 
         category: string, 
         activity: string, 
-        description: string, 
+        description: string,
+        observations: string,
         address: string, 
         imageUrl: string, 
         imageFile: File | null, 
@@ -1269,6 +1272,7 @@ const AdminPage = ({
         category: categories.length > 0 ? categories[0].name : '', 
         activity: '', 
         description: '', 
+        observations: '',
         address: '', 
         imageUrl: '', 
         imageFile: null, 
@@ -1718,6 +1722,36 @@ const AdminPage = ({
         }
     };
 
+    const handleGenerateDescription = async () => {
+        if (!formData.name || !formData.category || !formData.activity) {
+            alert('Por favor, preencha pelo menos Nome, Categoria e Atividade para gerar uma boa descrição.');
+            return;
+        }
+
+        setIsGeneratingDescription(true);
+        try {
+            const assistant = new AgencyAssistant();
+            const newDescription = await assistant.generatePartnerDescription(
+                formData.name,
+                formData.category,
+                formData.activity,
+                formData.description,
+                formData.observations
+            );
+            
+            if (newDescription) {
+                setFormData(prev => ({ ...prev, description: newDescription }));
+            } else {
+                alert('Não foi possível gerar a descrição no momento.');
+            }
+        } catch (error) {
+            console.error('Error generating description:', error);
+            alert('Erro ao gerar descrição.');
+        } finally {
+            setIsGeneratingDescription(false);
+        }
+    };
+
     const handleAddOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -1916,6 +1950,7 @@ const AdminPage = ({
             category: categories.length > 0 ? categories[0].name : '', 
             activity: '', 
             description: '', 
+            observations: '',
             address: '', 
             imageUrl: '', 
             imageFile: null, 
@@ -1946,6 +1981,7 @@ const AdminPage = ({
             category: partner.category,
             activity: partner.activity,
             description: partner.description,
+            observations: '',
             address: partner.address,
             imageUrl: partner.imageUrl,
             imageFile: null,
@@ -2479,7 +2515,37 @@ const AdminPage = ({
                                     </select>
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Atividade (Ex: Pizzaria)" value={formData.activity} onChange={e => setFormData({...formData, activity: e.target.value})} />
                                     <input required type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Endereço" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} />
-                                    <textarea rows={2} required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Descrição Curta" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                                    
+                                    <div className="bg-[#279267]/5 border border-[#279267]/20 p-4 rounded-xl space-y-3">
+                                        <div className="flex items-center justify-between flex-wrap gap-2">
+                                            <label className="text-[11px] font-bold text-slate-700 uppercase">Criação de Descrição</label>
+                                            <button 
+                                                type="button" 
+                                                onClick={handleGenerateDescription}
+                                                disabled={isGeneratingDescription}
+                                                className="flex items-center space-x-1 bg-[#279267] text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-[#1e7855] transition-colors disabled:opacity-50"
+                                            >
+                                                <Sparkles size={14} />
+                                                <span>{isGeneratingDescription ? 'Gerando...' : 'Gerar com IA'}</span>
+                                            </button>
+                                        </div>
+                                        <input 
+                                            type="text" 
+                                            className="w-full px-3 py-2 text-sm rounded-lg bg-white border border-[#279267]/30 outline-none focus:border-[#279267]" 
+                                            placeholder="Observações p/ IA (ex: focar em delivery...)" 
+                                            value={formData.observations} 
+                                            onChange={e => setFormData({...formData, observations: e.target.value})} 
+                                        />
+                                        <textarea 
+                                            rows={3} 
+                                            required 
+                                            maxLength={600}
+                                            className="w-full px-4 py-3 rounded-lg bg-white border border-[#279267]/30 outline-none focus:border-[#279267]" 
+                                            placeholder="Descrição Curta (Max 600 caracteres)" 
+                                            value={formData.description} 
+                                            onChange={e => setFormData({...formData, description: e.target.value})} 
+                                        />
+                                    </div>
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Instagram (Opcional)" value={formData.link} onChange={e => setFormData({...formData, link: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do WhatsApp (wa.me/...)" value={formData.whatsappLink} onChange={e => setFormData({...formData, whatsappLink: e.target.value})} />
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link de Avaliação do Google" value={formData.googleReviewLink} onChange={e => setFormData({...formData, googleReviewLink: e.target.value})} />

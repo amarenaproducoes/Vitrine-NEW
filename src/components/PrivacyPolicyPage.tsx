@@ -64,13 +64,14 @@ const PrivacyPolicyPage: React.FC = () => {
             <section>
               <div className="flex items-center space-x-3 mb-4">
                 <FileText className="text-[#279267]" size={24} />
-                <h2 className="text-xl font-bold text-slate-900">3. Métodos de Coleta e Ferramentas de Terceiros</h2>
+                <h2 className="text-xl font-bold text-slate-900">3. Métodos de Coleta e Segurança de Infraestrutura</h2>
               </div>
-              <p className="mb-4">Os dados são coletados das seguintes formas:</p>
+              <p className="mb-4">Os dados são coletados e protegidos das seguintes formas:</p>
               <ul className="list-disc pl-6 space-y-2 mb-4">
                 <li><strong>Formulários Diretos:</strong> Quando você preenche seus dados para anunciar, ser parceiro ou resgatar um cupom/cashback.</li>
-                <li><strong>Cookies e Tecnologias de Rastreamento:</strong> Para melhorar a navegação e segurança (como o reCAPTCHA).</li>
-                <li><strong>Logs de Servidor:</strong> Coleta automática de IP e dados de acesso para fins de segurança e prevenção de fraudes.</li>
+                <li><strong>Cloudflare & Proteção de Borda:</strong> Utilizamos a infraestrutura da Cloudflare para proteger nosso site contra ataques de negação de serviço (DDoS), injeção de scripts maliciosos e para garantir a estabilidade global do acesso. Isso inclui o processamento técnico de metadados de conexão para identificar ameaças antes que cheguem ao nosso servidor.</li>
+                <li><strong>Cookies e Tecnologias de Rastreamento:</strong> Para melhorar a navegação e segurança (como o reCAPTCHA e cookies técnicos de sessão).</li>
+                <li><strong>Logs de Servidor:</strong> Coleta automática de IP e dados de acesso para fins de auditoria de segurança e prevenção de fraudes.</li>
               </ul>
               <p className="mb-4"><strong>Google Analytics:</strong></p>
               <p>
@@ -97,11 +98,16 @@ const PrivacyPolicyPage: React.FC = () => {
             <section>
               <div className="flex items-center space-x-3 mb-4">
                 <Shield className="text-[#279267]" size={24} />
-                <h2 className="text-xl font-bold text-slate-900">5. Segurança e Compensações</h2>
+                <h2 className="text-xl font-bold text-slate-900">5. Segurança e Estabilidade do Serviço</h2>
               </div>
               <p className="mb-4">
-                Utilizamos criptografia AES-256 e políticas de segurança rigorosas (RLS) no Supabase. Embora nenhum sistema seja 100% invulnerável, em caso de qualquer incidente de segurança que possa acarretar risco ou dano relevante aos titulares, comunicaremos os afetados e a Autoridade Nacional de Proteção de Dados (ANPD) conforme exige a lei.
+                Implementamos múltiplas camadas de segurança para proteger as informações de nossos clientes e parceiros lojistas:
               </p>
+              <ul className="list-disc pl-6 space-y-2 mb-4">
+                <li><strong>Criptografia:</strong> Utilizamos criptografia AES-256 e protocolos SSL/TLS em todas as comunicações.</li>
+                <li><strong>Políticas de Acesso (RLS):</strong> Os dados no Supabase são protegidos por Row Level Security, garantindo que apenas usuários autorizados acessem informações específicas.</li>
+                <li><strong>Blindagem Cloudflare:</strong> Nosso domínio é protegido por Firewall de Aplicação Web (WAF) do Cloudflare, filtrando bots e tráfego malicioso em tempo real para manter a alta disponibilidade e estabilidade do serviço.</li>
+              </ul>
               <p>
                 Compensações por eventuais danos comprovados decorrentes do tratamento inadequado de dados serão tratadas individualmente, seguindo as diretrizes de responsabilidade civil previstas na LGPD.
               </p>
@@ -152,8 +158,9 @@ const PrivacyPolicyPage: React.FC = () => {
 
             <div className="pt-8 border-t border-slate-100 text-center">
               <p className="text-xs text-slate-400">
-                Última atualização: 10 de Abril de 2026.<br />
-                Aparece aí por aqui - Todos os direitos reservados.
+                Última atualização: 17 de Abril de 2026.<br />
+                Aparece aí por aqui - Proteção Reforçada via Cloudflare Firewall.<br />
+                Todos os direitos reservados.
               </p>
             </div>
           </div>
