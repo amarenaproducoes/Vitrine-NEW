@@ -186,13 +186,6 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
             await OneSignal.login(cleanWhatsapp);
             OneSignal.User.addTag("whatsapp", cleanWhatsapp);
             OneSignal.User.addTag("name", customerName.trim());
-            
-            // Link external ID via alias just to be sure
-            try {
-              (OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
-            } catch (aliasErr) {
-              console.warn("Erro ao adicionar alias:", aliasErr);
-            }
 
             // Trigger prompt asynchronously (do not block execution!)
             if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {

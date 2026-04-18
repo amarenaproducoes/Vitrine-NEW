@@ -96,12 +96,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             await OneSignal.login(cleanWhatsapp);
             OneSignal.User.addTag("whatsapp", cleanWhatsapp);
             OneSignal.User.addTag("name", formData.fullName.trim());
-            
-            try {
-              (OneSignal.User as any).addAlias("external_id", cleanWhatsapp);
-            } catch (aliasErr) {
-              console.warn("Erro ao adicionar alias:", aliasErr);
-            }
 
             if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {
               OneSignal.Notifications.requestPermission().catch(err => {
