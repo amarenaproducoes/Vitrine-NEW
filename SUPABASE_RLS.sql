@@ -103,6 +103,7 @@ CREATE POLICY "Public Insert" ON welcome_access_logs FOR INSERT TO anon, authent
 CREATE POLICY "Public Insert" ON coupon_campaign_access_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Public Insert" ON cashback_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Public Insert" ON leads FOR INSERT TO anon, authenticated WITH CHECK (true);
+CREATE POLICY "Public Insert" ON active_gift_cards FOR INSERT TO anon, authenticated WITH CHECK (true);
 CREATE POLICY "Public Insert Security" ON security_logs FOR INSERT TO anon, authenticated WITH CHECK (true);
 
 -- Atualização Pública (Apenas campos específicos para clientes existentes)
@@ -110,6 +111,8 @@ CREATE POLICY "Public Update Customer" ON customers FOR UPDATE TO anon, authenti
 CREATE POLICY "Public Update Logs" ON cashback_logs FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public Update Coupons" ON unlocked_coupons FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Public Update Shares" ON partner_shares FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public Update Gift Cards" ON active_gift_cards FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
+CREATE POLICY "Public Update Master Gift Cards" ON gift_cards FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- 5. NOTA FINAL
 -- Todas as outras operações (DELETE, UPDATE em tabelas de config, etc) estão bloqueadas por padrão (RLS).

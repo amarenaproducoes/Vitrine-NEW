@@ -69,7 +69,22 @@ Implementação utilizando a infraestrutura já existente (React + Supabase + On
     *   Compartilhar com 10 amigos para ganhar "Estrelas" ou "Escudos".
     *   Desbloquear cupons de diferentes categorias para subir de nível mais rápido.
 
-## 🔍 6. Identificação Inteligente e Rastreamento Retroativo
+---
+
+## 🤖 6. Concierge Inteligente (Agente de IA & Voz)
+Transformar a busca passiva em uma assistência ativa e humanizada, utilizando a integração com OpenAI/Gemini já existente no projeto.
+
+*   **Agente de Recomendação Proativa:**
+    *   **Entendimento de Intenção:** O usuário pode digitar ou falar "Preciso trocar o óleo do carro" e o agente filtra automaticamente parceiros de mecânica/serviços automotivos.
+    *   **Busca em Linguagem Natural:** "Quais os novos parceiros dos últimos dias?" ou "Qual o restaurante mais bem avaliado?".
+*   **Interação por Voz (Voz & Áudio):**
+    *   **Comandos de Voz (STT):** O usuário "conversa" com o site através do microfone para buscar cupons e informações.
+    *   **Respostas Sintetizadas (TTS):** O agente responde por áudio com voz natural, informando sobre promoções, localizações e benefícios ativos.
+    *   **Modo Hands-Free:** Ideal para usuários em movimento ou para uso em totens informativos em estabelecimentos.
+*   **Inteligência de Engajamento:**
+    *   O agente pode sugerir cupons baseados no histórico de navegação do usuário: "Vi que você curte gastronomia, já conferiu o novo benefício do Parceiro X?".
+
+## 🔍 7. Identificação Inteligente e Rastreamento Retroativo
 O objetivo é conhecer o comportamento do cliente antes mesmo dele fornecer o número de WhatsApp, criando um perfil de inteligência de dados.
 
 *   **LocalStorage (Memória do Navegador):**
@@ -84,4 +99,4 @@ O objetivo é conhecer o comportamento do cliente antes mesmo dele fornecer o n�
     *   Uso do `onesignal_id` como chave secundária de identificação do dispositivo, garantindo rastreamento mesmo se o usuário limpar o cache, desde que as notificações estejam ativas.
 
 ---
-*Documento atualizado em 14 de Abril de 2026. Este roadmap é o guia oficial para a transformação da Vitrine em uma plataforma de mídia e fidelidade premium.*
+*Documento atualizado em 19 de Abril de 2026. Este roadmap é o guia oficial para a transformação da Vitrine em uma plataforma de mídia e fidelidade premium.*

@@ -11,10 +11,10 @@ DECLARE
     insert_tables TEXT[] := ARRAY[
         'partner_access_logs', 'partner_clicks', 'partner_shares', 'unlocked_coupons', 
         'customers', 'welcome_access_logs', 'coupon_campaign_access_logs', 
-        'cashback_logs', 'leads', 'security_logs'
+        'cashback_logs', 'leads', 'security_logs', 'active_gift_cards'
     ];
     update_tables TEXT[] := ARRAY[
-        'customers', 'cashback_logs', 'unlocked_coupons', 'partner_shares'
+        'customers', 'cashback_logs', 'unlocked_coupons', 'partner_shares', 'active_gift_cards', 'gift_cards'
     ];
     t TEXT;
 BEGIN
@@ -36,17 +36,16 @@ BEGIN
     END LOOP;
 
     -- 3. Atualizar políticas de ATUALIZAÇÃO
-    EXECUTE 'DROP POLICY IF EXISTS "Public Update Customer" ON customers';
-    EXECUTE 'CREATE POLICY "Public Update Customer" ON customers FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true)';
-    
-    EXECUTE 'DROP POLICY IF EXISTS "Public Update Logs" ON cashback_logs';
-    EXECUTE 'CREATE POLICY "Public Update Logs" ON cashback_logs FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true)';
-    
-    EXECUTE 'DROP POLICY IF EXISTS "Public Update Coupons" ON unlocked_coupons';
-    EXECUTE 'CREATE POLICY "Public Update Coupons" ON unlocked_coupons FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true)';
-    
-    EXECUTE 'DROP POLICY IF EXISTS "Public Update Shares" ON partner_shares';
-    EXECUTE 'CREATE POLICY "Public Update Shares" ON partner_shares FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true)';
+    FOREACH t IN ARRAY update_tables LOOP
+        EXECUTE 'DROP POLICY IF EXISTS "Public Update ' || t || '" ON ' || quote_ident(t);
+        -- Mantendo compatibilidade com nomes legados se houver
+        EXECUTE 'DROP POLICY IF EXISTS "Public Update Customer" ON ' || quote_ident(t);
+        EXECUTE 'DROP POLICY IF EXISTS "Public Update Logs" ON ' || quote_ident(t);
+        EXECUTE 'DROP POLICY IF EXISTS "Public Update Coupons" ON ' || quote_ident(t);
+        EXECUTE 'DROP POLICY IF EXISTS "Public Update Shares" ON ' || quote_ident(t);
+        
+        EXECUTE 'CREATE POLICY "Public Update ' || t || '" ON ' || quote_ident(t) || ' FOR UPDATE TO anon, authenticated USING (true) WITH CHECK (true)';
+    END LOOP;
 
 END $$;
 
