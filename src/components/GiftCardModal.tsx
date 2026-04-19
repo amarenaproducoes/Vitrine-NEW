@@ -177,15 +177,26 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
     setIsProcessing(true);
     try {
       const cleanWhatsapp = whatsapp.replace(/\D/g, '');
-      const ip = await getUserIP();
+      
+      // Try to get IP, but don't let it block activation if it fails
+      let ip = 'unknown';
+      try {
+        ip = await getUserIP();
+      } catch (e) {
+        console.warn('IP fetch failed, continuing...');
+      }
       
       // 1. Check if card is already active
-      const { data: existing } = await supabase
+      const { data: existing, error: checkError } = await supabase
         .from('active_gift_cards')
         .select('*')
         .eq('card_number', cardNumber)
         .eq('used', false)
         .maybeSingle();
+
+      if (checkError) {
+        throw new Error(`Erro ao verificar status: ${checkError.message}`);
+      }
 
       if (existing) {
         setErrorMessage('Este cartão já está ativo para outro cliente.');
@@ -233,12 +244,16 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
         console.error("Erro detalhado OneSignal:", e);
       }
 
-      await supabase.from('customers').upsert({
+      const { error: upsertError } = await supabase.from('customers').upsert({
         whatsapp: cleanWhatsapp,
         name: customerName.trim(),
         ...(onesignalId ? { onesignal_id: onesignalId } : {}),
         updated_at: new Date().toISOString()
       }, { onConflict: 'whatsapp' });
+
+      if (upsertError) {
+        throw new Error(`Erro ao atualizar cliente: ${upsertError.message}`);
+      }
 
       // 3. Activate card
       const expiresAt = new Date();
@@ -252,7 +267,9 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
         expires_at: expiresAt.toISOString()
       });
 
-      if (activateError) throw activateError;
+      if (activateError) {
+        throw new Error(`Erro no banco de dados: ${activateError.message}`);
+      }
 
       setExpirationDate(expiresAt.toLocaleDateString('pt-BR'));
       setView('success');
@@ -260,9 +277,10 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
       // Auto download coupon after a short delay to allow rendering
       setTimeout(downloadCoupon, 1000);
 
-    } catch (error) {
+    } catch (error: any) {
       logger.error('Error activating gift card:', error);
-      alert('Erro ao ativar o cartão. Tente novamente.');
+      const msg = error.message || error.details || 'Erro desconhecido';
+      alert(`Erro ao ativar o cartão [${msg}]. Tente novamente.`);
     } finally {
       setIsProcessing(false);
     }
