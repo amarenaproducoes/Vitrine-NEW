@@ -4216,9 +4216,11 @@ const AdminPage = ({
                                         </div>
                                         <button 
                                             onClick={() => {
-                                                const url = `${window.location.origin}/?ref=${msg.ref_id}`;
+                                                const baseUrl = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ":" + window.location.port : "");
+                                                const url = `${baseUrl}/?ref=${msg.ref_id}`;
                                                 navigator.clipboard.writeText(url);
-                                                alert("Link copiado para a área de transferência!");
+                                                alert("Link Especial Copiado!");
+                                                console.log("Link especial gerado:", url);
                                             }}
                                             className="text-[10px] font-bold text-[#279267] hover:underline flex items-center"
                                         >
@@ -4491,9 +4493,11 @@ const AdminPage = ({
                                         </div>
                                         <button 
                                             onClick={() => {
-                                                const url = `${window.location.origin}/especial/${campaign.ref_id}`;
+                                                const baseUrl = window.location.protocol + "//" + window.location.hostname + (window.location.port ? ":" + window.location.port : "");
+                                                const url = `${baseUrl}/especial/${campaign.ref_id}`;
                                                 navigator.clipboard.writeText(url);
-                                                alert("Link copiado!");
+                                                alert("Link de Cupom Copiado!");
+                                                console.log("Link gerado:", url);
                                             }}
                                             className="flex items-center space-x-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:border-[#279267] hover:text-[#279267] transition-all"
                                         >
