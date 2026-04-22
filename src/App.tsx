@@ -176,6 +176,33 @@ const AnalyticsTracker = () => {
     return null;
 };
 
+const HashRedirector = () => {
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    useEffect(() => {
+        // Handle legacy hash links: /#/v/refId or /path#/v/refId or /#/especial/refId
+        if (location.hash && (location.hash.includes('/v/') || location.hash.includes('/especial/'))) {
+            const separator = location.hash.includes('/especial/') ? '/especial/' : '/v/';
+            const hashParts = location.hash.split(separator);
+            if (hashParts.length > 1) {
+                const refId = hashParts[1];
+                navigate(`/especial/${refId}`, { replace: true });
+            }
+        }
+
+        // Handle clean legacy links: /v/refId -> /especial/refId
+        if (location.pathname.startsWith('/v/')) {
+            const refId = location.pathname.split('/v/')[1];
+            if (refId) {
+                navigate(`/especial/${refId}`, { replace: true });
+            }
+        }
+    }, [location, navigate]);
+
+    return null;
+};
+
 const ScrollToTop = () => {
     const { pathname, hash } = useLocation();
     useEffect(() => { 
@@ -4240,7 +4267,7 @@ const AdminPage = ({
                                         placeholder="Ex: cupom-especial, oferta-natal"
                                         className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all font-mono"
                                     />
-                                    <p className="text-[10px] text-slate-400">Este será o valor usado na URL: /#/v/{campaignFormData.ref_id || 'slug-aqui'}</p>
+                                    <p className="text-[10px] text-slate-400">Este será o valor usado na URL: /especial/{campaignFormData.ref_id || 'slug-aqui'}</p>
                                 </div>
 
                                 <div className="space-y-2">
@@ -4431,7 +4458,7 @@ const AdminPage = ({
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <h4 className="text-sm font-black text-slate-900 truncate">{campaign.title}</h4>
-                                            <p className="text-[10px] font-mono text-slate-500">/#/v/{campaign.ref_id}</p>
+                                            <p className="text-[10px] font-mono text-slate-500">/especial/{campaign.ref_id}</p>
                                             {campaign.expires_at && (
                                                 <p className="text-[9px] font-bold text-amber-600 mt-1 flex items-center">
                                                     <Calendar size={10} className="mr-1" />
@@ -4464,7 +4491,7 @@ const AdminPage = ({
                                         </div>
                                         <button 
                                             onClick={() => {
-                                                const url = `${window.location.origin}${window.location.pathname}#/v/${campaign.ref_id}`;
+                                                const url = `${window.location.origin}/especial/${campaign.ref_id}`;
                                                 navigator.clipboard.writeText(url);
                                                 alert("Link copiado!");
                                             }}
@@ -4937,6 +4964,7 @@ const App = () => {
         >
             <Router>
                 <GlobalAuthGuard />
+                <HashRedirector />
                 <AnimatePresence>
                     {showGiftCardModal && (
                         <GiftCardModal 
@@ -4965,6 +4993,7 @@ const App = () => {
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/v/:refId" element={<WelcomePage partners={partners} />} />
+                        <Route path="/especial/:refId" element={<WelcomePage partners={partners} />} />
                         <Route path="/admin" element={
                             <ProtectedRoute>
                                 <AdminPage 
