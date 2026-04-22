@@ -135,6 +135,14 @@ const AnalyticsTracker = () => {
                     await OneSignal.init({
                         appId: appId,
                         allowLocalhostAsSecureOrigin: true,
+                        promptOptions: {
+                            slidedown: {
+                                autoPrompt: false,
+                            },
+                            native: {
+                                autoPrompt: false,
+                            },
+                        },
                         notifyButton: {
                             enable: false,
                             prenotify: true,
