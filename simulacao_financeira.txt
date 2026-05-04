@@ -1,0 +1,41 @@
+# SIMULAÇÕES DE CENÁRIOS FINANCEIROS - CASHBACK (MODELO 50% FIXO)
+
+DADOS BASE:
+- Mensalidade Plano: R$ 100,00
+- Limite de Desconto na Fatura (Teto): R$ 50,00 (50% do plano)
+- Valor Máximo de Cartão: R$ 20,00
+- Regra de Divisão:
+  - 50% Plataforma (R$ 10,00 de um cartão de R$ 20)
+  - 40% Destino (R$ 8,00 de um cartão de R$ 20)
+  - 10% Origem (R$ 2,00 de um cartão de R$ 20)
+
+---
+
+LINHA DO TEMPO: O CICLO DO PARCEIRO (Cenário Proposto pelo Usuário)
+
+Fase 1: Distribuição (O Lojista é a Origem - Ganha Crédito Médio de R$ 3,00)
+- Plano R$ 100 (Teto R$ 50): Precisa que ~17 cartões seus sejam usados por aí.
+- Plano R$ 200 (Teto R$ 100): Precisa que ~34 cartões seus sejam usados por aí.
+- Plano R$ 300 (Teto R$ 150): Precisa que ~50 cartões seus sejam usados por aí.
+
+---
+
+PERFIL VISIONÁRIO VS. CONSERVADOR (A Escolha do Lojista)
+O lojista pode escolher se deseja receber os 10% de comissão por indicação (Origem).
+
+1. PERFIL CONSERVADOR:
+   - Recebe 10% (Origem) e 40% (Destino).
+   - Resultado: Abate a fatura mais rápido, mas sai da roleta mais cedo.
+   - Ideal para: Lojistas com margem apertada que buscam reduzir custos fixos.
+
+2. PERFIL VISIONÁRIO:
+   - Abre mão dos 10% (Origem = R$ 0 crédito). Recebe apenas os 40% (Destino).
+   - Resultado: O teto de R$ 50 demora mais para ser atingido. Ele fica "Ativo" na roleta por mais tempo no mês.
+   - Ideal para: Lojistas focados em escala e faturamento que querem o máximo de clientes novos possível.
+
+ESTRATÉGIA DO "ESMAECIDO":
+1. Nome da loja continua na vitrine (Presença de marca).
+2. Botão de resgate fica desativado com mensagem: "Limite de benefícios deste mês atingido. Disponível novamente em: 01/[Mês Seguinte]".
+3. Estimula o cliente a antecipar o uso no próximo mês e o lojista a querer planos maiores.
+
+

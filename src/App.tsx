@@ -880,24 +880,6 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section id="parceria" className="py-10 bg-slate-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-8">
-                    <h2 className="text-4xl font-black text-slate-900 mb-4">Seja nosso parceiro estratégico</h2>
-                    <p className="text-slate-600 max-w-2xl mx-auto">Temos oportunidades para quem deseja monetizar seu veículo ou seu estabelecimento comercial.</p>
-                </div>
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid md:grid-cols-2 gap-12">
-                        <LeadForm type="motorista" title="Motorista de App" subtitle="Renda extra instalando nossas telas inteligentes em seu veículo. Simples e rentável." />
-                        <LeadForm type="comerciante" title="Comerciante" subtitle="Transforme o tempo de espera dos seus clientes em entretenimento e lucro extra." />
-                    </div>
-                </div>
-            </section>
-
-            <section id="contato" className="py-10 bg-white border-t border-slate-100">
-                <div className="max-w-3xl mx-auto px-4">
-                    <LeadForm type="contato" title="Fale Conosco" subtitle="Dúvidas, sugestões ou suporte? Estamos prontos para te atender via WhatsApp." />
-                </div>
-            </section>
         </main>
     );
 };

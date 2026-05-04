@@ -1,0 +1,42 @@
+ESTUDO DE MERCADO E VALUATION - PROJETO APARECE POR AQUI
+
+1. LEVANTAMENTO DE PROFISSIONAIS (BASEADO EM MERCADO DE AGÊNCIA SÊNIOR)
+Para um projeto desta complexidade (Full-stack, Integrações de terceiros, Sistema de Fidelidade):
+
+- Gerente de Projeto (PM):
+  Atividades: Planejamento, Roadmap, Gestão de Requisitos e Prazos.
+  Horas: 40h | Valor/Hora: R$ 120,00 | Total: R$ 4.800,00
+
+- Designer UI/UX Sênior:
+  Atividades: Criação do Mini-Card, Interface da Roleta, Gestão Visual e UX do Cashback.
+  Horas: 60h | Valor/Hora: R$ 150,00 | Total: R$ 9.000,00
+
+- Desenvolvedor Full-Stack Sênior:
+  Atividades: Implementação de todas as fases (1.0, 1.1, 2.0), integrações Supabase/OneSignal/Recaptcha.
+  Horas: 160h | Valor/Hora: R$ 180,00 | Total: R$ 28.800,00
+
+- Analista de QA (Testes):
+  Atividades: Validação de segurança, testes de "Shadow Update", Auditoria de Regras de Cashback.
+  Horas: 20h | Valor/Hora: R$ 100,00 | Total: R$ 2.000,00
+
+Custo Total Estimado de Desenvolvimento: R$ 44.600,00
+
+--------------------------------------------------------------------------------
+
+2. VALUATION DO PROJETO
+
+FASE ATUAL (Potencial):
+- Baseado no custo de reposição (Replacement Cost) e propriedade intelectual:
+- Valor estimado: R$ 50.000,00 a R$ 80.000,00 (considerando a arquitetura pronta e funcional).
+
+PROJEÇÃO 6 MESES (Baseado em Dados):
+- Meta: 100 Clientes
+- Pagantes (40%): 40 parceiros
+- Ticket Médio mensal: R$ 75,00
+- Receita Mensal Recorrente (MRR): R$ 3.000,00
+- Receita Anual Recorrente (ARR): R$ 36.000,00
+
+Valuation Estimado (Múltiplo de 10x a 20x ARR para startups):
+R$ 360.000,00 a R$ 720.000,00
+
+Observação: O valor pode ser ainda maior dependendo do volume transacionado pelo sistema de Cashback, que gera o "efeito de rede" e lealdade dos parceiros.

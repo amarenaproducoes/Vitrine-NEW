@@ -60,7 +60,5 @@ export const PARTNERS_MOCK: Partner[] = [
 export const NAV_LINKS = [
   { label: 'Vitrine', path: '/#vitrine' },
   { label: 'Sobre Nós', path: '/sobre-nos' },
-  { label: 'Anuncie Aqui', path: '/#anuncie' },
-  { label: 'Seja Parceiro', path: '/#parceria' },
-  { label: 'Contato', path: '/#contato' }
+  { label: 'Anuncie Aqui', path: '/#anuncie' }
 ];

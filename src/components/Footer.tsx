@@ -61,8 +61,6 @@ const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
             <ul className="space-y-4 text-sm">
               <li><a href="/#vitrine" onClick={(e) => { const el = document.getElementById('vitrine'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Vitrine de Parceiros</a></li>
               <li><a href="/#anuncie" onClick={(e) => { const el = document.getElementById('anuncie'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Anuncie Conosco</a></li>
-              <li><a href="/#parceria" onClick={(e) => { const el = document.getElementById('parceria'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Seja um Parceiro</a></li>
-              <li><a href="/#contato" onClick={(e) => { const el = document.getElementById('contato'); if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth' }); } }} className="hover:text-[#279267] transition-colors">Fale com a gente</a></li>
             </ul>
           </div>
 

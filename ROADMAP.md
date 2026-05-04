@@ -147,4 +147,32 @@ Implementação de uma barra de navegação fixa no rodapé para dispositivos m�
 *   **Estética Glassmorphism:** Fundo translúcido com desfoque (blur), ícones modernos da Lucide-React e feedbacks visuais de seção ativa.
 
 ---
-*Documento atualizado em 22 de Abril de 2026. Este roadmap é o guia oficial para a transformação da Vitrine em uma plataforma de mídia e fidelidade premium.*
+
+## ⏳ 11. Cupons Especiais de Escassez e Urgência (Lotes Limitados)
+Estratégia para criar promoções com limite de capacidade, como "Apenas os 20 primeiros ganham um prêmio".
+
+*   **Configuração no Cadastro do Cupom:**
+    *   Flag "Uso Ilimitado" (Sim/Não).
+    *   Campo "Quantidade Máxima de Cupons" disponível caso o uso não seja ilimitado.
+*   **Barra de Progresso (Gatilho de Urgência Visual):**
+    *   A página inicial (vitrine) mostrará uma **barra de progresso** na oferta, indicando visualmente quantos resgates já ocorreram e quantos restam, criando urgência.
+    *   Se o limite já tiver sido atingido ao acessar a tela, o botão de resgate ficará bloqueado, evitando frustração do cliente em tentar algo esgotado.
+*   **Tratamento de Concorrência (Race Condition):**
+    *   Caso um cliente entre na aba e falte apenas 1 cupom para o limite (ex: 19 de 20 resgatados), o botão estará ativo. 
+    *   Entretanto, ao clicar em "resgatar/desbloquear", o sistema fará a checagem no banco de dados. Se outra pessoa tiver resgatado o último segundo antes, o sistema retornará uma mensagem amigável: "Todos os cupons já foram resgatados dessa promoção."
+
+---
+
+## 🏗️ 12. Expansão de Parcerias e Atendimento (Adiado para Fase 2)
+Funcionalidades que foram preparadas e serão reativadas para escala futura do modelo de negócio.
+
+*   **Módulo "Seja nosso parceiro estratégico":**
+    *   **Motoristas de App:** Captação de parceiros para instalação de telas em veículos.
+    *   **Comerciantes Estratégicos:** Captação de pontos comerciais para expansão da rede de TVs.
+    *   **Fluxo de Onboarding:** Automação de pré-cadastro e envio de termos de parceria.
+*   **Central de Atendimento (Fale Conosco):**
+    *   Canal direto de suporte via WhatsApp para usuários e lojistas.
+    *   FAQ dinâmico alimentado pelo Agente de IA para resolver dúvidas rápidas.
+
+---
+*Documento atualizado em 04 de Maio de 2026.*

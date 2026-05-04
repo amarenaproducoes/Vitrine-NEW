@@ -1,0 +1,80 @@
+# PLANO COMPLETO DE IMPLEMENTAÇÃO - FASE 1.1: CASHBACK SYSTEM
+
+1. ESTRUTURA DOS CARTÕES
+- ID de 4 caracteres (0001 a 9999).
+- Token de segurança de 6 caracteres aleatórios (via SQL no Supabase) para evitar fraudes.
+- Validade: 30 dias corridos após ativação. Exibição clara da data de expiração no momento da ativação para o cliente.
+- Validação no Uso: No momento em que o lojista destino for validar o cartão no sistema, o prazo será verificado. 
+  - Cartão Expirado: O sistema bloqueará o uso.
+  - Responsabilidade: Se o lojista aceitar o cartão fisicamente sem validar no sistema e ele estiver expirado, o lojista assume 100% do custo e perde o direito ao desconto da plataforma.
+
+2. REGRAS DE NEGÓCIO E DIVISÃO
+- Modelo de Faturamento: Inicialmente Pós-Pago (faturamento ao final do mês).
+- Valor do Cashback: Definido pelo lojista emissor (ex: R$ 5, R$ 10, R$ 15, R$ 20).
+- Divisão do Valor (Créditos na Fatura):
+  - Loja Destino (Onde foi usado): 40% do valor.
+  - Loja Origem (Quem emitiu): 10% do valor.
+  - Plataforma (Taxa de Performance): 50% do valor.
+- Trava de Faturamento: O abatimento máximo na fatura é de 50% do valor do plano (ex: se paga R$ 100,00, o desconto máximo acumulado entre Origem e Destino é R$ 50,00).
+- Remoção Automática: Assim que o parceiro atinge o teto de R$ 50,00 de desconto no mês, ele é removido da lista de "Destinos" da roleta (não pode mais receber clientes via cashback naquele mês).
+- Critérios de Aceite e Emissão (Novos Campos):
+  - 'Compra Mínima para Ganhar': Valor mínimo que o cliente deve gastar para ter direito ao cartão.
+  - 'Compra Mínima para Usar': Valor mínimo que o cliente deve gastar para poder abater o cashback.
+- Perfil de Comissionamento (Estratégico):
+  - 'Conservador': Opta por ganhar os 10% (Indicação) + 40% (Uso). O benefício é o abatimento rápido da fatura, mas o lojista atinge o teto de 50% e sai da lista de disponíveis (roleta) mais cedo.
+  - 'Visionário': Opta por abrir mão dos 10% de indicação (Ganha 0% na Origem) e foca apenas nos 40% (Uso/Destino). Com isso, ele não "gasta" seu teto de desconto com indicações e permanece ativo na roleta por muito mais tempo, atraindo mais clientes novos para sua loja.
+- Cota de Cartões e Fluxo de Stock Circular:
+  - Posse Dinâmica: O cartão (e seu slot) nasce vinculado ao Lojista A. Ao ser utilizado e confirmado no Lojista B, o cartão sai do sistema do Lojista A e passa a integrar o estoque/posse do Lojista B, tornando-se disponível para que o Lojista B o distribua novamente.
+  - Rastreamento de Localização Exata (Status do Cartão):
+    - 'No Emissor': Cartão em posse física do lojista (Estoque Disponível).
+    - 'Com Cliente': Lojista sinalizou que entregou ao cliente, mas o cliente ainda não escolheu destino.
+    - 'Em Trânsito / Destinado': Cliente escolheu a Loja B na roleta, mas ainda não consumiu.
+  - Ciclo de Vida e Expiração (Regra dos 30 dias):
+    - O sistema conta quantos dias o cartão está 'Com Cliente'.
+    - Inativação Automática: Se em 30 dias o cartão não for destinado a nenhuma loja, ele é marcado como 'Inativo' para proteger a rede. Se o cliente tentar usar depois, o suporte é acionado para revalidar/reintroduzir o cartão.
+  - Controle de Estoque (Visão 360º):
+    - Estoque Disponível: Cartões 'No Emissor'.
+    - Em Trânsito (Saída): Cartões 'Com Cliente' + 'Em Trânsito / Destinado' (Saíram do lojista original).
+    - Entrada Prevista: Cartões de terceiros que estão 'Em Trânsito / Destinado' para esta loja.
+  - Autossuficiência: O sistema se retroalimenta conforme os clientes circulam, reduzindo a necessidade de novas remessas de cartões da plataforma.
+- Limite de Marketing: Valor financeiro máximo que o parceiro aceita provisionar no mês.
+- Controle de Saldo: O sistema verifica o valor "Provisionado" e a "Cota de Cartões" para liberar novos cartões.
+
+3. INTERFACE E UX (MINI-CARDS E PERSUASÃO)
+- Visualização dos Parceiros (Escolha do Destino):
+  - Foto miniatura, Nome do Parceiro e Endereço reduzido.
+  - Mensagem Persuasiva (Gatilho Digital): Em vez de apenas "Válido acima de R$ 100", o sistema calculará automaticamente o percentual máximo:
+    - Ex: "Ganhe até 20% de cashback nas compras acima de R$ 100,00".
+    - Cálculo: (Cashback Máximo da Rede / Valor Mínimo de Compra da Loja) * 100.
+- Ordenação Inteligente: A lista de parceiros destinos será ordenada automaticamente pela Matriz de Resultados (Origem x Destino) baseada nos últimos 7 dias.
+- Feedback de Indisponibilidade: Lojistas que atingiram o teto de 50% de desconto aparecem "esmaecidos" com data de retorno prevista.
+
+4. TELAS DE GERENCIAMENTO (ADMIN)
+- Gestão de Cartões: Visualização de 20 em 20 com paginação. Edição em massa.
+- Bloqueio de Status: Cartões "Ativos" não podem ser alterados para "Inativos" (proteção do cliente).
+- Dashboard de Controle:
+  - Nome, Limite de Marketing, Cota de Cartões (Limite), Valor Provisionado, Valor Utilizado.
+  - Histórico detalhado: Cliente, WhatsApp, Loja Origem, Loja Destino, Comissões (20%/80% - Ajustado para 15%/70% conforme nova regra), Expiração e Flag de Uso.
+- Matriz de Resultados: Tabela cruzada (Parceiros em linhas e colunas) mostrando o fluxo de indicações.
+
+5. CONSULTA DO LOJISTA (PRIVADO)
+- Link exclusivo para cada parceiro visualizar seu próprio status de cashback e impacto na sua fatura mensal (Dashboard dedicado).
+- Transparência e Métricas em Tempo Real:
+  - Créditos Acumulados: Quanto ainda tem de saldo para abater.
+  - Economia Total: Valor total já economizado desde a adesão.
+  - Cartões Liberados: Quantidade de cartões disponibilizados para emissão no mês.
+  - Cartões Emitidos (Origem): Total emitido pela loja e quantos já foram efetivamente usados na rede.
+  - Entrada Prevista (Destino): Quantos cartões foram destinados para a sua loja por clientes que giraram a roleta, mas ainda não realizaram a compra (Pipeline de clientes).
+
+6. SEGURANÇA E TESTES
+- Implementação segmentada (Fase 1.1) separada da Fase 1.0.
+- Possibilidade de testes em produção sem afetar o fluxo principal (uso restrito dos IDs dos cartões).
+- Chave Mestra (Mestre Chave/Flag): Implementação de lógica para permitir/bloquear o módulo globalmente se necessário.
+
+7. PARCEIROS ONLINE E CARTÕES VIRTUAIS
+- Gestão de Parceiros Online (Sem Loja Física):
+  - Cartões Virtuais (Digital Only): Criação de uma faixa de numeração exclusiva para cartões digitais, permitindo que lojistas remotos (fora da base física) participem do ecossistema.
+  - Logística Reversa de Cartões Físicos: 
+    - Sinalizador 'Uso Online': Quando um cartão físico é usado em um parceiro digital, o sistema marca o cartão como "Bloqueado para Uso" e sinaliza que ele deve ser devolvido à rede física.
+    - Alerta de Recuperação (Painel Admin): O sistema gera um alerta no painel para que a empresa entre em contato manualmente com o cliente, solicitando a entrega do cartão físico em um dos parceiros físicos para que volte a circular. (Futura automação via OneSignal possível).
+- Abastecimento Remoto: Possibilidade de enviar lotes de cartões virtuais via sistema para parceiros distantes, garantindo que o fluxo de cashback não dependa de frete físico.
