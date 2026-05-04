@@ -188,10 +188,19 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
             OneSignal.User.addTag("name", customerName.trim());
 
             // Trigger prompt asynchronously (do not block execution!)
-            if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {
-              OneSignal.Notifications.requestPermission().catch(err => {
-                console.warn("Aviso: Solicitação de permissão ignorada.", err);
-              });
+            if (!hasOneSignalId) {
+              try {
+                const os = OneSignal as any;
+                if (os.Slidedown && typeof os.Slidedown.showPushPrompt === 'function') {
+                  await os.Slidedown.showPushPrompt({ force: true });
+                } else if (typeof os.showSlidedownPrompt === 'function') {
+                  await os.showSlidedownPrompt({ force: true });
+                } else if (OneSignal.Notifications.permissionNative === 'default') {
+                  await OneSignal.Notifications.requestPermission();
+                }
+              } catch (err) {
+                console.warn("Erro ao disparar prompt do OneSignal:", err);
+              }
             }
             
             // ID should theoretically be available synchronously now

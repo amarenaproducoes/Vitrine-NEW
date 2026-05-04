@@ -151,11 +151,25 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
           if (!hasOneSignalId) {
             // Tenta mostrar o prompt amigável (Slidedown) que o cliente solicitou
             try {
-              (OneSignal as any).showSlidedownPrompt().catch((err: any) => {
-                console.warn("Aviso: Falha ao mostrar prompt customizado.", err);
-              });
+              const os = OneSignal as any;
+              // v16 modern way
+              if (os.Slidedown && typeof os.Slidedown.showPushPrompt === 'function') {
+                await os.Slidedown.showPushPrompt({ force: true });
+              } 
+              // v15/v16 alternative way
+              else if (typeof os.showSlidedownPrompt === 'function') {
+                await os.showSlidedownPrompt({ force: true });
+              }
+              // Category-based or other variants
+              else if (os.Slidedown && typeof os.Slidedown.showCategorySlidedown === 'function') {
+                await os.Slidedown.showCategorySlidedown({ force: true });
+              }
+              // Final fallback to native if default
+              else if (OneSignal.Notifications.permissionNative === 'default') {
+                await OneSignal.Notifications.requestPermission();
+              }
             } catch (err) {
-              console.warn("Erro ao chamar prompt do OneSignal:", err);
+              console.warn("Erro ao disparar prompt do OneSignal:", err);
             }
           }
           

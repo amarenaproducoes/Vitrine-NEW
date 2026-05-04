@@ -212,10 +212,19 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
           OneSignal.User.addTag("whatsapp", cleanWhatsapp);
           OneSignal.User.addTag("name", customerName.trim());
 
-          if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {
-            OneSignal.Notifications.requestPermission().catch(err => {
-              console.warn("Aviso: Solicitação de permissão ignorada.", err);
-            });
+          if (!hasOneSignalId) {
+            try {
+              const os = OneSignal as any;
+              if (os.Slidedown && typeof os.Slidedown.showPushPrompt === 'function') {
+                await os.Slidedown.showPushPrompt({ force: true });
+              } else if (typeof os.showSlidedownPrompt === 'function') {
+                await os.showSlidedownPrompt({ force: true });
+              } else if (OneSignal.Notifications.permissionNative === 'default') {
+                await OneSignal.Notifications.requestPermission();
+              }
+            } catch (err) {
+              console.warn("Erro ao disparar prompt do OneSignal:", err);
+            }
           }
           
           onesignalId = OneSignal.User.onesignalId || 

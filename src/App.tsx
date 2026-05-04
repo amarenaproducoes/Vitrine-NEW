@@ -134,6 +134,7 @@ const AnalyticsTracker = () => {
                     console.log('Iniciando OneSignal com App ID:', appId);
                     await OneSignal.init({
                         appId: appId,
+                        autoPrompt: false,
                         allowLocalhostAsSecureOrigin: true,
                         promptOptions: {
                             slidedown: {
@@ -142,8 +143,8 @@ const AnalyticsTracker = () => {
                                         type: "push",
                                         autoPrompt: false,
                                         text: {
-                                            actionMessage: "Gostaria de receber notificações sobre novos cupons e benefícios locais?",
-                                            acceptButton: "Sim, eu quero!",
+                                            actionMessage: "Gostaria de receber notificações sobre novos cupons?",
+                                            acceptButton: "Sim!",
                                             cancelButton: "Agora não"
                                         },
                                         delay: {
@@ -162,16 +163,16 @@ const AnalyticsTracker = () => {
                                 'tip.state.unsubscribed': 'Inscreva-se',
                                 'tip.state.subscribed': 'Inscrito',
                                 'tip.state.blocked': 'Bloqueado',
-                                'message.prenotify': 'Clique para novidades!',
-                                'message.action.subscribed': 'Obrigado!',
-                                'message.action.resubscribed': 'Bem-vindo de volta',
+                                'message.prenotify': 'Clique!',
+                                'message.action.subscribed': 'Brigado!',
+                                'message.action.resubscribed': 'Voltastes!',
                                 'message.action.unsubscribed': 'Tchau!',
-                                'message.action.subscribing': 'Inscrevendo...',
+                                'message.action.subscribing': 'Lá vai...',
                                 'dialog.main.title': 'Notificações',
-                                'dialog.main.button.subscribe': 'Insc',
-                                'dialog.main.button.unsubscribe': 'Canc',
-                                'dialog.blocked.title': 'Bloqueado',
-                                'dialog.blocked.message': 'Siga as instruções:'
+                                'dialog.main.button.subscribe': 'Sim',
+                                'dialog.main.button.unsubscribe': 'Não',
+                                'dialog.blocked.title': 'Puts!',
+                                'dialog.blocked.message': 'Arrume isso:'
                             }
                         },
                     });
