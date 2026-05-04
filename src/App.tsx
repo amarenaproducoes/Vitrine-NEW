@@ -866,27 +866,33 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 </div>
             </section>
 
-            <section id="anuncie" className="py-10 bg-white border-t border-slate-100">
+            <section id="anuncie" className="py-20 bg-white border-t border-slate-100 overflow-hidden">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 lg:flex lg:items-center lg:gap-16">
                     <div className="lg:w-1/2 mb-16 lg:mb-0">
                         <div className="inline-flex items-center space-x-2 text-[#c54b4b] font-bold text-xs uppercase tracking-widest mb-4">
-                            <Megaphone size={14} /> <span>Impulsione seu negócio</span>
+                            <Megaphone size={14} /> <span>Domine seu bairro</span>
                         </div>
-                        <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-8 leading-tight">Sua marca <span className="text-[#279267]">aparecendo</span> nos melhores lugares.</h2>
-                        <p className="text-slate-600 text-lg leading-relaxed mb-8">Nossa rede de TVs inteligentes em comércios e veículos de aplicativos garante visibilidade máxima para quem realmente importa: o seu cliente local.</p>
+                        <h2 className="text-4xl md:text-6xl font-black text-slate-900 mb-8 leading-[1.1] tracking-tight">Sua marca <span className="text-[#279267]">onde o seu cliente</span> local realmente está.</h2>
+                        <p className="text-slate-600 text-lg leading-relaxed mb-8 text-justify">
+                            A Vila Formosa e região possuem uma população ativa de mais de <strong>94 mil pessoas</strong> que buscam serviços diariamente. Enquanto você espera o cliente entrar na sua porta, seu concorrente pode estar anunciando agora na nossa vitrine digital. 
+                            <br /><br />
+                            <strong>Não deixe para amanhã:</strong> quem se antecipa garante a preferência do bairro. Esteja presente onde a atenção dos moradores está focada.
+                        </p>
                         <div className="grid grid-cols-2 gap-6">
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <p className="text-[#279267] font-black text-2xl mb-1">10k+</p>
-                                <p className="text-slate-500 text-xs font-bold uppercase">Visualizações/mês</p>
+                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:border-[#279267] transition-all">
+                                <p className="text-[#279267] font-black text-3xl mb-1">94k+</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Potencial de Alcance</p>
+                                <p className="text-[10px] text-slate-400 mt-2">Moradores ativos na região</p>
                             </div>
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <p className="text-[#279267] font-black text-2xl mb-1">100%</p>
-                                <p className="text-slate-500 text-xs font-bold uppercase">Foco Regional</p>
+                            <div className="p-6 bg-slate-50 rounded-2xl border border-slate-100 shadow-sm hover:border-[#279267] transition-all">
+                                <p className="text-[#279267] font-black text-3xl mb-1">100%</p>
+                                <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Foco na Vila Formosa</p>
+                                <p className="text-[10px] text-slate-400 mt-2">Público qualificado e próximo</p>
                             </div>
                         </div>
                     </div>
                     <div className="lg:w-1/2">
-                        <LeadForm type="anunciante" title="Quero Anunciar" subtitle="Preencha os dados e nossa equipe entrará em contato com uma proposta exclusiva." />
+                        <LeadForm type="anunciante" title="Quero sair na frente" subtitle="Preencha os dados e descubra como ser a primeira opção dos clientes no bairro." />
                     </div>
                 </div>
             </section>
