@@ -148,10 +148,15 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
           OneSignal.User.addTag("whatsapp", cleanWhatsapp);
           OneSignal.User.addTag("name", customerName.trim());
 
-          if (!hasOneSignalId && OneSignal.Notifications.permissionNative === 'default') {
-            OneSignal.Notifications.requestPermission().catch(err => {
-              console.warn("Aviso: Solicitação de permissão ignorada.", err);
-            });
+          if (!hasOneSignalId) {
+            // Tenta mostrar o prompt amigável (Slidedown) que o cliente solicitou
+            try {
+              (OneSignal as any).showSlidedownPrompt().catch((err: any) => {
+                console.warn("Aviso: Falha ao mostrar prompt customizado.", err);
+              });
+            } catch (err) {
+              console.warn("Erro ao chamar prompt do OneSignal:", err);
+            }
           }
           
           onesignalId = OneSignal.User.onesignalId || 

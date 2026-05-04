@@ -137,30 +137,41 @@ const AnalyticsTracker = () => {
                         allowLocalhostAsSecureOrigin: true,
                         promptOptions: {
                             slidedown: {
-                                autoPrompt: false,
-                            },
-                            native: {
-                                autoPrompt: false,
-                            },
+                                prompts: [
+                                    {
+                                        type: "push",
+                                        autoPrompt: false,
+                                        text: {
+                                            actionMessage: "Gostaria de receber notificações sobre novos cupons e benefícios locais?",
+                                            acceptButton: "Sim, eu quero!",
+                                            cancelButton: "Agora não"
+                                        },
+                                        delay: {
+                                            pageViews: 999,
+                                            timeDelay: 999
+                                        }
+                                    }
+                                ]
+                            }
                         },
                         notifyButton: {
                             enable: false,
-                            prenotify: true,
+                            prenotify: false,
                             showCredit: false,
                             text: {
-                                'tip.state.unsubscribed': 'Inscreva-se para notificações',
-                                'tip.state.subscribed': 'Você está inscrito',
-                                'tip.state.blocked': 'Notificações blocked',
-                                'message.prenotify': 'Clique para receber novidades!',
-                                'message.action.subscribed': 'Obrigado por se inscrever!',
-                                'message.action.resubscribed': 'Você está inscrito novamente',
-                                'message.action.unsubscribed': 'Você não receberá mais notificações',
+                                'tip.state.unsubscribed': 'Inscreva-se',
+                                'tip.state.subscribed': 'Inscrito',
+                                'tip.state.blocked': 'Bloqueado',
+                                'message.prenotify': 'Clique para novidades!',
+                                'message.action.subscribed': 'Obrigado!',
+                                'message.action.resubscribed': 'Bem-vindo de volta',
+                                'message.action.unsubscribed': 'Tchau!',
                                 'message.action.subscribing': 'Inscrevendo...',
-                                'dialog.main.title': 'Gerenciar Notificações',
-                                'dialog.main.button.subscribe': 'INSCREVER-SE',
-                                'dialog.main.button.unsubscribe': 'CANCELAR INSCRIÇÃO',
-                                'dialog.blocked.title': 'Desbloquear Notificações',
-                                'dialog.blocked.message': 'Siga estas instruções para permitir notificações:'
+                                'dialog.main.title': 'Notificações',
+                                'dialog.main.button.subscribe': 'Insc',
+                                'dialog.main.button.unsubscribe': 'Canc',
+                                'dialog.blocked.title': 'Bloqueado',
+                                'dialog.blocked.message': 'Siga as instruções:'
                             }
                         },
                     });
