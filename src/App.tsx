@@ -257,22 +257,21 @@ const ScrollToTop = () => {
 };
 
 const CommercialBanner = ({ position }: { position: 'top' | 'bottom' }) => {
-    const isTop = position === 'top';
     const adMessages = [
-        "📢 ANUNCIE AQUI! SUA MARCA VISTA POR MILHARES DIARIAMENTE",
-        "🚀 IMPULSIONE SEU NEGÓCIO NO NOSSO CIRCUITO DE TVs",
-        "✨ APARECE AÍ POR AQUI • O MELHOR ESPAÇO PUBLICITÁRIO DA REGIÃO",
-        "💰 PREÇOS ESPECIAIS PARA NOVOS ANUNCIANTES • CONSULTE-NOS",
-        "📺 SUA MARCA EM DESTAQUE EM ESTABELECIMENTOS DE ALTO FLUXO"
+        "🎁 APROVEITE OS MELHORES CUPONS E DESCONTOS DA VILA FORMOSA E REGIÃO!",
+        "⚡ ECONOMIZE TODO DIA! ACESSE JÁ OS BENEFÍCIOS EXCLUSIVOS DO BAIRRO",
+        "📱 RESGATE SEU CUPOM EM SEGUNDOS E FORTALEÇA O COMÉRCIO LOCAL",
+        "✨ NOVAS OPORTUNIDADES TODOS OS DIAS • CONFIRA A VITRINE AGORA",
+        "🔥 NÃO PERCA! AS MELHORES OFERTAS DA REGIÃO ESTÃO NA SUA MÃO"
     ];
 
     return (
-        <div className={`block w-full overflow-hidden relative py-1.5 ${isTop ? 'bg-[#c54b4b]' : 'bg-slate-900'} border-y ${isTop ? 'border-[#b13b3b]' : 'border-slate-800'} z-40`}>
+        <div className="block w-full overflow-hidden relative py-1.5 bg-[#c54b4b] border-y border-[#b13b3b] z-40">
             <div className="flex whitespace-nowrap overflow-hidden">
                 <div className="animate-marquee flex items-center">
                     {[...adMessages, ...adMessages].map((msg, i) => (
                         <div key={i} className="flex items-center mx-12 text-white font-black uppercase italic tracking-tighter text-sm md:text-lg">
-                            <Zap className="mr-4 w-5 h-5 text-yellow-300 animate-pulse" />
+                            <Sparkles className="mr-4 w-5 h-5 text-yellow-300 animate-pulse" />
                             <span>{msg}</span>
                         </div>
                     ))}
