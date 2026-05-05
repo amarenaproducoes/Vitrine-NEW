@@ -279,7 +279,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
     }
   };
 
-  const trackClick = async (destination: 'instagram' | 'whatsapp' | 'google' | 'site/vitrine') => {
+  const trackClick = async (destination: 'instagram' | 'whatsapp' | 'google' | 'maps' | 'website') => {
     if (!partner.id) {
       logger.warn('Tracking skipped: Partner ID is missing');
       return;
@@ -770,7 +770,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
               href={partner.websiteUrl}
               target="_blank" 
               rel="noopener noreferrer"
-              onMouseDown={() => trackClick('site/vitrine')}
+              onMouseDown={() => trackClick('website')}
               className="inline-flex items-center justify-center w-full bg-purple-50 hover:bg-purple-600 text-purple-600 hover:text-white py-2.5 px-2 rounded-xl font-bold text-[11px] transition-colors duration-200 border border-purple-100 text-center leading-tight"
             >
               Site/Vitrine
