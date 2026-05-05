@@ -526,6 +526,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
               href={googleMapsUrl}
               target="_blank"
               rel="noopener noreferrer"
+              onMouseDown={() => trackClick('maps')}
               className="flex-shrink-0 flex items-center space-x-1 text-blue-600 hover:text-blue-800 font-bold text-[10px] uppercase tracking-wider transition-colors"
               title="Abrir no Google Maps"
             >

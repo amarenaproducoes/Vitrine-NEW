@@ -1578,8 +1578,8 @@ const AdminPage = ({
                 if (clickError) throw clickError;
                 
                 const sortedRanking = (ranking || []).sort((a, b) => {
-                    const totalA = Number(a.instagram_count || 0) + Number(a.whatsapp_count || 0) + Number(a.google_count || 0) + Number(a.website_count || 0);
-                    const totalB = Number(b.instagram_count || 0) + Number(b.whatsapp_count || 0) + Number(b.google_count || 0) + Number(b.website_count || 0);
+                    const totalA = Number(a.instagram_count || 0) + Number(a.whatsapp_count || 0) + Number(a.google_count || 0) + Number(a.website_count || 0) + Number(a.maps_count || 0);
+                    const totalB = Number(b.instagram_count || 0) + Number(b.whatsapp_count || 0) + Number(b.google_count || 0) + Number(b.website_count || 0) + Number(b.maps_count || 0);
                     return totalB - totalA;
                 });
                 
@@ -3368,6 +3368,7 @@ const AdminPage = ({
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">IG</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">WPP</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">GGL</th>
+                                            <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">MAP</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">VIT</th>
                                             <th className="py-3 sm:py-4 px-2 sm:px-4 text-[9px] sm:text-xs font-bold text-slate-400 uppercase tracking-widest text-center">Total</th>
                                         </tr>
@@ -3392,11 +3393,14 @@ const AdminPage = ({
                                                         <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.google_count || 0}</span>
                                                     </td>
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
+                                                        <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.maps_count || 0}</span>
+                                                    </td>
+                                                    <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
                                                         <span className="text-slate-600 font-bold text-[10px] sm:text-sm">{item.website_count || 0}</span>
                                                     </td>
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4 text-center">
                                                         <span className="bg-purple-100 text-purple-600 px-3 sm:px-4 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-sm font-black">
-                                                            {Number(item.instagram_count) + Number(item.whatsapp_count) + Number(item.google_count || 0) + Number(item.website_count || 0)}
+                                                            {Number(item.instagram_count) + Number(item.whatsapp_count) + Number(item.google_count || 0) + Number(item.maps_count || 0) + Number(item.website_count || 0)}
                                                         </span>
                                                     </td>
                                                 </tr>
