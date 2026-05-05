@@ -1397,6 +1397,10 @@ const AdminPage = ({
     const [customerRankingData, setCustomerRankingData] = useState<any[]>([]);
     const [customerRankingPeriod, setCustomerRankingPeriod] = useState<'all' | 'month' | 'prev_month'>('all');
     const [rankingPage, setRankingPage] = useState(1);
+    const [clickRankingPage, setClickRankingPage] = useState(1);
+    const [shareRankingPage, setShareRankingPage] = useState(1);
+    const [customerRankingPage, setCustomerRankingPage] = useState(1);
+    const [bannerRankingPage, setBannerRankingPage] = useState(1);
     const RANKING_PER_PAGE = 10;
     const [bannerClickRankingData, setBannerClickRankingData] = useState<any[]>([]);
     const [isRankingLoading, setIsRankingLoading] = useState(false);
@@ -1437,14 +1441,15 @@ const AdminPage = ({
         const checkData = async () => {
             setDebugError(null);
             try {
-                const [coupons, customers, partners, clicks, shares, gCards, aGCards] = await Promise.all([
+                const [coupons, customers, partners, clicks, shares, gCards, aGCards, bClicks] = await Promise.all([
                     supabase.from('unlocked_coupons').select('*', { count: 'exact', head: true }),
                     supabase.from('customers').select('*', { count: 'exact', head: true }),
                     supabase.from('partners').select('*', { count: 'exact', head: true }),
                     supabase.from('partner_clicks').select('*', { count: 'exact', head: true }),
                     supabase.from('partner_shares').select('*', { count: 'exact', head: true }),
                     supabase.from('gift_cards').select('*', { count: 'exact', head: true }),
-                    supabase.from('active_gift_cards').select('*', { count: 'exact', head: true })
+                    supabase.from('active_gift_cards').select('*', { count: 'exact', head: true }),
+                    supabase.from('banner_clicks').select('*', { count: 'exact', head: true })
                 ]);
                 
                 setDebugCounts({
@@ -1454,7 +1459,8 @@ const AdminPage = ({
                     clicks: clicks.count || 0,
                     shares: shares.count || 0,
                     giftCards: gCards.count || 0,
-                    activeGiftCards: aGCards.count || 0
+                    activeGiftCards: aGCards.count || 0,
+                    bannerClicks: bClicks.count || 0
                 });
 
                 // Try to fetch a raw sample to see if data is actually visible
@@ -1479,7 +1485,14 @@ const AdminPage = ({
         };
         checkData();
         fetchAdminData();
-        if (activeTab === 'ranking') fetchRanking();
+        if (activeTab === 'ranking') {
+            setRankingPage(1);
+            setClickRankingPage(1);
+            setShareRankingPage(1);
+            setCustomerRankingPage(1);
+            setBannerRankingPage(1);
+            fetchRanking();
+        }
         if (activeTab === 'cashback') fetchCashbackConfigs();
         if (activeTab === 'giftcards') {
             fetchGiftCards();
@@ -1496,6 +1509,18 @@ const AdminPage = ({
     useEffect(() => {
         setRankingPage(1);
     }, [partnerRankingPeriod]);
+
+    useEffect(() => {
+        setClickRankingPage(1);
+    }, [clickPeriod]);
+
+    useEffect(() => {
+        setShareRankingPage(1);
+    }, [sharePeriod]);
+
+    useEffect(() => {
+        setCustomerRankingPage(1);
+    }, [customerRankingPeriod]);
 
     const fetchRanking = async () => {
         setIsRankingLoading(true);
@@ -1564,7 +1589,7 @@ const AdminPage = ({
                     ranking[partnerId].share_count++;
                 });
 
-                setShareRankingData(Object.values(ranking).sort((a, b) => b.share_count - a.share_count).slice(0, 10));
+                setShareRankingData(Object.values(ranking).sort((a, b) => b.share_count - a.share_count));
             } catch (err) {
                 logger.error('Error fetching share ranking:', err);
             }
@@ -1668,8 +1693,7 @@ const AdminPage = ({
                                    customerRankingPeriod === 'month' ? stats.current : stats.prev
                         }))
                         .filter(item => item.count > 0)
-                        .sort((a, b) => b.count - a.count)
-                        .slice(0, 10);
+                        .sort((a, b) => b.count - a.count);
 
                     setCustomerRankingData(sortedCustomerRanking);
                 } else {
@@ -1685,12 +1709,17 @@ const AdminPage = ({
         } finally {
             // Fetch Banner Click Ranking
             try {
+                logger.log('Fetching banner click ranking...');
                 const { data: bannerClicks, error: bannerError } = await supabase
                     .from('banner_clicks')
-                    .select('partner_name, link_url, clicked_at')
-                    .order('clicked_at', { ascending: false });
+                    .select('partner_name, link_url, created_at');
                 
-                if (bannerError) throw bannerError;
+                if (bannerError) {
+                    logger.error('Banner click fetch error:', bannerError);
+                    throw bannerError;
+                }
+                
+                logger.log(`Fetched ${bannerClicks?.length || 0} banner clicks`);
                 
                 // Group by partner and link
                 const bannerRanking: { [key: string]: any } = {};
@@ -1701,13 +1730,18 @@ const AdminPage = ({
                             partner_name: c.partner_name,
                             banner_link: c.link_url,
                             click_count: 0,
-                            last_click: c.clicked_at
+                            last_click: c.created_at
                         };
                     }
                     bannerRanking[key].click_count++;
+                    if (new Date(c.created_at) > new Date(bannerRanking[key].last_click)) {
+                        bannerRanking[key].last_click = c.created_at;
+                    }
                 });
                 
-                setBannerClickRankingData(Object.values(bannerRanking).sort((a, b) => b.click_count - a.click_count));
+                const finalBannerRanking = Object.values(bannerRanking).sort((a, b) => b.click_count - a.click_count);
+                logger.log('Final banner ranking data:', finalBannerRanking);
+                setBannerClickRankingData(finalBannerRanking);
             } catch (err) {
                 logger.error('Error fetching banner click ranking:', err);
             }
@@ -3242,11 +3276,11 @@ const AdminPage = ({
                                 </thead>
                                 <tbody>
                                     {shareRankingData.length > 0 ? (
-                                        shareRankingData.map((item, index) => (
+                                        shareRankingData.slice((shareRankingPage - 1) * RANKING_PER_PAGE, shareRankingPage * RANKING_PER_PAGE).map((item, index) => (
                                             <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                 <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                        {index + 1}
+                                                    <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${((shareRankingPage - 1) * RANKING_PER_PAGE + index) === 0 ? 'bg-amber-400 text-white' : ((shareRankingPage - 1) * RANKING_PER_PAGE + index) === 1 ? 'bg-slate-300 text-white' : ((shareRankingPage - 1) * RANKING_PER_PAGE + index) === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                        {(shareRankingPage - 1) * RANKING_PER_PAGE + index + 1}
                                                     </div>
                                                 </td>
                                                 <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
@@ -3265,6 +3299,27 @@ const AdminPage = ({
                                 </tbody>
                             </table>
                         </div>
+
+                        {/* Pagination for Share Ranking */}
+                        {shareRankingData.length > RANKING_PER_PAGE && (
+                            <div className="mt-6 flex items-center justify-center space-x-4">
+                                <button 
+                                    onClick={() => setShareRankingPage(prev => Math.max(1, prev - 1))}
+                                    disabled={shareRankingPage === 1}
+                                    className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                >
+                                    <ChevronLeft size={20} className="text-slate-600" />
+                                </button>
+                                <span className="text-xs font-bold text-slate-600">Página {shareRankingPage} de {Math.max(1, Math.ceil(shareRankingData.length / RANKING_PER_PAGE))}</span>
+                                <button 
+                                    onClick={() => setShareRankingPage(prev => Math.min(Math.ceil(shareRankingData.length / RANKING_PER_PAGE), prev + 1))}
+                                    disabled={shareRankingPage === Math.max(1, Math.ceil(shareRankingData.length / RANKING_PER_PAGE))}
+                                    className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                >
+                                    <ChevronRight size={20} className="text-slate-600" />
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
@@ -3339,11 +3394,11 @@ const AdminPage = ({
                                                 </td>
                                             </tr>
                                         ) : customerRankingData.length > 0 ? (
-                                            customerRankingData.map((item, index) => (
+                                            customerRankingData.slice((customerRankingPage - 1) * RANKING_PER_PAGE, customerRankingPage * RANKING_PER_PAGE).map((item, index) => (
                                                 <tr key={item.whatsapp} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {index + 1}
+                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${((customerRankingPage - 1) * RANKING_PER_PAGE + index) === 0 ? 'bg-amber-400 text-white' : ((customerRankingPage - 1) * RANKING_PER_PAGE + index) === 1 ? 'bg-slate-300 text-white' : ((customerRankingPage - 1) * RANKING_PER_PAGE + index) === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {(customerRankingPage - 1) * RANKING_PER_PAGE + index + 1}
                                                         </div>
                                                     </td>
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.name}</td>
@@ -3367,6 +3422,27 @@ const AdminPage = ({
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination for Customer Ranking */}
+                            {!isRankingLoading && customerRankingData.length > RANKING_PER_PAGE && (
+                                <div className="mt-6 flex items-center justify-center space-x-4">
+                                    <button 
+                                        onClick={() => setCustomerRankingPage(prev => Math.max(1, prev - 1))}
+                                        disabled={customerRankingPage === 1}
+                                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        <ChevronLeft size={20} className="text-slate-600" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-600">Página {customerRankingPage} de {Math.max(1, Math.ceil(customerRankingData.length / RANKING_PER_PAGE))}</span>
+                                    <button 
+                                        onClick={() => setCustomerRankingPage(prev => Math.min(Math.ceil(customerRankingData.length / RANKING_PER_PAGE), prev + 1))}
+                                        disabled={customerRankingPage === Math.max(1, Math.ceil(customerRankingData.length / RANKING_PER_PAGE))}
+                                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        <ChevronRight size={20} className="text-slate-600" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="mt-8 sm:mt-12 pt-8 sm:pt-12 border-t border-slate-100">
@@ -3418,11 +3494,11 @@ const AdminPage = ({
                                     </thead>
                                     <tbody>
                                         {clickRankingData.length > 0 ? (
-                                            clickRankingData.map((item, index) => (
+                                            clickRankingData.slice((clickRankingPage - 1) * RANKING_PER_PAGE, clickRankingPage * RANKING_PER_PAGE).map((item, index) => (
                                                 <tr key={item.partner_id} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {index + 1}
+                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${((clickRankingPage - 1) * RANKING_PER_PAGE + index) === 0 ? 'bg-amber-400 text-white' : ((clickRankingPage - 1) * RANKING_PER_PAGE + index) === 1 ? 'bg-slate-300 text-white' : ((clickRankingPage - 1) * RANKING_PER_PAGE + index) === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {(clickRankingPage - 1) * RANKING_PER_PAGE + index + 1}
                                                         </div>
                                                     </td>
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
@@ -3456,6 +3532,27 @@ const AdminPage = ({
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination for Click Ranking */}
+                            {clickRankingData.length > RANKING_PER_PAGE && (
+                                <div className="mt-6 flex items-center justify-center space-x-4">
+                                    <button 
+                                        onClick={() => setClickRankingPage(prev => Math.max(1, prev - 1))}
+                                        disabled={clickRankingPage === 1}
+                                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        <ChevronLeft size={20} className="text-slate-600" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-600">Página {clickRankingPage} de {Math.max(1, Math.ceil(clickRankingData.length / RANKING_PER_PAGE))}</span>
+                                    <button 
+                                        onClick={() => setClickRankingPage(prev => Math.min(Math.ceil(clickRankingData.length / RANKING_PER_PAGE), prev + 1))}
+                                        disabled={clickRankingPage === Math.max(1, Math.ceil(clickRankingData.length / RANKING_PER_PAGE))}
+                                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        <ChevronRight size={20} className="text-slate-600" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         {/* Banner Clicks Ranking */}
@@ -3483,11 +3580,11 @@ const AdminPage = ({
                                     </thead>
                                     <tbody>
                                         {bannerClickRankingData.length > 0 ? (
-                                            bannerClickRankingData.map((item, index) => (
+                                            bannerClickRankingData.slice((bannerRankingPage - 1) * RANKING_PER_PAGE, bannerRankingPage * RANKING_PER_PAGE).map((item, index) => (
                                                 <tr key={`${item.partner_name}-${index}`} className="border-b border-slate-50 hover:bg-slate-50 transition-colors">
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4">
-                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${index === 0 ? 'bg-amber-400 text-white' : index === 1 ? 'bg-slate-300 text-white' : index === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                                                            {index + 1}
+                                                        <div className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-bold text-[10px] sm:text-sm ${((bannerRankingPage - 1) * RANKING_PER_PAGE + index) === 0 ? 'bg-amber-400 text-white' : ((bannerRankingPage - 1) * RANKING_PER_PAGE + index) === 1 ? 'bg-slate-300 text-white' : ((bannerRankingPage - 1) * RANKING_PER_PAGE + index) === 2 ? 'bg-amber-600/50 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                            {(bannerRankingPage - 1) * RANKING_PER_PAGE + index + 1}
                                                         </div>
                                                     </td>
                                                     <td className="py-3 sm:py-4 px-2 sm:px-4 font-bold text-slate-900 text-[11px] sm:text-base">{item.partner_name}</td>
@@ -3510,6 +3607,27 @@ const AdminPage = ({
                                     </tbody>
                                 </table>
                             </div>
+
+                            {/* Pagination for Banner Click Ranking */}
+                            {bannerClickRankingData.length > RANKING_PER_PAGE && (
+                                <div className="mt-6 flex items-center justify-center space-x-4">
+                                    <button 
+                                        onClick={() => setBannerRankingPage(prev => Math.max(1, prev - 1))}
+                                        disabled={bannerRankingPage === 1}
+                                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        <ChevronLeft size={20} className="text-slate-600" />
+                                    </button>
+                                    <span className="text-xs font-bold text-slate-600">Página {bannerRankingPage} de {Math.max(1, Math.ceil(bannerClickRankingData.length / RANKING_PER_PAGE))}</span>
+                                    <button 
+                                        onClick={() => setBannerRankingPage(prev => Math.min(Math.ceil(bannerClickRankingData.length / RANKING_PER_PAGE), prev + 1))}
+                                        disabled={bannerRankingPage === Math.max(1, Math.ceil(bannerClickRankingData.length / RANKING_PER_PAGE))}
+                                        className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-50 transition-colors"
+                                    >
+                                        <ChevronRight size={20} className="text-slate-600" />
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}
