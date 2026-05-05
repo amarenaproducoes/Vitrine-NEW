@@ -1571,21 +1571,35 @@ const AdminPage = ({
 
             // Fetch Click Ranking
             try {
+                logger.log('Fetching click ranking for period:', clickPeriod);
                 const { data: ranking, error: clickError } = await supabase.rpc('get_partner_click_counts', { 
                     period: clickPeriod 
                 });
                 
-                if (clickError) throw clickError;
+                if (clickError) {
+                    logger.error('RPC Error (get_partner_click_counts):', clickError);
+                    throw clickError;
+                }
                 
-                const sortedRanking = (ranking || []).sort((a, b) => {
-                    const totalA = Number(a.instagram_count || 0) + Number(a.whatsapp_count || 0) + Number(a.google_count || 0) + Number(a.website_count || 0) + Number(a.maps_count || 0);
-                    const totalB = Number(b.instagram_count || 0) + Number(b.whatsapp_count || 0) + Number(b.google_count || 0) + Number(b.website_count || 0) + Number(b.maps_count || 0);
+                logger.log('Raw click ranking data:', ranking);
+                
+                const sortedRanking = (ranking || []).map((item: any) => ({
+                    ...item,
+                    instagram_count: Number(item.instagram_count || 0),
+                    whatsapp_count: Number(item.whatsapp_count || 0),
+                    google_count: Number(item.google_count || 0),
+                    maps_count: Number(item.maps_count || 0),
+                    website_count: Number(item.website_count || 0)
+                })).sort((a, b) => {
+                    const totalA = a.instagram_count + a.whatsapp_count + a.google_count + a.website_count + a.maps_count;
+                    const totalB = b.instagram_count + b.whatsapp_count + b.google_count + b.website_count + b.maps_count;
                     return totalB - totalA;
                 });
                 
                 setClickRankingData(sortedRanking);
             } catch (err) {
                 logger.error('Error fetching click ranking:', err);
+                setClickRankingData([]);
             }
 
             // Fetch Customer Ranking (based on Unlocked Coupons)
@@ -2413,6 +2427,35 @@ const AdminPage = ({
                 </div>
             </div>
             
+            {/* System Status Debug Section */}
+            <div className="bg-white p-4 sm:p-6 rounded-2xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-2">
+                        <Shield size={16} className="text-[#279267]" />
+                        <h3 className="font-black text-slate-800 text-sm uppercase tracking-tight">Status do Ecossistema (Tempo Real)</h3>
+                    </div>
+                    {debugError && (
+                        <div className="flex items-center space-x-2 text-red-500 bg-red-50 px-2 py-1 rounded-lg border border-red-100 text-[9px] font-bold">
+                            <AlertCircle size={12} />
+                            <span>Erro de Conexão</span>
+                        </div>
+                    )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                    {Object.entries(debugCounts).map(([key, value]) => (
+                        <div key={key} className="p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-[#279267] transition-colors group">
+                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-1 group-hover:text-[#279267]">{key}</p>
+                            <p className="text-xl font-black text-slate-700">{value}</p>
+                        </div>
+                    ))}
+                </div>
+                {debugError && (
+                    <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 text-[10px] font-mono whitespace-pre-wrap">
+                        {debugError}
+                    </div>
+                )}
+            </div>
+
             {activeTab === 'partners' && (
                 <>
                     <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100 mb-8 sm:mb-12">
