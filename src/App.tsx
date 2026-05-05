@@ -2900,13 +2900,6 @@ const AdminPage = ({
                                             >
                                                 <Edit2 size={18} />
                                             </button>
-                                            <button 
-                                                onClick={() => handleRemove(p.id)} 
-                                                className="p-3 text-slate-300 hover:text-[#c54b4b] hover:bg-red-50 rounded-xl transition-all" 
-                                                title="Excluir parceiro"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
                                         </div>
                                     </div>
                                 ))}
