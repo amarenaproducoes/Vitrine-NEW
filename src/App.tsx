@@ -1712,7 +1712,7 @@ const AdminPage = ({
                 logger.log('Fetching banner click ranking...');
                 const { data: bannerClicks, error: bannerError } = await supabase
                     .from('banner_clicks')
-                    .select('partner_name, link_url, created_at');
+                    .select('partner_name, link_url, clicked_at');
                 
                 if (bannerError) {
                     logger.error('Banner click fetch error:', bannerError);
@@ -1730,12 +1730,12 @@ const AdminPage = ({
                             partner_name: c.partner_name,
                             banner_link: c.link_url,
                             click_count: 0,
-                            last_click: c.created_at
+                            last_click: c.clicked_at
                         };
                     }
                     bannerRanking[key].click_count++;
-                    if (new Date(c.created_at) > new Date(bannerRanking[key].last_click)) {
-                        bannerRanking[key].last_click = c.created_at;
+                    if (new Date(c.clicked_at) > new Date(bannerRanking[key].last_click)) {
+                        bannerRanking[key].last_click = c.clicked_at;
                     }
                 });
                 
