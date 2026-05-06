@@ -175,4 +175,10 @@ Funcionalidades que foram preparadas e serão reativadas para escala futura do m
     *   FAQ dinâmico alimentado pelo Agente de IA para resolver dúvidas rápidas.
 
 ---
-*Documento atualizado em 04 de Maio de 2026.*
+
+## 🏗️ 13. Próximas Fases e Melhorias
+*   **Sistema de Cartão Presente:** Benefícios corporativos exclusivos para colaboradores de empresas parceiras (Em desenvolvimento).
+*   **Programa de Fidelidade Gamificado:** Novas formas de acumular e resgatar vantagens nos parceiros locais.
+
+---
+*Documento atualizado em 06 de Maio de 2026.*

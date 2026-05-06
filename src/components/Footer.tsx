@@ -34,7 +34,7 @@ const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
               )}
             </div>
             <p className="text-sm leading-relaxed mb-6">
-              Conectamos sua marca ao seu público através de telas estratégicas em estabelecimentos de alto fluxo.
+              Sua vitrine oficial de benefícios exclusivos. Encontre cupons, brindes e vantagens especiais nos parceiros que fazem a diferença no seu dia a dia.
             </p>
             <div className="flex space-x-4">
               <a 

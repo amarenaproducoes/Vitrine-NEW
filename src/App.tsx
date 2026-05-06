@@ -611,9 +611,9 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                 <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-[#279267]/10 rounded-full blur-[120px]"></div>
                 <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-[#c54b4b]/10 rounded-full blur-[120px]"></div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-                    <div className="inline-flex items-center space-x-2 bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-full text-[#279267] text-xs font-bold uppercase tracking-widest mb-6 border border-slate-700/50"><Sparkles size={14} /><span>Garanta cupons de benefícios nas lojas da região!</span></div>
-                    <h1 className="text-4xl md:text-7xl font-black text-white mb-4 leading-tight">Cupons <span className="text-[#279267] italic">Exclusivos</span></h1>
-                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-medium">Confira abaixo os benefícios e descontos exclusivos que os nossos parceiros prepararam para vocês! Aproveitem e garantam já!</p>
+                    <div className="inline-flex items-center space-x-2 bg-slate-800/50 backdrop-blur-sm px-4 py-2 rounded-full text-[#279267] text-xs font-bold uppercase tracking-widest mb-6 border border-slate-700/50"><span>📍 ONDE OS MELHORES ESTABELECIMENTOS SE ENCONTRAM</span></div>
+                    <h1 className="text-4xl md:text-7xl font-black text-white mb-4 leading-tight">Sua Vitrine Oficial de <span className="text-[#279267] italic">Vantagens</span></h1>
+                    <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed font-medium">Transforme suas compras em experiências recompensadoras. Resgate agora seus cupons e descubra como ser um cliente privilegiado nos estabelecimentos que você já ama.</p>
                 </div>
             </section>
 
@@ -673,6 +673,15 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                     </div>
                 </div>
             </section>
+
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12 mb-6">
+                <div className="flex items-center space-x-2">
+                    <div className="bg-[#279267] text-white p-2 rounded-lg shadow-lg shadow-[#279267]/20">
+                        <Store size={18} />
+                    </div>
+                    <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">PARCEIROS APARECE AI POR AQUI</h2>
+                </div>
+            </div>
 
             <section className="sticky top-20 z-40 bg-white border-b border-slate-100 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
