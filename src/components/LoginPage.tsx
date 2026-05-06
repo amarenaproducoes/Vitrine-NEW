@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
     if (stateError) setError(stateError);
   }, [stateError]);
 
-  const from = (location.state as any)?.from?.pathname || '/ama-7k-admin-v25';
+  const from = (location.state as any)?.from?.pathname || '/adm-k9x3v8j1n4m7q-ama';
 
   React.useEffect(() => {
     const checkSession = async () => {
@@ -34,7 +34,7 @@ const LoginPage: React.FC = () => {
             severity: 'high',
             details: { 
               user_email: session.user.email,
-              attempted_path: '/login',
+              attempted_path: '/lgn-p5r2t8w1z4q9y-access',
               method: 'login_page_check'
             }
           });

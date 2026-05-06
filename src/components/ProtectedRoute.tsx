@@ -71,7 +71,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       supabase.auth.signOut();
     } else {
       // Optional: log anonymous access attempt to admin area
-      if (location.pathname.startsWith('/ama-7k-admin-v25')) {
+      if (location.pathname.startsWith('/adm-k9x3v8j1n4m7q-ama') && location.pathname !== '/lgn-p5r2t8w1z4q9y-access') {
         logger.security({
           type: 'unauthorized_access',
           severity: 'medium',
@@ -82,7 +82,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         });
       }
     }
-    return <Navigate to="/login" state={{ from: location, error: user ? `E-mail ${user.email} não autorizado.` : 'Acesso restrito. Por favor, faça login.' }} replace />;
+    return <Navigate to="/lgn-p5r2t8w1z4q9y-access" state={{ from: location, error: user ? `E-mail ${user.email} não autorizado.` : 'Acesso restrito. Por favor, faça login.' }} replace />;
   }
 
   return <>{children}</>;

@@ -82,7 +82,7 @@ const AdminMessagesPage = () => {
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        navigate('/login');
+        navigate('/lgn-p5r2t8w1z4q9y-access');
     };
 
     if (loading) {
@@ -106,7 +106,7 @@ const AdminMessagesPage = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <Link 
-                        to="/ama-7k-admin-v25"
+                        to="/adm-k9x3v8j1n4m7q-ama"
                         className="flex items-center justify-center space-x-2 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all border border-slate-200"
                     >
                         <Settings size={20} />

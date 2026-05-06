@@ -94,7 +94,7 @@ const GlobalAuthGuard = () => {
                     await supabase.auth.signOut();
                     
                     // Redireciona para a tela de login com a mensagem de erro
-                    navigate('/login', { 
+                    navigate('/lgn-p5r2t8w1z4q9y-access', { 
                         replace: true, 
                         state: { error: `E-mail ${session.user.email} não autorizado.` } 
                     });
@@ -2413,7 +2413,7 @@ const AdminPage = ({
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
-        navigate('/login');
+        navigate('/lgn-p5r2t8w1z4q9y-access');
     };
 
     return (
@@ -2441,11 +2441,11 @@ const AdminPage = ({
                             <button onClick={() => setActiveTab('welcome')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'welcome' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Boas-vindas</button>
                             <button onClick={() => setActiveTab('campaigns')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'campaigns' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons Surpresa</button>
                             <button onClick={() => setActiveTab('giftcards')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'giftcards' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cartão Presente</button>
-                            <Link to="/ama-7k-admin-v25/mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                            <Link to="/adm-k9x3v8j1n4m7q-ama/mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
                             </Link>
-                            <Link to="/ama-7k-admin-v25/seguranca" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                            <Link to="/adm-k9x3v8j1n4m7q-ama/seguranca" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <Shield size={10} className="mr-1" />
                                 Segurança
                             </Link>
@@ -5158,12 +5158,12 @@ const App = () => {
                     <Routes>
                         <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
-                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/lgn-p5r2t8w1z4q9y-access" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/v/:refId" element={<WelcomePage partners={partners} />} />
                         <Route path="/especial/:refId" element={<WelcomePage partners={partners} />} />
-                        <Route path="/ama-7k-admin-v25" element={
+                        <Route path="/adm-k9x3v8j1n4m7q-ama" element={
                             <ProtectedRoute>
                                 <AdminPage 
                                     partners={partners} 
@@ -5200,12 +5200,12 @@ const App = () => {
                                 />
                             </ProtectedRoute>
                         } />
-                        <Route path="/ama-7k-admin-v25/mensagens" element={
+                        <Route path="/adm-k9x3v8j1n4m7q-ama/mensagens" element={
                             <ProtectedRoute>
                                 <AdminMessagesPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/ama-7k-admin-v25/seguranca" element={
+                        <Route path="/adm-k9x3v8j1n4m7q-ama/seguranca" element={
                             <ProtectedRoute>
                                 <SecurityLogsPage />
                             </ProtectedRoute>
