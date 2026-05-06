@@ -126,7 +126,6 @@ const Footer: React.FC<FooterProps> = ({ logoUrl }) => {
           <div className="flex items-center space-x-6">
             <Link to="/politica-de-privacidade" className="text-slate-600 hover:text-[#279267] transition-colors">Política de Privacidade</Link>
             <Link to="/termos-de-uso" className="text-slate-600 hover:text-[#279267] transition-colors">Termos de Uso</Link>
-            <Link to="/admin" className="text-slate-600 hover:text-[#279267] transition-colors">Acesso Administrativo</Link>
           </div>
         </div>
       </div>

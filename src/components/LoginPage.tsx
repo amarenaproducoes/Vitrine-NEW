@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
     if (stateError) setError(stateError);
   }, [stateError]);
 
-  const from = (location.state as any)?.from?.pathname || '/admin';
+  const from = (location.state as any)?.from?.pathname || '/ama-7k-admin-v25';
 
   React.useEffect(() => {
     const checkSession = async () => {

@@ -71,7 +71,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
       supabase.auth.signOut();
     } else {
       // Optional: log anonymous access attempt to admin area
-      if (location.pathname.startsWith('/admin')) {
+      if (location.pathname.startsWith('/ama-7k-admin-v25')) {
         logger.security({
           type: 'unauthorized_access',
           severity: 'medium',

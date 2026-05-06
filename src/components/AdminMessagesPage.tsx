@@ -106,7 +106,7 @@ const AdminMessagesPage = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <Link 
-                        to="/admin"
+                        to="/ama-7k-admin-v25"
                         className="flex items-center justify-center space-x-2 px-6 py-3 bg-slate-100 text-slate-600 font-bold rounded-xl hover:bg-slate-200 transition-all border border-slate-200"
                     >
                         <Settings size={20} />

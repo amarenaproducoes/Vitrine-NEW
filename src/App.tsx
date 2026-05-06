@@ -2441,11 +2441,11 @@ const AdminPage = ({
                             <button onClick={() => setActiveTab('welcome')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'welcome' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Boas-vindas</button>
                             <button onClick={() => setActiveTab('campaigns')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'campaigns' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons Surpresa</button>
                             <button onClick={() => setActiveTab('giftcards')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'giftcards' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cartão Presente</button>
-                            <Link to="/admin-mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                            <Link to="/ama-7k-admin-v25/mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
                             </Link>
-                            <Link to="/admin/security" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
+                            <Link to="/ama-7k-admin-v25/seguranca" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <Shield size={10} className="mr-1" />
                                 Segurança
                             </Link>
@@ -4716,7 +4716,7 @@ const AdminPage = ({
 };
 
 const App = () => {
-    const [isPasswordVerified, setIsPasswordVerified] = useState(false);
+    const [isPasswordVerified, setIsPasswordVerified] = useState(true);
     const [passwordInput, setPasswordInput] = useState('');
     const [passwordError, setPasswordError] = useState('');
 
@@ -5163,7 +5163,7 @@ const App = () => {
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/v/:refId" element={<WelcomePage partners={partners} />} />
                         <Route path="/especial/:refId" element={<WelcomePage partners={partners} />} />
-                        <Route path="/admin" element={
+                        <Route path="/ama-7k-admin-v25" element={
                             <ProtectedRoute>
                                 <AdminPage 
                                     partners={partners} 
@@ -5200,12 +5200,12 @@ const App = () => {
                                 />
                             </ProtectedRoute>
                         } />
-                        <Route path="/admin-mensagens" element={
+                        <Route path="/ama-7k-admin-v25/mensagens" element={
                             <ProtectedRoute>
                                 <AdminMessagesPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="/admin/security" element={
+                        <Route path="/ama-7k-admin-v25/seguranca" element={
                             <ProtectedRoute>
                                 <SecurityLogsPage />
                             </ProtectedRoute>
