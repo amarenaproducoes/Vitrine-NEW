@@ -176,9 +176,31 @@ Funcionalidades que foram preparadas e serão reativadas para escala futura do m
 
 ---
 
-## 🏗️ 13. Próximas Fases e Melhorias
+## 🏗️ 14. Incentivo de Avaliações Google My Business (Fase 2)
+O objetivo é transformar cada cupom desbloqueado em uma prova social valiosa para o lojista, fortalecendo a reputação digital dos parceiros da Vila Formosa.
+
+*   **Gatilho de Exibição:**
+    *   A lista de incentivo aparece para o usuário a partir do seu **segundo cupom desbloqueado** no site.
+*   **Lógica de Monitoramento:**
+    *   **Identificação:** O usuário é identificado pelo número de WhatsApp utilizado no momento do desbloqueio do cupom.
+    *   **Registro Automático:** Ao desbloquear um cupom de uma loja que possui link de Google My Business cadastrado, o sistema registra essa oportunidade na tabela de monitoramento.
+    *   **Ação de Recompensa:** Ao clicar no botão "Avaliar agora no Google", o sistema abre o link em uma **nova aba** (`_blank`) e marca automaticamente o flag de "Já Avaliado" para facilitar a experiência do usuário.
+*   **Interface e UX (User Experience):**
+    *   **Visualização:** Exibição de uma lista clara abaixo do box de cupom desbloqueado.
+    *   **Ordenação:** As empresas são listadas por data de liberação do cupom, do **mais antigo para o mais novo** (estimulando a "limpeza" da lista).
+    *   **Transparência:** Exibição de todas as empresas cujos cupons foram liberados, com indicação visual clara de quem já foi avaliado e quem ainda falta.
+    *   **Controle Manual:** O usuário pode marcar ou desmarcar manualmente o flag de "Avaliado", caso o sistema não tenha detectado a ação ou ele deseje organizar sua lista.
+*   **Implementação Técnica:**
+    *   **Tabela `customer_reviews`:** Armazena `whatsapp_number`, `partner_id`, `is_reviewed` (boolean) e `unlocked_at`.
+    *   **Segurança:** A abertura do link em nova aba garante que o usuário não perca o contexto da vitrine e possa continuar navegando/avaliando outras empresas.
+*   **Visão de Futuro (Ranking & Prêmios):**
+    *   Criação de um **Ranking de Avaliadores da Vila**, onde os usuários mais engajados ganham selos exclusivos, prêmios especiais ou prioridade em roletas de alto valor.
+
+---
+
+## 🏗️ 15. Próximas Fases e Melhorias
 *   **Sistema de Cartão Presente:** Benefícios corporativos exclusivos para colaboradores de empresas parceiras (Em desenvolvimento).
 *   **Programa de Fidelidade Gamificado:** Novas formas de acumular e resgatar vantagens nos parceiros locais.
 
 ---
-*Documento atualizado em 06 de Maio de 2026.*
+*Documento atualizado em 08 de Maio de 2026.*

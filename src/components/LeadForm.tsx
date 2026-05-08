@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Send, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Send, CheckCircle2, AlertCircle, ChevronDown, Store } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useGoogleReCaptcha } from 'react-google-recaptcha-v3';
+import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
@@ -19,7 +20,9 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const [formData, setFormData] = useState({ fullName: '', whatsapp: '', message: '' });
   const [hasConsented, setHasConsented] = useState(false);
   const [hasOneSignalId, setHasOneSignalId] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const { executeRecaptcha } = useGoogleReCaptcha();
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   const isWhatsAppValid = formData.whatsapp.replace(/\D/g, '').length === 11;
 
@@ -173,6 +176,11 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
 
       setStatus('success');
       setFormData({ fullName: '', whatsapp: '', message: '' });
+      
+      // Smooth scroll to the success message
+      setTimeout(() => {
+        containerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
     } catch (error) {
       logger.error('Error saving lead:', error);
       setStatus('error');
@@ -182,7 +190,7 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
 
   if (status === 'success') {
     return (
-      <div className="bg-white p-8 rounded-3xl shadow-xl border border-green-100 text-center animate-in zoom-in duration-300">
+      <div ref={containerRef} className="bg-white p-8 rounded-3xl shadow-xl border border-green-100 text-center animate-in zoom-in duration-300">
         <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
           <CheckCircle2 className="text-[#279267] w-10 h-10" />
         </div>
@@ -195,114 +203,143 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   }
 
   return (
-    <div className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
+    <div ref={containerRef} className="bg-white p-8 rounded-3xl shadow-xl border border-slate-100">
       <h2 className="text-2xl font-extrabold text-slate-900 mb-2">{title}</h2>
       <p className="text-slate-500 mb-8">{subtitle}</p>
       
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {(type === 'anunciante' || type === 'comerciante') && (
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
-              Nome da Empresa
-            </label>
-            <input
-              required
-              type="text"
-              className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
-              placeholder="Digite o nome da sua empresa..."
-              value={formData.message}
-              onChange={(e) => setFormData({...formData, message: e.target.value})}
-            />
-          </div>
-        )}
-
-        <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
-            Nome Completo
-          </label>
-          <input
-            required
-            type="text"
-            className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
-            placeholder="Digite seu nome..."
-            value={formData.fullName}
-            onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-          />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
-            WhatsApp
-          </label>
-          <input
-            required
-            type="tel"
-            className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
-            placeholder="(11) 99999-9999"
-            value={formData.whatsapp}
-            onChange={(e) => setFormData({...formData, whatsapp: formatWhatsApp(e.target.value)})}
-          />
-          {hasOneSignalId && (
-            <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
-              <CheckCircle2 className="w-4 h-4" />
-              <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
+      <AnimatePresence mode="wait">
+        {!isExpanded && (type === 'anunciante' || type === 'comerciante') ? (
+          <motion.button
+            key="expand-button"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            onClick={() => setIsExpanded(true)}
+            className="w-full group bg-slate-50 hover:bg-white border-2 border-dashed border-slate-200 hover:border-[#279267] p-8 rounded-2xl transition-all flex flex-col items-center justify-center space-y-4 hover:shadow-lg"
+          >
+            <div className="w-16 h-16 bg-[#279267]/10 rounded-full flex items-center justify-center text-[#279267] group-hover:scale-110 transition-transform">
+              <Store size={32} />
             </div>
-          )}
-        </div>
-
-        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 flex gap-3">
-          <AlertCircle className="text-amber-600 w-5 h-5 shrink-0 mt-0.5" />
-          <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
-            <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos sobre promoções e benefícios locais, conforme nossa <Link to="/politica-de-privacidade" className="underline font-bold hover:text-[#279267]">Política de Privacidade</Link> e <Link to="/termos-de-uso" className="underline font-bold hover:text-[#279267]">Termos de Uso</Link>.
-          </p>
-        </div>
-
-        <label className="flex items-start gap-3 cursor-pointer group">
-          <div className="relative mt-1">
-            <input 
-              type="checkbox"
-              checked={hasConsented}
-              onChange={(e) => setHasConsented(e.target.checked)}
-              className="sr-only"
-            />
-            <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${hasConsented ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
-              {hasConsented && <CheckCircle2 className="text-white w-4 h-4" />}
+            <div className="text-center">
+              <p className="text-lg font-black text-slate-900">Sou Lojista e Quero Anunciar</p>
+              <p className="text-xs text-slate-500 font-medium">Clique para abrir o formulário de parceria</p>
             </div>
-          </div>
-          <span className="text-xs text-slate-600 font-medium leading-tight">
-            Estou ciente e autorizo a coleta e uso dos meus dados, bem como o recebimento de notificações no navegador, conforme a Política de Privacidade e Termos de Uso.
-          </span>
-        </label>
+            <ChevronDown className="text-slate-400 group-hover:text-[#279267] animate-bounce" />
+          </motion.button>
+        ) : (
+          <motion.form 
+            key="lead-form"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            onSubmit={handleSubmit} 
+            className="space-y-6 overflow-hidden"
+          >
+            {(type === 'anunciante' || type === 'comerciante') && (
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                  Nome da Empresa
+                </label>
+                <input
+                  required
+                  type="text"
+                  className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
+                  placeholder="Ex: Padaria da Vila"
+                  value={formData.message}
+                  onChange={(e) => setFormData({...formData, message: e.target.value})}
+                />
+              </div>
+            )}
 
-        {type === 'contato' && (
-          <div>
-            <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
-              Mensagem (Opcional)
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                Nome Completo
+              </label>
+              <input
+                required
+                type="text"
+                className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
+                placeholder="Seu nome aqui..."
+                value={formData.fullName}
+                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                WhatsApp
+              </label>
+              <input
+                required
+                type="tel"
+                className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base font-bold"
+                placeholder="(11) 99999-9999"
+                value={formData.whatsapp}
+                onChange={(e) => setFormData({...formData, whatsapp: formatWhatsApp(e.target.value)})}
+              />
+              {hasOneSignalId && (
+                <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
+              <AlertCircle className="text-amber-600 w-5 h-5 shrink-0 mt-0.5" />
+              <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
+                <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos, conforme nossa <Link to="/politica-de-privacidade" className="underline font-bold hover:text-[#279267]">Política de Privacidade</Link> e <Link to="/termos-de-uso" className="underline font-bold hover:text-[#279267]">Termos de Uso</Link>.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-4 cursor-pointer group">
+              <div className="relative mt-1">
+                <input 
+                  type="checkbox"
+                  checked={hasConsented}
+                  onChange={(e) => setHasConsented(e.target.checked)}
+                  className="sr-only"
+                />
+                <div className={`w-6 h-6 rounded-lg border-2 transition-all flex items-center justify-center ${hasConsented ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                  {hasConsented && <CheckCircle2 className="text-white w-4 h-4" />}
+                </div>
+              </div>
+              <span className="text-[11px] text-slate-600 font-medium leading-normal">
+                Estou ciente e autorizo a coleta e uso dos meus dados, bem como o recebimento de notificações, conforme os Termos da plataforma.
+              </span>
             </label>
-            <textarea
-              rows={3}
-              className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
-              placeholder="Como podemos ajudar?"
-              value={formData.message}
-              onChange={(e) => setFormData({...formData, message: e.target.value})}
-            />
-          </div>
-        )}
 
-        <button
-          className={`w-full bg-[#279267] hover:bg-[#1e7452] text-white font-black py-4 rounded-xl shadow-lg shadow-[#279267]/30 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 ${!isFormValid ? 'opacity-50' : ''}`}
-          disabled={status === 'loading'}
-        >
-          {status === 'loading' ? (
-            <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <>
-              <span>Enviar Agora</span>
-              <Send size={20} />
-            </>
-          )}
-        </button>
-      </form>
+            {type === 'contato' && (
+              <div>
+                <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                  Mensagem (Opcional)
+                </label>
+                <textarea
+                  rows={3}
+                  className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
+                  placeholder="Como podemos ajudar?"
+                  value={formData.message}
+                  onChange={(e) => setFormData({...formData, message: e.target.value})}
+                />
+              </div>
+            )}
+
+            <button
+              className={`w-full bg-[#279267] hover:bg-[#1e7452] text-white font-black py-4 rounded-xl shadow-lg shadow-[#279267]/20 transition-all active:scale-[0.98] flex items-center justify-center space-x-2 ${!isFormValid ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
+              disabled={status === 'loading'}
+            >
+              {status === 'loading' ? (
+                <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <>
+                  <span>SOLICITAR CONTATO COMERCIAL</span>
+                  <Send size={20} />
+                </>
+              )}
+            </button>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
