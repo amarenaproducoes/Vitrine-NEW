@@ -70,6 +70,8 @@ const GA_MEASUREMENT_ID = 'G-9F6ST94BVG';
 // Inicializa o GA4 fora do componente para garantir que rode apenas uma vez
 ReactGA.initialize(GA_MEASUREMENT_ID);
 
+import NotificationReactivationBanner from './components/NotificationReactivationBanner';
+
 const GlobalAuthGuard = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -5163,6 +5165,7 @@ const App = () => {
                 </AnimatePresence>
                 <AnalyticsTracker />
                 <ScrollToTop />
+                <NotificationReactivationBanner />
                 <div className="min-h-screen flex flex-col bg-gray-50 pt-20 md:pt-24 overflow-x-hidden">
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
