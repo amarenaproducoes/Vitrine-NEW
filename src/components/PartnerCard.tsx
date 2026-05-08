@@ -517,7 +517,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
             )}
             <span className="leading-snug">
               {partner.is_online_only 
-                ? "Esse parceiro atende exclusivamente pelo Whatsapp. Entrar em contato pelo link abaixo!" 
+                ? "Esse parceiro atende apenas de forma online. Após gerar o seu cupom, entre em contato pelos links abaixo!" 
                 : partner.address}
             </span>
           </div>
