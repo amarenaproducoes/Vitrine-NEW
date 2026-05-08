@@ -198,9 +198,19 @@ O objetivo é transformar cada cupom desbloqueado em uma prova social valiosa pa
 
 ---
 
-## 🏗️ 15. Próximas Fases e Melhorias
+## 🏗️ 16. Recuperação de Notificações (Reativação via Browser)
+Funcionalidade para identificar usuários que já possuem identificação (OneSignal ID ou WhatsApp) mas que estão com as notificações bloqueadas ou desativadas (Opted Out).
+
+*   **Detecção Inteligente:** O sistema verifica se o usuário já é um "conhecido" da plataforma mas está perdendo alertas importantes.
+*   **Banner de Incentivo:** Exibição de um banner não invasivo com a mensagem: *"Vimos que você está perdendo oportunidades valiosas da nossa Vitrine. Clique aqui para reativar as notificações!"*.
+*   **Fluxo de Re-engajamento:** Botão direto para solicitar permissão nativa ou reativar o status de inscrição no OneSignal.
+*   **Público-Alvo:** Focado exclusivamente em usuários que já iniciaram o relacionamento com a marca, evitando incomodar visitantes novos que ainda não passaram pelo cadastro.
+
+---
+
+## 🏗️ 17. Próximas Fases e Melhorias
 *   **Sistema de Cartão Presente:** Benefícios corporativos exclusivos para colaboradores de empresas parceiras (Em desenvolvimento).
 *   **Programa de Fidelidade Gamificado:** Novas formas de acumular e resgatar vantagens nos parceiros locais.
 
 ---
-*Documento atualizado em 08 de Maio de 2026.*
+*Documento atualizado em 08 de Maio de 2026. (Update: Adicionado item 16 - Reativação de Notificações)*
