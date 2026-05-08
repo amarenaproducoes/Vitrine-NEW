@@ -454,6 +454,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                 couponDescription: partner.coupon_description,
                                 isAuthorized: partner.is_authorized,
                                 cashbackEnabled: partner.cashback_enabled,
+                                is_online_only: partner.is_online_only || false,
                                 page_number: partner.page_number || 1,
                                 displayId: partner.display_id
                             });
@@ -4996,6 +4997,7 @@ const App = () => {
                     isAuthorized: p.is_authorized ?? true,
                     cashbackEnabled: p.cashback_enabled ?? true,
                     giftCardEnabled: p.gift_card_enabled ?? false,
+                    is_online_only: p.is_online_only ?? false,
                     page_number: p.page_number || 1,
                     displayId: p.display_id || 0
                 }));
