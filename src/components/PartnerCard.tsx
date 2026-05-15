@@ -334,7 +334,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
       if (error) {
         console.warn('RPC increment_direct_link_clicks failed, attempting manual increment:', error);
         // Fallback: This is not atomic but works if RPC isn't available
-        const currentClicks = partner.direct_link_clicks || 0;
+        const currentClicks = partner.directLinkClicks || 0;
         await supabase.from('partners').update({ direct_link_clicks: currentClicks + 1 }).eq('id', partner.id);
       }
       
@@ -730,13 +730,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
                 </p>
 
                 <div className="mt-6 pt-6 border-t border-[#279267]/20 w-full space-y-3">
-                  {(partner.direct_link || partner.use_google_maps_as_direct) && (
+                  {(partner.directLink || partner.useGoogleMapsAsDirect) && (
                     <a
-                      href={partner.direct_link || googleMapsUrl}
+                      href={partner.directLink || googleMapsUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={trackDirectClick}
-                      className="w-full bg-[#279267] text-white text-sm font-black px-4 py-4 rounded-xl hover:bg-[#1e7452] transition-all shadow-lg flex items-center justify-center space-x-2 active:scale-95 animate-bounce-subtle"
+                      className="w-full bg-[#279267] text-white text-sm font-black px-4 py-4 rounded-xl hover:bg-[#1e7452] transition-all shadow-lg flex items-center justify-center space-x-2 active:scale-95 animate-bounce-subtle shadow-green-900/10"
                     >
                       <CheckCircle2 size={20} />
                       <span>UTILIZE SEU CUPOM IMEDIATAMENTE</span>

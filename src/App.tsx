@@ -11,7 +11,7 @@ import DOMPurify from 'dompurify';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, ChevronLeft, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick,
-    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List, Shield
+    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List, Shield, CheckCircle2
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -456,7 +456,10 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                 cashbackEnabled: partner.cashback_enabled,
                                 is_online_only: partner.is_online_only || false,
                                 page_number: partner.page_number || 1,
-                                displayId: partner.display_id
+                                displayId: partner.display_id,
+                                directLink: partner.direct_link || '',
+                                useGoogleMapsAsDirect: partner.use_google_maps_as_direct ?? false,
+                                directLinkClicks: partner.direct_link_clicks || 0
                             });
                             setShowWelcomeModal(true);
                         }
@@ -1357,9 +1360,9 @@ const AdminPage = ({
         giftCardEnabled: boolean,
         page_number: number,
         displayId: number,
-        direct_link: string,
-        use_google_maps_as_direct: boolean,
-        direct_link_clicks: number
+        directLink: string,
+        useGoogleMapsAsDirect: boolean,
+        directLinkClicks: number
     }>({ 
         name: '', 
         category: categories.length > 0 ? categories[0].name : '', 
@@ -1384,9 +1387,9 @@ const AdminPage = ({
         giftCardEnabled: false,
         page_number: 1,
         displayId: 0,
-        direct_link: '',
-        use_google_maps_as_direct: false,
-        direct_link_clicks: 0
+        directLink: '',
+        useGoogleMapsAsDirect: false,
+        directLinkClicks: 0
     });
     const [editingId, setEditingId] = useState<string | null>(null);
     
@@ -1983,9 +1986,9 @@ const AdminPage = ({
                 gift_card_enabled: formData.giftCardEnabled,
                 page_number: formData.page_number,
                 display_id: formData.displayId,
-                direct_link: formData.direct_link || null,
-                use_google_maps_as_direct: formData.use_google_maps_as_direct,
-                direct_link_clicks: formData.direct_link_clicks
+                direct_link: formData.directLink || null,
+                use_google_maps_as_direct: formData.useGoogleMapsAsDirect,
+                direct_link_clicks: formData.directLinkClicks
             };
 
             // Validate 10 partners per page limit
@@ -2037,7 +2040,10 @@ const AdminPage = ({
                         videoUrl: data.video_url || '',
                         websiteUrl: data.website_url || '',
                         id: editingId, 
-                        displayId: data.display_id 
+                        displayId: data.display_id,
+                        directLink: data.direct_link || '',
+                        useGoogleMapsAsDirect: data.use_google_maps_as_direct ?? false,
+                        directLinkClicks: data.direct_link_clicks || 0
                     } : p));
                 }
                 alert("Parceiro atualizado com sucesso!");
@@ -2118,9 +2124,9 @@ const AdminPage = ({
             giftCardEnabled: false,
             page_number: 1,
             displayId: nextId,
-            direct_link: '',
-            use_google_maps_as_direct: false,
-            direct_link_clicks: 0
+            directLink: '',
+            useGoogleMapsAsDirect: false,
+            directLinkClicks: 0
         });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -2153,9 +2159,9 @@ const AdminPage = ({
             giftCardEnabled: partner.giftCardEnabled || false,
             page_number: partner.page_number || 1,
             displayId: partner.displayId || 0,
-            direct_link: partner.direct_link || '',
-            use_google_maps_as_direct: partner.use_google_maps_as_direct || false,
-            direct_link_clicks: partner.direct_link_clicks || 0
+            directLink: partner.directLink || '',
+            useGoogleMapsAsDirect: partner.useGoogleMapsAsDirect || false,
+            directLinkClicks: partner.directLinkClicks || 0
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2777,11 +2783,11 @@ const AdminPage = ({
                                                     type="url" 
                                                     className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none focus:border-[#279267]" 
                                                     placeholder="https://..." 
-                                                    value={formData.direct_link} 
+                                                    value={formData.directLink} 
                                                     onChange={e => setFormData({
                                                         ...formData, 
-                                                        direct_link: e.target.value,
-                                                        use_google_maps_as_direct: e.target.value ? false : formData.use_google_maps_as_direct
+                                                        directLink: e.target.value,
+                                                        useGoogleMapsAsDirect: e.target.value ? false : formData.useGoogleMapsAsDirect
                                                     })} 
                                                 />
                                             </div>
@@ -2791,16 +2797,16 @@ const AdminPage = ({
                                                     <div className="relative">
                                                         <input 
                                                             type="checkbox"
-                                                            checked={formData.use_google_maps_as_direct}
+                                                            checked={formData.useGoogleMapsAsDirect}
                                                             onChange={(e) => setFormData({
                                                                 ...formData, 
-                                                                use_google_maps_as_direct: e.target.checked,
-                                                                direct_link: e.target.checked ? '' : formData.direct_link
+                                                                useGoogleMapsAsDirect: e.target.checked,
+                                                                directLink: e.target.checked ? '' : formData.directLink
                                                             })}
                                                             className="sr-only"
                                                         />
-                                                        <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${formData.use_google_maps_as_direct ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
-                                                            {formData.use_google_maps_as_direct && <CheckCircle2 className="text-white w-3.5 h-3.5" />}
+                                                        <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${formData.useGoogleMapsAsDirect ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                                                            {formData.useGoogleMapsAsDirect && <CheckCircle2 className="text-white w-3.5 h-3.5" />}
                                                         </div>
                                                     </div>
                                                     <span className="text-xs font-bold text-slate-700">Usar Google Maps (Baseado no Endereço)</span>
@@ -2810,7 +2816,7 @@ const AdminPage = ({
                                             {editingId && (
                                                 <div className="pt-2 px-1 flex items-center justify-between">
                                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total de Cliques:</span>
-                                                    <span className="bg-[#279267] text-white text-[10px] font-black px-2 py-0.5 rounded-full">{formData.direct_link_clicks}</span>
+                                                    <span className="bg-[#279267] text-white text-[10px] font-black px-2 py-0.5 rounded-full">{formData.directLinkClicks}</span>
                                                 </div>
                                             )}
                                         </div>
@@ -5062,7 +5068,10 @@ const App = () => {
                     giftCardEnabled: p.gift_card_enabled ?? false,
                     is_online_only: p.is_online_only ?? false,
                     page_number: p.page_number || 1,
-                    displayId: p.display_id || 0
+                    displayId: p.display_id || 0,
+                    directLink: p.direct_link || '',
+                    useGoogleMapsAsDirect: p.use_google_maps_as_direct ?? false,
+                    directLinkClicks: p.direct_link_clicks || 0
                 }));
                 setPartners(mappedPartners);
             }
