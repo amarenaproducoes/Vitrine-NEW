@@ -140,7 +140,9 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
               custom_coupon: campaignData.custom_coupon || targetPartner.coupon || '',
               custom_description: campaignData.custom_description || targetPartner.couponDescription || '',
               expiresAt: campaignData.expires_at,
-              autoOpen: true
+              autoOpen: true,
+              directLink: campaignData.direct_link,
+              useGoogleMapsAsDirect: campaignData.use_google_maps_as_direct
             }}
           />
         </div>

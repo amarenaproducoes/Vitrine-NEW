@@ -20,6 +20,8 @@ interface PartnerCardProps {
     custom_description: string;
     expiresAt?: string | null;
     autoOpen?: boolean;
+    directLink?: string | null;
+    useGoogleMapsAsDirect?: boolean;
   };
 }
 
@@ -730,17 +732,34 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
                 </p>
 
                 <div className="mt-6 pt-6 border-t border-[#279267]/20 w-full space-y-3">
-                  {(partner.directLink || partner.useGoogleMapsAsDirect) && (
-                    <a
-                      href={partner.directLink || googleMapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={trackDirectClick}
-                      className="w-full bg-[#279267] text-white text-sm font-black px-4 py-4 rounded-xl hover:bg-[#1e7452] transition-all shadow-lg flex items-center justify-center space-x-2 active:scale-95 animate-bounce-subtle shadow-green-900/10"
-                    >
-                      <CheckCircle2 size={20} />
-                      <span>UTILIZE SEU CUPOM IMEDIATAMENTE</span>
-                    </a>
+                  {welcomeData ? (
+                    // Logic for Surprise Coupon (Campaign) - EXCLUSIVE
+                    (welcomeData.directLink || welcomeData.useGoogleMapsAsDirect) && (
+                      <a
+                        href={welcomeData.directLink || googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={trackDirectClick}
+                        className="w-full bg-[#279267] text-white text-sm font-black px-4 py-4 rounded-xl hover:bg-[#1e7452] transition-all shadow-lg flex items-center justify-center space-x-2 active:scale-95 animate-bounce-subtle shadow-green-900/10"
+                      >
+                        <CheckCircle2 size={20} />
+                        <span>UTILIZE SEU CUPOM IMEDIATAMENTE</span>
+                      </a>
+                    )
+                  ) : (
+                    // Logic for Normal Coupon (Partner)
+                    (partner.directLink || partner.useGoogleMapsAsDirect) && (
+                      <a
+                        href={partner.directLink || googleMapsUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={trackDirectClick}
+                        className="w-full bg-[#279267] text-white text-sm font-black px-4 py-4 rounded-xl hover:bg-[#1e7452] transition-all shadow-lg flex items-center justify-center space-x-2 active:scale-95 animate-bounce-subtle shadow-green-900/10"
+                      >
+                        <CheckCircle2 size={20} />
+                        <span>UTILIZE SEU CUPOM IMEDIATAMENTE</span>
+                      </a>
+                    )
                   )}
 
                   {!isGeneratingImage && (

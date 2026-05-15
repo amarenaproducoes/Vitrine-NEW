@@ -139,6 +139,8 @@ export interface CouponCampaign {
   custom_description: string | null;
   expires_at: string | null;
   created_at?: string;
+  direct_link?: string | null;
+  use_google_maps_as_direct?: boolean;
 }
 
 export interface CouponCampaignAccessLog {

@@ -1051,7 +1051,9 @@ const AdminPage = ({
         partner_id: '' as string | null,
         custom_coupon: '' as string | null,
         custom_description: '' as string | null,
-        expires_at: '' as string | null
+        expires_at: '' as string | null,
+        directLink: '',
+        useGoogleMapsAsDirect: false
     });
     const [editingCampaignId, setEditingCampaignId] = useState<string | null>(null);
     const [isSupabaseAuth, setIsSupabaseAuth] = useState(false);
@@ -1156,7 +1158,9 @@ const AdminPage = ({
                 partner_id: campaignFormData.partner_id,
                 custom_coupon: campaignFormData.custom_coupon || null,
                 custom_description: campaignFormData.custom_description || null,
-                expires_at: campaignFormData.expires_at || null
+                expires_at: campaignFormData.expires_at || null,
+                direct_link: campaignFormData.directLink || null,
+                use_google_maps_as_direct: campaignFormData.useGoogleMapsAsDirect
             };
 
             if (editingCampaignId) {
@@ -1185,7 +1189,9 @@ const AdminPage = ({
                 partner_id: '',
                 custom_coupon: '',
                 custom_description: '',
-                expires_at: ''
+                expires_at: '',
+                directLink: '',
+                useGoogleMapsAsDirect: false
             });
             setEditingCampaignId(null);
             alert(editingCampaignId ? "Campanha atualizada!" : "Campanha cadastrada!");
@@ -1212,7 +1218,9 @@ const AdminPage = ({
             partner_id: campaign.partner_id,
             custom_coupon: campaign.custom_coupon || '',
             custom_description: campaign.custom_description || '',
-            expires_at: campaign.expires_at || ''
+            expires_at: campaign.expires_at || '',
+            directLink: campaign.direct_link || '',
+            useGoogleMapsAsDirect: campaign.use_google_maps_as_direct || false
         });
         setActiveTab('campaigns');
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -4606,6 +4614,55 @@ const AdminPage = ({
                                         className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all"
                                     />
                                     <p className="text-[10px] text-slate-400">Se vazio, usará a regra padrão de 7 dias.</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-green-50/30 p-6 rounded-2xl border border-green-100/50">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-sm font-bold text-slate-700 flex items-center">
+                                            <ExternalLink size={16} className="mr-2 text-[#279267]" />
+                                            Link de Redirecionamento Direto (Exclusivo Cupom Surpresa)
+                                        </label>
+                                        <input 
+                                            type="url" 
+                                            className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all" 
+                                            placeholder="https://..." 
+                                            value={campaignFormData.directLink} 
+                                            onChange={e => setCampaignFormData({
+                                                ...campaignFormData, 
+                                                directLink: e.target.value,
+                                                useGoogleMapsAsDirect: e.target.value ? false : campaignFormData.useGoogleMapsAsDirect
+                                            })} 
+                                        />
+                                        <p className="text-[10px] text-slate-400 italic">Se preenchido, este link será usado ao clicar em "Utilize seu Cupom Imediatamente", ignorando o link do parceiro.</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-4 flex flex-col justify-center">
+                                    <label 
+                                        className="flex items-center space-x-3 p-4 bg-white rounded-xl border border-slate-200 cursor-pointer hover:border-[#279267] transition-all group"
+                                    >
+                                        <div className="relative">
+                                            <input 
+                                                type="checkbox"
+                                                checked={campaignFormData.useGoogleMapsAsDirect}
+                                                onChange={(e) => setCampaignFormData({
+                                                    ...campaignFormData, 
+                                                    useGoogleMapsAsDirect: e.target.checked,
+                                                    directLink: e.target.checked ? '' : campaignFormData.directLink
+                                                })}
+                                                className="sr-only"
+                                            />
+                                            <div className={`w-6 h-6 rounded-md border-2 transition-all flex items-center justify-center ${campaignFormData.useGoogleMapsAsDirect ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                                                {campaignFormData.useGoogleMapsAsDirect && <CheckCircle2 className="text-white w-4 h-4" />}
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-700">Usar Google Maps como Link Direto</span>
+                                            <span className="text-[10px] text-slate-400">Direciona automaticamente para o endereço do parceiro.</span>
+                                        </div>
+                                    </label>
                                 </div>
                             </div>
 
