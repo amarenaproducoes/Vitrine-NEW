@@ -1356,7 +1356,10 @@ const AdminPage = ({
         cashbackEnabled: boolean, 
         giftCardEnabled: boolean,
         page_number: number,
-        displayId: number
+        displayId: number,
+        direct_link: string,
+        use_google_maps_as_direct: boolean,
+        direct_link_clicks: number
     }>({ 
         name: '', 
         category: categories.length > 0 ? categories[0].name : '', 
@@ -1380,7 +1383,10 @@ const AdminPage = ({
         cashbackEnabled: true, 
         giftCardEnabled: false,
         page_number: 1,
-        displayId: 0 
+        displayId: 0,
+        direct_link: '',
+        use_google_maps_as_direct: false,
+        direct_link_clicks: 0
     });
     const [editingId, setEditingId] = useState<string | null>(null);
     
@@ -1976,7 +1982,10 @@ const AdminPage = ({
                 cashback_enabled: formData.cashbackEnabled,
                 gift_card_enabled: formData.giftCardEnabled,
                 page_number: formData.page_number,
-                display_id: formData.displayId
+                display_id: formData.displayId,
+                direct_link: formData.direct_link || null,
+                use_google_maps_as_direct: formData.use_google_maps_as_direct,
+                direct_link_clicks: formData.direct_link_clicks
             };
 
             // Validate 10 partners per page limit
@@ -2108,7 +2117,10 @@ const AdminPage = ({
             cashbackEnabled: true, 
             giftCardEnabled: false,
             page_number: 1,
-            displayId: nextId 
+            displayId: nextId,
+            direct_link: '',
+            use_google_maps_as_direct: false,
+            direct_link_clicks: 0
         });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -2140,7 +2152,10 @@ const AdminPage = ({
             cashbackEnabled: partner.cashbackEnabled,
             giftCardEnabled: partner.giftCardEnabled || false,
             page_number: partner.page_number || 1,
-            displayId: partner.displayId || 0
+            displayId: partner.displayId || 0,
+            direct_link: partner.direct_link || '',
+            use_google_maps_as_direct: partner.use_google_maps_as_direct || false,
+            direct_link_clicks: partner.direct_link_clicks || 0
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2752,6 +2767,54 @@ const AdminPage = ({
                                     <input type="url" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Link do Site/Vitrine" value={formData.websiteUrl} onChange={e => setFormData({...formData, websiteUrl: e.target.value})} />
                                     <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="Cupom de Desconto (Opcional)" value={formData.coupon} onChange={e => setFormData({...formData, coupon: e.target.value})} />
                                     <input type="text" className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267]" placeholder="O que o cliente ganha com o cupom? (Opcional)" value={formData.couponDescription} onChange={e => setFormData({...formData, couponDescription: e.target.value})} />
+                                    
+                                    <div className="bg-green-50/50 p-4 rounded-xl border border-[#279267]/20 space-y-4">
+                                        <h4 className="text-[10px] font-bold text-[#279267] uppercase tracking-widest ml-1">Botão de Uso Imediato (Após Desbloqueio)</h4>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1 ml-1">Link Direto (WhatsApp, Site, etc)</label>
+                                                <input 
+                                                    type="url" 
+                                                    className="w-full px-4 py-3 rounded-xl bg-white border border-slate-200 outline-none focus:border-[#279267]" 
+                                                    placeholder="https://..." 
+                                                    value={formData.direct_link} 
+                                                    onChange={e => setFormData({
+                                                        ...formData, 
+                                                        direct_link: e.target.value,
+                                                        use_google_maps_as_direct: e.target.value ? false : formData.use_google_maps_as_direct
+                                                    })} 
+                                                />
+                                            </div>
+                                            
+                                            <div className="flex items-center gap-3 ml-1">
+                                                <label className="flex items-center gap-2 cursor-pointer group">
+                                                    <div className="relative">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={formData.use_google_maps_as_direct}
+                                                            onChange={(e) => setFormData({
+                                                                ...formData, 
+                                                                use_google_maps_as_direct: e.target.checked,
+                                                                direct_link: e.target.checked ? '' : formData.direct_link
+                                                            })}
+                                                            className="sr-only"
+                                                        />
+                                                        <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${formData.use_google_maps_as_direct ? 'bg-[#279267] border-[#279267]' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                                                            {formData.use_google_maps_as_direct && <CheckCircle2 className="text-white w-3.5 h-3.5" />}
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-slate-700">Usar Google Maps (Baseado no Endereço)</span>
+                                                </label>
+                                            </div>
+
+                                            {editingId && (
+                                                <div className="pt-2 px-1 flex items-center justify-between">
+                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total de Cliques:</span>
+                                                    <span className="bg-[#279267] text-white text-[10px] font-black px-2 py-0.5 rounded-full">{formData.direct_link_clicks}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
                                     
                                     <div className="flex flex-col space-y-1">
                                         <label htmlFor="videoUrl" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Vídeo do YouTube Shorts (URL)</label>

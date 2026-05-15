@@ -25,6 +25,9 @@ export interface Partner {
   websiteUrl?: string;
   giftCardEnabled?: boolean;
   is_online_only?: boolean;
+  direct_link?: string;
+  use_google_maps_as_direct?: boolean;
+  direct_link_clicks?: number;
 }
 
 export interface GiftCard {

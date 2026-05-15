@@ -323,6 +323,27 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
     }
   };
 
+  const trackDirectClick = async () => {
+    if (!partner.id) return;
+
+    try {
+      // Increment clicks in the 'partners' table
+      const { error } = await supabase.rpc('increment_direct_link_clicks', { partner_id: partner.id });
+      
+      // If RPC fails (not created yet), fallback to regular increment if possible or just log
+      if (error) {
+        console.warn('RPC increment_direct_link_clicks failed, attempting manual increment:', error);
+        // Fallback: This is not atomic but works if RPC isn't available
+        const currentClicks = partner.direct_link_clicks || 0;
+        await supabase.from('partners').update({ direct_link_clicks: currentClicks + 1 }).eq('id', partner.id);
+      }
+      
+      trackClick('website'); // Also track as a general click for generic stats
+    } catch (err) {
+      logger.error('Error tracking direct link click:', err);
+    }
+  };
+
   const handleShare = async () => {
     const shareUrl = `${window.location.origin}?ref=${partner.displayId}`;
     const shareText = `Eu já garanti o meu cupom de benefícios do ${partner.name}. Não fique de fora e venha garantir o seu também!`;
@@ -708,18 +729,33 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
                   )}
                 </p>
 
-                {!isGeneratingImage && (
-                  <div className="mt-6 pt-6 border-t border-[#279267]/20 w-full">
-                    <p className="text-xs font-bold text-slate-700 mb-3">Compartilhe para que seus amigos também tenham benefícios!</p>
-                    <button
-                      onClick={handleShare}
-                      className="w-full bg-[#25D366] text-white text-xs font-black px-4 py-3 rounded-xl hover:bg-[#128C7E] transition-all shadow-md flex items-center justify-center space-x-2 active:scale-95"
+                <div className="mt-6 pt-6 border-t border-[#279267]/20 w-full space-y-3">
+                  {(partner.direct_link || partner.use_google_maps_as_direct) && (
+                    <a
+                      href={partner.direct_link || googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={trackDirectClick}
+                      className="w-full bg-[#279267] text-white text-sm font-black px-4 py-4 rounded-xl hover:bg-[#1e7452] transition-all shadow-lg flex items-center justify-center space-x-2 active:scale-95 animate-bounce-subtle"
                     >
-                      <Share2 size={16} />
-                      <span>Compartilhar com meus amigos!</span>
-                    </button>
-                  </div>
-                )}
+                      <CheckCircle2 size={20} />
+                      <span>UTILIZE SEU CUPOM IMEDIATAMENTE</span>
+                    </a>
+                  )}
+
+                  {!isGeneratingImage && (
+                    <>
+                      <p className="text-xs font-bold text-slate-700 mb-1">Compartilhe para que seus amigos também tenham benefícios!</p>
+                      <button
+                        onClick={handleShare}
+                        className="w-full bg-[#25D366] text-white text-xs font-black px-4 py-3 rounded-xl hover:bg-[#128C7E] transition-all shadow-md flex items-center justify-center space-x-2 active:scale-95"
+                      >
+                        <Share2 size={16} />
+                        <span>Compartilhar com meus amigos!</span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </motion.div>
             )}
           </div>
