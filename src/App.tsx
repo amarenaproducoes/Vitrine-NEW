@@ -371,7 +371,7 @@ const BannerCarousel = ({ banners, onBannerClick }: { banners: CommercialBannerD
     );
 };
 
-const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo, partnerAccessCounts, onBannerClick }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null, partnerAccessCounts: Record<string, number>, onBannerClick?: (banner: CommercialBannerData) => void }) => {
+const LandingPage = ({ partners, categories, commercialBanners, featuredPartner, featuredCoupons, headerLogo, partnerAccessCounts, onBannerClick, featuredCouponsTitle }: { partners: Partner[], categories: Category[], commercialBanners: CommercialBannerData[], featuredPartner: Partner | null, featuredCoupons: FeaturedCoupon[], headerLogo: string | null, partnerAccessCounts: Record<string, number>, onBannerClick?: (banner: CommercialBannerData) => void, featuredCouponsTitle?: string }) => {
     const [activeCategory, setActiveCategory] = useState("Todos");
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedPartnerId, setExpandedPartnerId] = useState<string | null>(null);
@@ -627,7 +627,7 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                         <div className="bg-[#c54b4b] text-white p-2 rounded-lg shadow-lg shadow-red-500/20">
                             <Trophy size={18} />
                         </div>
-                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Cupons em Destaque da Semana</h2>
+                        <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">{featuredCouponsTitle || "Cupons em Destaque da Semana"}</h2>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1402,7 +1402,7 @@ const AdminPage = ({
     const [editingId, setEditingId] = useState<string | null>(null);
     
     // About Us State
-    const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null, mission_vision_values: '' });
+    const [aboutConfig, setAboutConfig] = useState<AboutConfig>({ id: 1, history: '', logoUrl: null, mission_vision_values: '', featured_coupons_title: '' });
     const [aboutLogoFile, setAboutLogoFile] = useState<File | null>(null);
     
     // Success Cases State
@@ -1841,7 +1841,8 @@ const AdminPage = ({
                     id: aboutRes.data.id,
                     history: DOMPurify.sanitize(aboutRes.data.history),
                     logoUrl: aboutRes.data.logo_url,
-                    mission_vision_values: DOMPurify.sanitize(aboutRes.data.mission_vision_values || '')
+                    mission_vision_values: DOMPurify.sanitize(aboutRes.data.mission_vision_values || ''),
+                    featured_coupons_title: aboutRes.data.featured_coupons_title || ''
                 });
             }
             if (casesRes.data) {
@@ -2379,7 +2380,8 @@ const AdminPage = ({
                 id: 1,
                 history: DOMPurify.sanitize(aboutConfig.history),
                 logo_url: finalLogoUrl,
-                mission_vision_values: DOMPurify.sanitize(aboutConfig.mission_vision_values || '')
+                mission_vision_values: DOMPurify.sanitize(aboutConfig.mission_vision_values || ''),
+                featured_coupons_title: aboutConfig.featured_coupons_title || ''
             });
             if (error) throw error;
             setAboutConfig(prev => ({ ...prev!, logoUrl: finalLogoUrl }));
@@ -3183,6 +3185,45 @@ const AdminPage = ({
                         <div>
                             <h2 className="text-lg sm:text-2xl font-black text-slate-900">Destaques da Semana</h2>
                             <p className="text-slate-500 text-xs sm:text-sm">Selecione os 6 parceiros que aparecerão em destaque na página inicial.</p>
+                        </div>
+                    </div>
+
+                    <div className="mb-8 p-6 bg-slate-50 rounded-2xl border border-slate-200">
+                        <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">
+                            Título da Seção de Destaques
+                        </label>
+                        <p className="text-xs text-slate-400 mb-4 font-medium">
+                            Personalize o título da seção de cupons em destaque na página principal (Ex: &quot;Cupons especiais para o dia dos Namorados&quot;). Se deixado vazio, será exibido o título padrão &quot;Cupons em Destaque da Semana&quot;.
+                        </p>
+                        <div className="flex flex-col sm:flex-row gap-3">
+                            <input
+                                type="text"
+                                className="flex-1 px-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:border-[#279267] font-bold text-slate-700"
+                                placeholder="Cupons em Destaque da Semana"
+                                value={aboutConfig?.featured_coupons_title || ''}
+                                onChange={(e) => setAboutConfig({ ...aboutConfig!, featured_coupons_title: e.target.value })}
+                            />
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        const { error } = await supabase.from('about_config').upsert({
+                                            id: 1,
+                                            history: aboutConfig?.history || '',
+                                            logo_url: aboutConfig?.logoUrl || null,
+                                            mission_vision_values: aboutConfig?.mission_vision_values || '',
+                                            featured_coupons_title: aboutConfig?.featured_coupons_title || ''
+                                        });
+                                        if (error) throw error;
+                                        alert("Título atualizado com sucesso!");
+                                    } catch (error) {
+                                        logger.error('Error updating featured coupons title:', error);
+                                        alert("Erro ao salvar o título.");
+                                    }
+                                }}
+                                className="px-6 py-3 bg-[#279267] hover:bg-[#1e734f] text-white font-bold rounded-xl transition-all shadow-md shadow-green-500/10 text-sm whitespace-nowrap font-sans cursor-pointer"
+                            >
+                                Salvar Título
+                            </button>
                         </div>
                     </div>
 
@@ -4731,7 +4772,9 @@ const AdminPage = ({
                                                 partner_id: '',
                                                 custom_coupon: '',
                                                 custom_description: '',
-                                                expires_at: ''
+                                                expires_at: '',
+                                                directLink: '',
+                                                useGoogleMapsAsDirect: false
                                             });
                                         }}
                                         className="px-8 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all"
@@ -4886,6 +4929,7 @@ const App = () => {
 
     const [partners, setPartners] = useState<Partner[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [featuredCouponsTitle, setFeaturedCouponsTitle] = useState<string>('Cupons em Destaque da Semana');
     const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
     const [headerLogo, setHeaderLogo] = useState<string | null>(null);
     const [featuredPartner, setFeaturedPartner] = useState<Partner | null>(null);
@@ -5089,13 +5133,14 @@ const App = () => {
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
             // 1. Fetch CRITICAL UI data first
-            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, couponCampaignsRes, welcomeMessagesRes] = await Promise.all([
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, couponCampaignsRes, welcomeMessagesRes, aboutRes] = await Promise.all([
                 supabase.from('partners').select('*'),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
                 supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
-                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false })
+                supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }),
+                supabase.from('about_config').select('*').eq('id', 1).maybeSingle()
             ]);
 
             // Handle Critical Errors
@@ -5103,6 +5148,10 @@ const App = () => {
             if (categoriesRes.error) logger.error('Error fetching categories:', categoriesRes.error);
 
             // Process Critical Data
+            if (aboutRes.data && aboutRes.data.featured_coupons_title) {
+                setFeaturedCouponsTitle(aboutRes.data.featured_coupons_title);
+            }
+
             if (partnersRes.data) {
                 const mappedPartners: Partner[] = partnersRes.data.map(p => ({
                     id: p.id,
@@ -5296,7 +5345,7 @@ const App = () => {
                     <Header headerLogo={headerLogo} />
                     <CommercialBanner position="top" />
                     <Routes>
-                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} />} />
+                        <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} featuredCouponsTitle={featuredCouponsTitle} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/lgn-p5r2t8w1z4q9y-access" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
@@ -5350,7 +5399,7 @@ const App = () => {
                                 <SecurityLogsPage />
                             </ProtectedRoute>
                         } />
-                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} />} />
+                        <Route path="*" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} featuredCouponsTitle={featuredCouponsTitle} />} />
                     </Routes>
                     <Footer logoUrl={headerLogo} />
                     <CommercialBanner position="bottom" />

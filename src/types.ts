@@ -88,6 +88,7 @@ export interface AboutConfig {
   history: string;
   logoUrl: string | null;
   mission_vision_values?: string;
+  featured_coupons_title?: string;
 }
 
 export interface Lead {

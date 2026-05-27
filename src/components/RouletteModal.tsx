@@ -22,6 +22,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
   const [step, setStep] = useState<'form' | 'wheel'>('form');
   const [whatsapp, setWhatsapp] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [isExistingMember, setIsExistingMember] = useState(false);
   const [hasOneSignalId, setHasOneSignalId] = useState(false);
   const [isSearchingName, setIsSearchingName] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
@@ -88,6 +89,7 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
       setWhatsapp(formatted);
       // Clear name and stop searching if WhatsApp changes
       setCustomerName('');
+      setIsExistingMember(false);
       setHasOneSignalId(false);
       setIsSearchingName(false);
     }
@@ -107,11 +109,13 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
           
           if (data?.name) {
             setCustomerName(data.name);
+            setIsExistingMember(true);
             if (data.onesignal_id) {
               setHasOneSignalId(true);
             }
           } else {
             setCustomerName('');
+            setIsExistingMember(false);
             setHasOneSignalId(false);
           }
         } catch (error) {
@@ -302,30 +306,33 @@ const RouletteModal: React.FC<RouletteModalProps> = ({ isOpen, onClose, storeNam
                         opacity: isWhatsappValid ? 1 : 0,
                         height: isWhatsappValid ? 'auto' : 0
                       }}
-                      className="overflow-hidden"
+                      className="overflow-hidden animate-in slide-in-from-top-2 duration-300"
                     >
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">
-                        Seu Nome Completo
-                      </label>
-                      <div className="relative">
-                        <input 
-                          type="text"
-                          placeholder="Digite seu nome e sobrenome..."
-                          value={customerName}
-                          onChange={(e) => setCustomerName(e.target.value)}
-                          disabled={isSearchingName}
-                          className={`w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#279267] focus:bg-white outline-none transition-all font-bold text-slate-900 ${isSearchingName ? 'opacity-50' : ''}`}
-                        />
-                        {isSearchingName && (
-                          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                            <div className="w-4 h-4 border-2 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                      {!isExistingMember ? (
+                        <>
+                          <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 ml-1">
+                            Seu Nome Completo
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type="text"
+                              placeholder="Digite seu nome e sobrenome..."
+                              value={customerName}
+                              onChange={(e) => setCustomerName(e.target.value)}
+                              disabled={isSearchingName}
+                              className={`w-full px-4 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:border-[#279267] focus:bg-white outline-none transition-all font-bold text-slate-900 ${isSearchingName ? 'opacity-50' : ''}`}
+                            />
+                            {isSearchingName && (
+                              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                                <div className="w-4 h-4 border-2 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      {hasOneSignalId && (
-                        <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
-                          <CheckCircle2 className="w-4 h-4" />
-                          <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
+                        </>
+                      ) : (
+                        <div className="p-3 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-1.5 text-[#279267]">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span className="text-xs font-bold leading-tight">Você já é um membro Aparece Aí por Aqui e seus dados estão seguros conosco. Fique tranquilo!</span>
                         </div>
                       )}
                     </motion.div>

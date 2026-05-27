@@ -24,6 +24,7 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
   const [view, setView] = useState<ViewState>('initial');
   const [whatsapp, setWhatsapp] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [isExistingMember, setIsExistingMember] = useState(false);
   const [selectedPartnerId, setSelectedPartnerId] = useState('');
   const [isAgreed, setIsAgreed] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -109,6 +110,7 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
         
         if (data) {
           setCustomerName(data.name);
+          setIsExistingMember(true);
           if (data.onesignal_id) {
             setHasOneSignalId(true);
           } else {
@@ -116,12 +118,14 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
           }
         } else {
           setCustomerName('');
+          setIsExistingMember(false);
           setHasOneSignalId(false);
         }
       };
       fetchCustomer();
     } else {
       setCustomerName('');
+      setIsExistingMember(false);
       setHasOneSignalId(false);
     }
   }, [whatsapp]);
@@ -487,7 +491,18 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
                     type="tel" 
                     placeholder="(00) 00000-0000"
                     value={whatsapp}
-                    onChange={(e) => setWhatsapp(formatWhatsApp(e.target.value))}
+                    onChange={(e) => {
+                      const rawValue = e.target.value;
+                      const cleanRaw = rawValue.replace(/\D/g, '');
+                      if (cleanRaw.length > 11) return;
+                      const formatted = formatWhatsApp(rawValue);
+                      if (formatted !== whatsapp) {
+                        setWhatsapp(formatted);
+                        setCustomerName('');
+                        setIsExistingMember(false);
+                        setHasOneSignalId(false);
+                      }
+                    }}
                     className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-bold focus:ring-2 focus:ring-[#279267] focus:border-transparent transition-all"
                   />
                 </div>
@@ -498,14 +513,23 @@ export default function GiftCardModal({ isOpen, cardNumber, accessToken, onClose
                     animate={{ opacity: 1, height: 'auto' }}
                     className="overflow-hidden"
                   >
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Seu Nome</label>
-                    <input 
-                      type="text" 
-                      placeholder="Como podemos te chamar?"
-                      value={customerName}
-                      onChange={(e) => setCustomerName(e.target.value)}
-                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-bold focus:ring-2 focus:ring-[#279267] focus:border-transparent transition-all"
-                    />
+                    {!isExistingMember ? (
+                      <>
+                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Seu Nome</label>
+                        <input 
+                          type="text" 
+                          placeholder="Como podemos te chamar?"
+                          value={customerName}
+                          onChange={(e) => setCustomerName(e.target.value)}
+                          className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 font-bold focus:ring-2 focus:ring-[#279267] focus:border-transparent transition-all"
+                        />
+                      </>
+                    ) : (
+                      <div className="p-4 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-1.5 text-[#279267]">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-bold leading-tight">Você já é um membro Aparece Aí por Aqui e seus dados estão seguros conosco. Fique tranquilo!</span>
+                      </div>
+                    )}
                   </motion.div>
                 )}
 

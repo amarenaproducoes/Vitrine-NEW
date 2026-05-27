@@ -272,6 +272,7 @@ CREATE TABLE IF NOT EXISTS about_config (
   history TEXT NOT NULL,
   logo_url TEXT,
   mission_vision_values TEXT,
+  featured_coupons_title TEXT,
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 

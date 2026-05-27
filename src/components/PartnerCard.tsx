@@ -29,6 +29,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
   const [unlockStep, setUnlockStep] = useState<'hidden' | 'input' | 'unlocked'>(welcomeData?.autoOpen ? 'input' : 'hidden');
   const [whatsapp, setWhatsapp] = useState('');
   const [customerName, setCustomerName] = useState('');
+  const [isExistingMember, setIsExistingMember] = useState(false);
   const [hasOneSignalId, setHasOneSignalId] = useState(false);
   const [isSearchingName, setIsSearchingName] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
@@ -55,6 +56,7 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
       setWhatsapp(formatted);
       // Clear name and stop searching if WhatsApp changes
       setCustomerName('');
+      setIsExistingMember(false);
       setHasOneSignalId(false);
       setIsSearchingName(false);
     }
@@ -78,12 +80,14 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
           
           if (data?.name) {
             setCustomerName(data.name);
+            setIsExistingMember(true);
             if (data.onesignal_id) {
               setHasOneSignalId(true);
             }
           } else {
             // If not found, ensure name is empty for new registration
             setCustomerName('');
+            setIsExistingMember(false);
             setHasOneSignalId(false);
           }
         } catch (error) {
@@ -616,28 +620,31 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
 
                 {isWhatsappValid && (
                   <div className="w-full animate-in slide-in-from-top-2 duration-300">
-                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
-                      Seu Nome Completo
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Digite seu nome..."
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        className={`w-full px-4 py-2.5 text-base rounded-xl border border-slate-200 focus:outline-none focus:border-[#279267] bg-white font-bold transition-all ${isSearchingName ? 'opacity-50' : ''}`}
-                        disabled={isSearchingName}
-                      />
-                      {isSearchingName && (
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                          <div className="w-4 h-4 border-2 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                    {!isExistingMember ? (
+                      <>
+                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">
+                          Seu Nome Completo
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="text"
+                            placeholder="Digite seu nome..."
+                            value={customerName}
+                            onChange={(e) => setCustomerName(e.target.value)}
+                            className={`w-full px-4 py-2.5 text-base rounded-xl border border-slate-200 focus:outline-none focus:border-[#279267] bg-white font-bold transition-all ${isSearchingName ? 'opacity-50' : ''}`}
+                            disabled={isSearchingName}
+                          />
+                          {isSearchingName && (
+                            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                              <div className="w-4 h-4 border-2 border-[#279267] border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                    {hasOneSignalId && (
-                      <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
+                      </>
+                    ) : (
+                      <div className="p-3 bg-green-50 rounded-xl border border-green-100 flex items-center gap-1.5 text-[#279267]">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-bold leading-tight">Você já é um membro Aparece Aí por Aqui e seus dados estão seguros conosco. Fique tranquilo!</span>
                       </div>
                     )}
                   </div>

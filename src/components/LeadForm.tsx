@@ -18,6 +18,7 @@ interface LeadFormProps {
 const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [formData, setFormData] = useState({ fullName: '', whatsapp: '', message: '' });
+  const [isExistingMember, setIsExistingMember] = useState(false);
   const [hasConsented, setHasConsented] = useState(false);
   const [hasOneSignalId, setHasOneSignalId] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -45,16 +46,19 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
           
           if (data?.name) {
             setFormData(prev => ({ ...prev, fullName: data.name }));
+            setIsExistingMember(true);
             if (data.onesignal_id) {
               setHasOneSignalId(true);
             }
           } else {
+            setIsExistingMember(false);
             setHasOneSignalId(false);
           }
         } catch (error) {
           logger.error('Error searching customer name in LeadForm:', error);
         }
       } else {
+        setIsExistingMember(false);
         setHasOneSignalId(false);
       }
     };
@@ -235,6 +239,55 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
             onSubmit={handleSubmit} 
             className="space-y-6 overflow-hidden"
           >
+            <div>
+              <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                WhatsApp
+              </label>
+              <input
+                required
+                type="tel"
+                className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base font-bold"
+                placeholder="(11) 99999-9999"
+                value={formData.whatsapp}
+                onChange={(e) => {
+                  const rawValue = e.target.value;
+                  const cleanRaw = rawValue.replace(/\D/g, '');
+                  if (cleanRaw.length > 11) return;
+                  const formatted = formatWhatsApp(rawValue);
+                  if (formatted !== formData.whatsapp) {
+                    setFormData(prev => ({ ...prev, whatsapp: formatted, fullName: '' }));
+                    setIsExistingMember(false);
+                    setHasOneSignalId(false);
+                  }
+                }}
+              />
+            </div>
+
+            {isWhatsAppValid && (
+              <div className="w-full animate-in slide-in-from-top-2 duration-300">
+                {!isExistingMember ? (
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
+                      Nome Completo
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
+                      placeholder="Seu nome aqui..."
+                      value={formData.fullName}
+                      onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-4 bg-green-50 rounded-2xl border border-green-100 flex items-center gap-1.5 text-[#279267]">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" />
+                    <span className="text-xs font-bold leading-tight">Você já é um membro Aparece Aí por Aqui e seus dados estão seguros conosco. Fique tranquilo!</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {(type === 'anunciante' || type === 'comerciante') && (
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
@@ -250,40 +303,6 @@ const LeadForm: React.FC<LeadFormProps> = ({ type, title, subtitle }) => {
                 />
               </div>
             )}
-
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
-                Nome Completo
-              </label>
-              <input
-                required
-                type="text"
-                className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base"
-                placeholder="Seu nome aqui..."
-                value={formData.fullName}
-                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2 uppercase tracking-wide">
-                WhatsApp
-              </label>
-              <input
-                required
-                type="tel"
-                className="w-full px-4 py-4 rounded-xl border border-slate-200 focus:ring-4 focus:ring-[#279267]/20 focus:border-[#279267] outline-none transition-all text-slate-900 bg-slate-50 text-base font-bold"
-                placeholder="(11) 99999-9999"
-                value={formData.whatsapp}
-                onChange={(e) => setFormData({...formData, whatsapp: formatWhatsApp(e.target.value)})}
-              />
-              {hasOneSignalId && (
-                <div className="mt-2 flex items-center gap-1.5 text-[#279267]">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span className="text-xs font-bold">Membro Aparece Aí por Aqui</span>
-                </div>
-              )}
-            </div>
 
             <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3">
               <AlertCircle className="text-amber-600 w-5 h-5 shrink-0 mt-0.5" />
