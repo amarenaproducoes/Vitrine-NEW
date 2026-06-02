@@ -2000,10 +2000,14 @@ const AdminPage = ({
                 direct_link_clicks: formData.directLinkClicks
             };
 
-            // Validate 10 partners per page limit
-            const partnersInSamePage = partners.filter(p => (p.page_number || 1) === formData.page_number && p.id !== editingId);
-            if (partnersInSamePage.length >= 10) {
-                throw new Error(`A página ${formData.page_number} já possui 10 parceiros. Limite atingido.`);
+            // Validate 10 partners per page limit (only considering authorized partners)
+            if (formData.isAuthorized) {
+                const authorizedPartnersInSamePage = partners.filter(p => 
+                    (p.page_number || 1) === formData.page_number && p.id !== editingId && p.isAuthorized
+                );
+                if (authorizedPartnersInSamePage.length >= 10) {
+                    throw new Error(`A página ${formData.page_number} já possui 10 parceiros autorizados e ativos. Limite atingido.`);
+                }
             }
 
             console.log('FULL DATA BEING SENT TO SUPABASE:');
@@ -2387,9 +2391,17 @@ const AdminPage = ({
             setAboutConfig(prev => ({ ...prev!, logoUrl: finalLogoUrl }));
             setAboutLogoFile(null);
             alert("Configurações de 'Sobre Nós' atualizadas!");
-        } catch (error) {
+        } catch (error: any) {
             logger.error('Error updating about:', error);
-            alert('Erro ao atualizar configurações.');
+            const isMissingColumnError = error?.code === 'PGRST204' || 
+                                         (error?.message && error.message.includes('featured_coupons_title')) ||
+                                         (error?.details && error.details.includes('featured_coupons_title'));
+            
+            if (isMissingColumnError) {
+                alert("Erro no Supabase: A coluna 'featured_coupons_title' ainda não foi criada no seu banco de dados.\n\nCOMO RESOLVER:\n1. Acesse o painel do Supabase.\n2. Vá em 'SQL Editor' -> 'New query'.\n3. Execute o comando SQL abaixo:\n\nALTER TABLE about_config ADD COLUMN IF NOT EXISTS featured_coupons_title TEXT;\n\n4. Tente salvar as configurações de 'Sobre Nós' novamente!");
+            } else {
+                alert('Erro ao atualizar configurações: ' + (error?.message || error));
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -3195,6 +3207,38 @@ const AdminPage = ({
                         <p className="text-xs text-slate-400 mb-4 font-medium">
                             Personalize o título da seção de cupons em destaque na página principal (Ex: &quot;Cupons especiais para o dia dos Namorados&quot;). Se deixado vazio, será exibido o título padrão &quot;Cupons em Destaque da Semana&quot;.
                         </p>
+
+                        {/* SQL Migration Help Alert Banner */}
+                        <div className="mb-6 p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-900 text-xs font-sans">
+                            <div className="flex flex-col sm:flex-row gap-2 items-start">
+                                <div className="font-bold text-amber-700 whitespace-nowrap">⚠️ Nota Importante:</div>
+                                <div className="flex-1 space-y-1">
+                                    <p>Se você receber um erro ao salvar, significa que a nova coluna <strong>featured_coupons_title</strong> ainda não foi criada no seu banco de dados do Supabase.</p>
+                                    <p className="font-semibold text-amber-800">Como resolver em 1 minuto:</p>
+                                    <ol className="list-decimal pl-4 space-y-1 text-amber-800">
+                                        <li>Entre no painel do <strong className="font-bold">Supabase</strong>.</li>
+                                        <li>Clique em <strong className="font-bold">SQL Editor</strong> no menu lateral esquerdo e depois em <strong className="font-bold">New query</strong>.</li>
+                                        <li>Copie, cole o comando abaixo e clique em <strong className="font-bold">Run</strong> para executar:</li>
+                                    </ol>
+                                    <div className="mt-2 flex items-center gap-2">
+                                        <pre className="flex-1 bg-amber-100 p-2.5 rounded-lg overflow-x-auto text-[11px] font-mono border border-amber-300 text-slate-800 select-all font-bold">
+                                            ALTER TABLE about_config ADD COLUMN IF NOT EXISTS featured_coupons_title TEXT;
+                                        </pre>
+                                        <button 
+                                            type="button"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText("ALTER TABLE about_config ADD COLUMN IF NOT EXISTS featured_coupons_title TEXT;");
+                                                alert("SQL copiado para a área de transferência!");
+                                            }}
+                                            className="px-3 py-2 bg-amber-200 hover:bg-amber-300 rounded-lg text-[10px] font-black text-amber-900 uppercase tracking-wider transition-all cursor-pointer select-none"
+                                        >
+                                            Copiar
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="flex flex-col sm:flex-row gap-3">
                             <input
                                 type="text"
@@ -3215,9 +3259,17 @@ const AdminPage = ({
                                         });
                                         if (error) throw error;
                                         alert("Título atualizado com sucesso!");
-                                    } catch (error) {
+                                    } catch (error: any) {
                                         logger.error('Error updating featured coupons title:', error);
-                                        alert("Erro ao salvar o título.");
+                                        const isMissingColumnError = error?.code === 'PGRST204' || 
+                                                                     (error?.message && error.message.includes('featured_coupons_title')) ||
+                                                                     (error?.details && error.details.includes('featured_coupons_title'));
+                                        
+                                        if (isMissingColumnError) {
+                                            alert("Erro no Supabase: A coluna 'featured_coupons_title' ainda não existe no seu banco de dados.\n\nPor favor, execute o comando SQL destacado no banner amarelo acima no editor SQL do seu painel do Supabase para aplicar a mudança, e depois tente salvar novamente!");
+                                        } else {
+                                            alert("Erro ao salvar o título: " + (error?.message || error));
+                                        }
                                     }
                                 }}
                                 className="px-6 py-3 bg-[#279267] hover:bg-[#1e734f] text-white font-bold rounded-xl transition-all shadow-md shadow-green-500/10 text-sm whitespace-nowrap font-sans cursor-pointer"
