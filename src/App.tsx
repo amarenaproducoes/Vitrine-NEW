@@ -30,6 +30,7 @@ import LoginPage from './components/LoginPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'motion/react';
+import { WorldCupBolaoPage, WORLD_CUP_COUNTRIES, FlagImage, unpackWcGame, packWcGame } from './components/WorldCupBolaoPage';
 import { CATEGORIES } from './constants';
 import { Partner, Category, SuccessCase, AboutConfig, CashbackConfig, CashbackLog, CommercialBannerData, WelcomeMessage, CouponCampaign } from './types';
 
@@ -979,7 +980,7 @@ const AdminPage = ({
     bannerNames: {[key: number]: string},
     setBannerNames: React.Dispatch<React.SetStateAction<{[key: number]: string}>>
 }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards'>('partners');
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards' | 'worldcup'>('partners');
     const [giftCardPage, setGiftCardPage] = useState(0);
     const [cashbackLogsPage, setCashbackLogsPage] = useState(0);
     const [activeGiftCardsPage, setActiveGiftCardsPage] = useState(0);
@@ -1041,6 +1042,188 @@ const AdminPage = ({
         logoFile: null as File | null
     });
     const [editingWelcomeId, setEditingWelcomeId] = useState<string | null>(null);
+
+    // World Cup state declarations
+    const [wcGames, setWcGames] = useState<any[]>([]);
+    const [wcPredictions, setWcPredictions] = useState<any[]>([]);
+    const [wcSelectedGame, setWcSelectedGame] = useState<any | null>(null);
+    const [wcPredictionsSearch, setWcPredictionsSearch] = useState('');
+    const [wcSavingGame, setWcSavingGame] = useState(false);
+    const [partnerLogosSearch, setPartnerLogosSearch] = useState('');
+
+    const [wcForm, setWcForm] = useState({
+        opponent_name: '',
+        opponent_code: 'ar',
+        brazil_score: '',
+        opponent_score: '',
+        prizes: 'Vale-compras de R$ 150,00 nos nossos parceiros excelentes!',
+        is_active: true,
+        partner_logos: [] as string[],
+        mascot_url: '',
+        brazil_flag_url: 'https://flagcdn.com/w160/br.png',
+        opponent_flag_url: 'https://flagcdn.com/w160/ar.png'
+    });
+
+    const fetchWorldCupAdminData = async () => {
+        try {
+            const { data: gData, error: gErr } = await supabase.from('worldcup_games').select('*').order('id', { ascending: false });
+            if (gErr) throw gErr;
+            if (gData) {
+                const unpacked = gData.map(g => unpackWcGame(g));
+                setWcGames(unpacked);
+            }
+
+            const { data: pData, error: pErr } = await supabase.from('worldcup_predictions').select('*').order('created_at', { ascending: false });
+            if (pErr) throw pErr;
+            if (pData) setWcPredictions(pData || []);
+        } catch (err: any) {
+            console.warn('Error fetching worldcup databases:', err.message);
+            const localGames = JSON.parse(localStorage.getItem('worldcup_games') || '[]');
+            setWcGames(localGames.map((g: any) => unpackWcGame(g)));
+            
+            const localCustomers = JSON.parse(localStorage.getItem('worldcup_customers') || '{}');
+            const collectedPredictions: any[] = [];
+            Object.keys(localCustomers).forEach(wa => {
+                const clientPreds = JSON.parse(localStorage.getItem(`worldcup_preds_${wa}`) || '[]');
+                clientPreds.forEach((p: any) => {
+                    collectedPredictions.push({
+                        ...p,
+                        id: p.id || Math.random().toString(),
+                        created_at: p.created_at || new Date().toISOString()
+                    });
+                });
+            });
+            setWcPredictions(collectedPredictions);
+        }
+    };
+
+    const handleSaveWcGame = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setWcSavingGame(true);
+        try {
+            const opponentInfo = WORLD_CUP_COUNTRIES.find(c => c.code === wcForm.opponent_code);
+            const opponentName = opponentInfo ? opponentInfo.name : wcForm.opponent_name || 'Desconhecido';
+            const flagUrl = wcForm.opponent_flag_url || `https://flagcdn.com/w160/${wcForm.opponent_code}.png`;
+
+            const brScore = wcForm.brazil_score === '' ? null : parseInt(wcForm.brazil_score, 10);
+            const opScore = wcForm.opponent_score === '' ? null : parseInt(wcForm.opponent_score, 10);
+
+            // Pack mascot_url and brazil_flag_url into prizes string
+            const packedPrizes = packWcGame(wcForm.prizes, wcForm.mascot_url, wcForm.brazil_flag_url);
+
+            let gamePayload: any = {
+                opponent_name: opponentName,
+                opponent_code: wcForm.opponent_code,
+                opponent_flag_url: flagUrl,
+                brazil_score: brScore,
+                opponent_score: opScore,
+                prizes: packedPrizes,
+                is_active: wcForm.is_active,
+                partner_logos: wcForm.partner_logos
+            };
+
+            if (wcSelectedGame) {
+                gamePayload.id = wcSelectedGame.id;
+            }
+
+            if (wcForm.is_active) {
+                try {
+                    await supabase.from('worldcup_games').update({ is_active: false }).neq('id', wcSelectedGame?.id || -1);
+                } catch (e) {}
+            }
+
+            const { error } = await supabase.from('worldcup_games').upsert(gamePayload);
+            if (error) throw error;
+
+            alert(wcSelectedGame ? 'Jogo atualizado no banco de dados!' : 'Jogo criado no banco de dados!');
+            setWcSelectedGame(null);
+            setWcForm({
+                opponent_name: '',
+                opponent_code: 'ar',
+                brazil_score: '',
+                opponent_score: '',
+                prizes: 'Vale-compras de R$ 150,00 nos nossos parceiros excelentes!',
+                is_active: true,
+                partner_logos: [],
+                mascot_url: '',
+                brazil_flag_url: 'https://flagcdn.com/w160/br.png',
+                opponent_flag_url: 'https://flagcdn.com/w160/ar.png'
+            });
+            fetchWorldCupAdminData();
+        } catch (err: any) {
+            console.error('Failed to save game in Supabase, saving locally:', err);
+            
+            const localGames = JSON.parse(localStorage.getItem('worldcup_games') || '[]');
+            const brScore = wcForm.brazil_score === '' ? null : parseInt(wcForm.brazil_score, 10);
+            const opScore = wcForm.opponent_score === '' ? null : parseInt(wcForm.opponent_score, 10);
+            
+            const opponentInfo = WORLD_CUP_COUNTRIES.find(c => c.code === wcForm.opponent_code);
+            const opponentName = opponentInfo ? opponentInfo.name : wcForm.opponent_name || 'Desconhecido';
+            const flagUrl = wcForm.opponent_flag_url || `https://flagcdn.com/w160/${wcForm.opponent_code}.png`;
+
+            if (wcForm.is_active) {
+                localGames.forEach((g: any) => g.is_active = false);
+            }
+
+            // Pack mascot_url and brazil_flag_url into prizes string
+            const packedPrizes = packWcGame(wcForm.prizes, wcForm.mascot_url, wcForm.brazil_flag_url);
+
+            const gamePayload = {
+                id: wcSelectedGame?.id || String(Date.now()),
+                opponent_name: opponentName,
+                opponent_code: wcForm.opponent_code,
+                opponent_flag_url: flagUrl,
+                brazil_score: brScore,
+                opponent_score: opScore,
+                prizes: packedPrizes,
+                is_active: wcForm.is_active,
+                partner_logos: wcForm.partner_logos,
+                created_at: wcSelectedGame?.created_at || new Date().toISOString()
+            };
+
+            if (wcSelectedGame) {
+                const idx = localGames.findIndex((g: any) => String(g.id) === String(wcSelectedGame.id));
+                if (idx >= 0) localGames[idx] = gamePayload;
+            } else {
+                localGames.push(gamePayload);
+            }
+
+            localStorage.setItem('worldcup_games', JSON.stringify(localGames));
+            alert(wcSelectedGame ? 'Jogo atualizado de forma local!' : 'Jogo criado de forma local!');
+            setWcSelectedGame(null);
+            setWcForm({
+                opponent_name: '',
+                opponent_code: 'ar',
+                brazil_score: '',
+                opponent_score: '',
+                prizes: 'Vale-compras de R$ 150,00 nos nossos parceiros excelentes!',
+                is_active: true,
+                partner_logos: [],
+                mascot_url: '',
+                brazil_flag_url: 'https://flagcdn.com/w160/br.png',
+                opponent_flag_url: 'https://flagcdn.com/w160/ar.png'
+            });
+            fetchWorldCupAdminData();
+        } finally {
+            setWcSavingGame(false);
+        }
+    };
+
+    const handleDeleteWcGame = async (gameId: any) => {
+        if (!confirm('Tem certeza que deseja excluir este jogo?')) return;
+        try {
+            const { error } = await supabase.from('worldcup_games').delete().eq('id', gameId);
+            if (error) throw error;
+            alert('Jogo excluído com sucesso!');
+            fetchWorldCupAdminData();
+        } catch (err) {
+            const localGames = JSON.parse(localStorage.getItem('worldcup_games') || '[]');
+            const updated = localGames.filter((g: any) => String(g.id) !== String(gameId));
+            localStorage.setItem('worldcup_games', JSON.stringify(updated));
+            alert('Jogo removido localmente!');
+            fetchWorldCupAdminData();
+        }
+    };
 
     const [campaignFormData, setCampaignFormData] = useState({
         ref_id: '',
@@ -1524,6 +1707,9 @@ const AdminPage = ({
         if (activeTab === 'giftcards') {
             fetchGiftCards();
             fetchActiveGiftCards();
+        }
+        if (activeTab === 'worldcup') {
+            fetchWorldCupAdminData();
         }
     }, [activeTab, partnerRankingPeriod, sharePeriod, clickPeriod, cashbackRankingPeriod, customerRankingPeriod]);
 
@@ -2494,6 +2680,7 @@ const AdminPage = ({
                             <button onClick={() => setActiveTab('welcome')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'welcome' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Boas-vindas</button>
                             <button onClick={() => setActiveTab('campaigns')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'campaigns' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons Surpresa</button>
                             <button onClick={() => setActiveTab('giftcards')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'giftcards' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cartão Presente</button>
+                            <button onClick={() => setActiveTab('worldcup')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'worldcup' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>🏆 Jogo da Copa</button>
                             <Link to="/adm-k9x3v8j1n4m7q-ama/mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
@@ -4908,6 +5095,490 @@ const AdminPage = ({
                 </div>
             )}
 
+            {activeTab === 'worldcup' && (
+                <div className="space-y-8 sm:space-y-12">
+                    <div className="bg-white p-4 sm:p-8 rounded-2xl sm:rounded-3xl shadow-xl border border-slate-100">
+                        <div className="flex items-center space-x-3 mb-6">
+                            <div className="bg-emerald-500/10 p-2 rounded-xl">
+                                <Trophy className="text-[#279267]" size={24} />
+                            </div>
+                            <h2 className="text-lg sm:text-2xl font-black text-slate-900">
+                                {wcSelectedGame ? 'Editar Jogo da Copa' : 'Cadastrar Novo Jogo da Copa'}
+                            </h2>
+                        </div>
+
+                        <form onSubmit={handleSaveWcGame} className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 block">País Adversário</label>
+                                    <select 
+                                        required
+                                        value={wcForm.opponent_code}
+                                        onChange={(e) => {
+                                            const code = e.target.value;
+                                            const country = WORLD_CUP_COUNTRIES.find(c => c.code === code);
+                                            setWcForm({
+                                                ...wcForm, 
+                                                opponent_code: code,
+                                                opponent_name: country ? country.name : ''
+                                            });
+                                        }}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-slate-700"
+                                    >
+                                        {WORLD_CUP_COUNTRIES.map(country => (
+                                            <option key={country.code} value={country.code}>{country.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 block">Gols do Brasil (Real / Final)</label>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        placeholder="Em branco até o jogo acontecer"
+                                        value={wcForm.brazil_score}
+                                        onChange={e => setWcForm({ ...wcForm, brazil_score: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-slate-700"
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 block">Gols do Adversário (Real / Final)</label>
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        placeholder="Em branco até o jogo acontecer"
+                                        value={wcForm.opponent_score}
+                                        onChange={e => setWcForm({ ...wcForm, opponent_score: e.target.value })}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-slate-700"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-slate-700 block">Prêmios da Rodada</label>
+                                <textarea 
+                                    required
+                                    rows={2}
+                                    value={wcForm.prizes}
+                                    onChange={e => setWcForm({ ...wcForm, prizes: e.target.value })}
+                                    placeholder="Ex: R$ 150,00 em prêmios dos parceiros!"
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all resize-none text-slate-700 font-sans"
+                                />
+                            </div>
+
+                            {/* Manual Image Settings with Instant File Upload directly to Supabase storage */}
+                            <div className="bg-slate-50 border border-slate-200/60 p-4 sm:p-6 rounded-2xl space-y-6 font-sans">
+                                <div className="border-b border-slate-200 pb-3">
+                                    <h3 className="text-xs sm:text-sm font-black text-slate-800 uppercase tracking-wider">Imagens do Mascote e Bandeiras (Upload Manual / Links)</h3>
+                                    <p className="text-[10px] text-slate-500 font-medium">Faça upload de novas imagens ou cole os links diretos para personalizar as exibições na Copa.</p>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {/* Mascot Image */}
+                                    <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-black text-slate-700 uppercase tracking-wide">Imagem do Mascote</label>
+                                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase font-mono">Topo do Site</span>
+                                        </div>
+                                        <input 
+                                            type="text"
+                                            placeholder="URL do Mascote..."
+                                            value={wcForm.mascot_url}
+                                            onChange={e => setWcForm({ ...wcForm, mascot_url: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:border-[#279267] outline-none"
+                                        />
+                                        <div className="flex items-center space-x-2">
+                                            <input 
+                                                type="file" 
+                                                id="wc-mascot-file-admin"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    try {
+                                                        const fileExt = file.name.split('.').pop();
+                                                        const fileName = `wc_mascot_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                                        const { error: uploadError } = await supabase.storage.from('partners').upload(fileName, file);
+                                                        if (uploadError) throw uploadError;
+                                                        const { data: publicUrlData } = supabase.storage.from('partners').getPublicUrl(fileName);
+                                                        setWcForm(prev => ({ ...prev, mascot_url: publicUrlData.publicUrl }));
+                                                    } catch (err: any) {
+                                                        const url = URL.createObjectURL(file);
+                                                        setWcForm(prev => ({ ...prev, mascot_url: url }));
+                                                    }
+                                                }}
+                                            />
+                                            <label 
+                                                htmlFor="wc-mascot-file-admin"
+                                                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-center rounded-lg text-[10px] cursor-pointer block transition-all border border-slate-200"
+                                            >
+                                                Escolher Mascote...
+                                            </label>
+                                        </div>
+                                        {wcForm.mascot_url && (
+                                            <div className="flex items-center justify-center p-2 bg-slate-50 rounded-lg border border-slate-100 relative">
+                                                <img src={wcForm.mascot_url} alt="Mascote Preview" className="h-16 object-contain" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setWcForm(prev => ({ ...prev, mascot_url: '' }))}
+                                                    className="absolute top-1 right-1 p-0.5 bg-slate-200 hover:bg-red-500 hover:text-white rounded-full text-slate-500 transition-all cursor-pointer"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Brazil Flag Image */}
+                                    <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-black text-slate-700 uppercase tracking-wide">Bandeira do Brasil</label>
+                                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase font-mono">Bandeira BR</span>
+                                        </div>
+                                        <input 
+                                            type="text"
+                                            placeholder="URL da Bandeira do Brasil..."
+                                            value={wcForm.brazil_flag_url}
+                                            onChange={e => setWcForm({ ...wcForm, brazil_flag_url: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:border-[#279267] outline-none"
+                                        />
+                                        <div className="flex items-center space-x-2">
+                                            <input 
+                                                type="file" 
+                                                id="wc-brazil-file-admin"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    try {
+                                                        const fileExt = file.name.split('.').pop();
+                                                        const fileName = `wc_brflag_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                                        const { error: uploadError } = await supabase.storage.from('partners').upload(fileName, file);
+                                                        if (uploadError) throw uploadError;
+                                                        const { data: publicUrlData } = supabase.storage.from('partners').getPublicUrl(fileName);
+                                                        setWcForm(prev => ({ ...prev, brazil_flag_url: publicUrlData.publicUrl }));
+                                                    } catch (err: any) {
+                                                        const url = URL.createObjectURL(file);
+                                                        setWcForm(prev => ({ ...prev, brazil_flag_url: url }));
+                                                    }
+                                                }}
+                                            />
+                                            <label 
+                                                htmlFor="wc-brazil-file-admin"
+                                                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-center rounded-lg text-[10px] cursor-pointer block transition-all border border-slate-200"
+                                            >
+                                                Escolher Bandeira BR...
+                                            </label>
+                                        </div>
+                                        {wcForm.brazil_flag_url && (
+                                            <div className="flex items-center justify-center p-2 bg-slate-50 rounded-lg border border-slate-100 relative">
+                                                <img src={wcForm.brazil_flag_url} alt="Brasil Flag Preview" className="h-10 object-cover rounded shadow-sm" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setWcForm(prev => ({ ...prev, brazil_flag_url: '' }))}
+                                                    className="absolute top-1 right-1 p-0.5 bg-slate-200 hover:bg-red-500 hover:text-white rounded-full text-slate-500 transition-all cursor-pointer"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Opponent Flag Image */}
+                                    <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-xs font-black text-slate-700 uppercase tracking-wide">Bandeira do Adversário</label>
+                                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase font-mono">Bandeira Adv</span>
+                                        </div>
+                                        <input 
+                                            type="text"
+                                            placeholder="URL da Bandeira do Adversário..."
+                                            value={wcForm.opponent_flag_url}
+                                            onChange={e => setWcForm({ ...wcForm, opponent_flag_url: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:border-[#279267] outline-none"
+                                        />
+                                        <div className="flex items-center space-x-2">
+                                            <input 
+                                                type="file" 
+                                                id="wc-opponent-file-admin"
+                                                accept="image/*"
+                                                className="hidden"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (!file) return;
+                                                    try {
+                                                        const fileExt = file.name.split('.').pop();
+                                                        const fileName = `wc_opflag_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+                                                        const { error: uploadError } = await supabase.storage.from('partners').upload(fileName, file);
+                                                        if (uploadError) throw uploadError;
+                                                        const { data: publicUrlData } = supabase.storage.from('partners').getPublicUrl(fileName);
+                                                        setWcForm(prev => ({ ...prev, opponent_flag_url: publicUrlData.publicUrl }));
+                                                    } catch (err: any) {
+                                                        const url = URL.createObjectURL(file);
+                                                        setWcForm(prev => ({ ...prev, opponent_flag_url: url }));
+                                                    }
+                                                }}
+                                            />
+                                            <label 
+                                                htmlFor="wc-opponent-file-admin"
+                                                className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-center rounded-lg text-[10px] cursor-pointer block transition-all border border-slate-200"
+                                            >
+                                                Escolher Bandeira Adv...
+                                            </label>
+                                        </div>
+                                        {wcForm.opponent_flag_url && (
+                                            <div className="flex items-center justify-center p-2 bg-slate-50 rounded-lg border border-slate-100 relative">
+                                                <img src={wcForm.opponent_flag_url} alt="Opponent Flag Preview" className="h-10 object-cover rounded shadow-sm" />
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => setWcForm(prev => ({ ...prev, opponent_flag_url: '' }))}
+                                                    className="absolute top-1 right-1 p-0.5 bg-slate-200 hover:bg-red-500 hover:text-white rounded-full text-slate-500 transition-all cursor-pointer"
+                                                >
+                                                    <X size={10} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4 flex flex-col justify-center">
+                                    <label className="flex items-center space-x-3 p-4 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer hover:border-[#279267] transition-all group">
+                                        <input 
+                                            type="checkbox"
+                                            checked={wcForm.is_active}
+                                            onChange={e => setWcForm({ ...wcForm, is_active: e.target.checked })}
+                                            className="rounded border-slate-300 text-[#279267] focus:ring-[#279267]/10"
+                                        />
+                                        <div className="flex flex-col">
+                                            <span className="text-sm font-bold text-slate-700">Tornar Jogo Ativo para Palpites</span>
+                                            <span className="text-[10px] text-slate-400">Usuários farão palpites para este jogo. Desativa os demais.</span>
+                                        </div>
+                                    </label>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 block">Espaços do Logo dos Parceiros (Carrossel 3D)</label>
+                                    <input 
+                                        type="text"
+                                        placeholder="Buscar parceiro..."
+                                        value={partnerLogosSearch}
+                                        onChange={e => setPartnerLogosSearch(e.target.value)}
+                                        className="w-full px-3 py-1.5 rounded-lg bg-slate-50 border border-slate-200 mb-2 outline-none focus:border-[#279267] text-xs"
+                                    />
+                                    <div className="max-h-[140px] overflow-y-auto border border-slate-100 rounded-xl p-3 bg-slate-50 space-y-1.5">
+                                        {partners
+                                            .filter(p => !partnerLogosSearch || p.name.toLowerCase().includes(partnerLogosSearch.toLowerCase()))
+                                            .map(p => {
+                                                const isChecked = wcForm.partner_logos.includes(p.id);
+                                                return (
+                                                    <label key={p.id} className="flex items-center space-x-2 text-xs font-medium text-slate-700 cursor-pointer select-none font-sans">
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={isChecked}
+                                                            onChange={e => {
+                                                                const logos = e.target.checked 
+                                                                    ? [...wcForm.partner_logos, p.id]
+                                                                    : wcForm.partner_logos.filter(id => id !== p.id);
+                                                                setWcForm({ ...wcForm, partner_logos: logos });
+                                                            }}
+                                                            className="rounded border-slate-300 text-[#279267] focus:ring-[#279267]/10"
+                                                        />
+                                                        <span>{p.name}</span>
+                                                    </label>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex space-x-4">
+                                <button 
+                                    type="submit"
+                                    disabled={wcSavingGame}
+                                    className="flex-1 py-4 bg-[#279267] text-white font-black rounded-2xl shadow-lg shadow-green-900/10 hover:bg-green-700 transition-all flex items-center justify-center space-x-2 cursor-pointer font-sans"
+                                >
+                                    {wcSavingGame ? 'Carregando...' : 'Salvar Jogo'}
+                                </button>
+                                {wcSelectedGame && (
+                                    <button 
+                                        type="button"
+                                        onClick={() => {
+                                            setWcSelectedGame(null);
+                                            setWcForm({
+                                                opponent_name: '',
+                                                opponent_code: 'ar',
+                                                brazil_score: '',
+                                                opponent_score: '',
+                                                prizes: 'Vale-compras de R$ 150,00 nos nossos parceiros excelentes!',
+                                                is_active: true,
+                                                partner_logos: [] as string[],
+                                                mascot_url: '',
+                                                brazil_flag_url: 'https://flagcdn.com/w160/br.png',
+                                                opponent_flag_url: 'https://flagcdn.com/w160/ar.png'
+                                            });
+                                        }}
+                                        className="px-6 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 cursor-pointer font-sans"
+                                    >
+                                        Cancelar Edição
+                                    </button>
+                                )}
+                            </div>
+                        </form>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        {/* List of games */}
+                        <div className="lg:col-span-5 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl space-y-4">
+                            <h3 className="text-base font-black text-slate-900 flex items-center space-x-1 font-sans">
+                                <Trophy size={18} className="text-yellow-500" />
+                                <span>Jogos de Copa Cadastrados</span>
+                            </h3>
+
+                            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                                {wcGames.map(game => (
+                                    <div key={game.id} className={`p-4 rounded-xl border flex items-center justify-between gap-3 ${game.is_active ? 'bg-emerald-500/5 border-emerald-500/20 shadow-sm shadow-emerald-500/10' : 'bg-slate-50 border-slate-200/60'}`}>
+                                        <div className="flex items-center space-x-2.5">
+                                            <div className="flex items-center space-x-1.5 shrink-0">
+                                                <FlagImage src={game.brazil_flag_url || 'https://flagcdn.com/w160/br.png'} alt="BR" className="w-7 h-4.5 object-cover rounded shadow-sm" />
+                                                <span className="text-[9px] text-slate-300 font-bold font-sans">x</span>
+                                                <FlagImage src={game.opponent_flag_url} alt={game.opponent_name} className="w-7 h-4.5 object-cover rounded shadow-sm" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-xs font-black text-slate-800 uppercase font-sans">Brasil x {game.opponent_name}</h4>
+                                                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider font-mono">
+                                                    {game.brazil_score !== null ? `Placar: ${game.brazil_score} x ${game.opponent_score}` : 'Sem placar final'}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center space-x-2">
+                                            <button 
+                                                onClick={() => {
+                                                    setWcSelectedGame(game);
+                                                    setWcForm({
+                                                        opponent_name: game.opponent_name,
+                                                        opponent_code: game.opponent_code,
+                                                        brazil_score: game.brazil_score !== null ? String(game.brazil_score) : '',
+                                                        opponent_score: game.opponent_score !== null ? String(game.opponent_score) : '',
+                                                        prizes: game.prizes,
+                                                        is_active: game.is_active,
+                                                        partner_logos: game.partner_logos || [],
+                                                        mascot_url: game.mascot_url || '',
+                                                        brazil_flag_url: game.brazil_flag_url || 'https://flagcdn.com/w160/br.png',
+                                                        opponent_flag_url: game.opponent_flag_url || 'https://flagcdn.com/w160/ar.png'
+                                                    });
+                                                }}
+                                                className="p-1 px-2.5 text-[10px] bg-slate-100 text-slate-600 rounded-lg hover:bg-[#279267] hover:text-white font-bold transition-all font-sans cursor-pointer"
+                                            >
+                                                Editar
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteWcGame(game.id)}
+                                                className="p-1 hover:bg-red-500 hover:text-white text-slate-400 rounded-lg transition-all cursor-pointer"
+                                            >
+                                                <Trash2 size={13} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {wcGames.length === 0 && (
+                                    <p className="text-center text-xs text-slate-400 py-6 font-semibold font-sans">Nenhum jogo cadastrado.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* List of client predictions */}
+                        <div className="lg:col-span-7 bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl space-y-4">
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                                <h3 className="text-base font-black text-slate-900 font-sans">Palpites dos Clientes</h3>
+                                <input 
+                                    type="text" 
+                                    placeholder="Filtrar por nome ou whatsapp..." 
+                                    value={wcPredictionsSearch}
+                                    onChange={e => setWcPredictionsSearch(e.target.value)}
+                                    className="px-3 py-1 bg-slate-50 border border-slate-200 rounded-xl text-xs outline-none focus:border-[#279267] w-full sm:w-60 font-sans font-medium text-slate-700"
+                                />
+                            </div>
+
+                            <div className="overflow-x-auto border border-slate-100 rounded-2xl max-h-[420px] overflow-y-auto">
+                                <table className="w-full text-left border-collapse text-xs font-sans">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest font-sans">
+                                            <th className="p-3">Cliente</th>
+                                            <th className="p-3">Palpite</th>
+                                            <th className="p-3">Status</th>
+                                            <th className="p-3">Data</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {wcPredictions
+                                            .filter(p => !wcPredictionsSearch || p.customer_name.toLowerCase().includes(wcPredictionsSearch.toLowerCase()) || p.whatsapp.includes(wcPredictionsSearch))
+                                            .map(pred => {
+                                                const game = wcGames.find(g => String(g.id) === String(pred.game_id));
+                                                let statusText = 'Aguardando';
+                                                let statusColor = 'bg-yellow-500/10 text-yellow-600';
+                                                
+                                                if (game && game.brazil_score !== null && game.opponent_score !== null) {
+                                                    if (game.brazil_score === pred.predicted_brazil_score && game.opponent_score === pred.predicted_opponent_score) {
+                                                        statusText = 'Acertou';
+                                                        statusColor = 'bg-green-500/10 text-green-600 border border-green-500/20';
+                                                    } else {
+                                                        statusText = 'Errou';
+                                                        statusColor = 'bg-red-500/10 text-red-600 border border-red-500/20';
+                                                    }
+                                                }
+
+                                                return (
+                                                    <tr key={pred.id} className="hover:bg-slate-50/50">
+                                                        <td className="p-3">
+                                                            <div className="font-extrabold text-slate-800">{pred.customer_name}</div>
+                                                            <a 
+                                                                href={`https://wa.me/55${pred.whatsapp}`} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer"
+                                                                className="text-[10px] text-[#279267]/80 hover:underline inline-block mt-0.5 font-mono"
+                                                            >
+                                                                +55 {pred.whatsapp.length === 11 
+                                                                    ? `(${pred.whatsapp.slice(0,2)}) ${pred.whatsapp.slice(2,7)}-${pred.whatsapp.slice(7)}` 
+                                                                    : pred.whatsapp.length === 10 
+                                                                        ? `(${pred.whatsapp.slice(0,2)}) ${pred.whatsapp.slice(2,6)}-${pred.whatsapp.slice(6)}` 
+                                                                        : pred.whatsapp}
+                                                            </a>
+                                                        </td>
+                                                        <td className="p-3 font-semibold text-slate-700">
+                                                            <div>VS {game?.opponent_name || 'Desconhecido'}</div>
+                                                            <div className="text-[#279267] font-black">{pred.predicted_brazil_score} x {pred.predicted_opponent_score}</div>
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${statusColor}`}>
+                                                                {statusText}
+                                                            </span>
+                                                        </td>
+                                                        <td className="p-3 text-slate-400 font-semibold text-[10px] font-mono">
+                                                            {new Date(pred.created_at).toLocaleDateString('pt-BR')}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        {wcPredictions.length === 0 && (
+                                            <tr>
+                                                <td colSpan={4} className="text-center py-8 text-slate-400 font-semibold font-sans">Nenhum palpite recebido ainda.</td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {deleteConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
@@ -5399,6 +6070,7 @@ const App = () => {
                     <Routes>
                         <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} featuredCouponsTitle={featuredCouponsTitle} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
+                        <Route path="/bolao" element={<WorldCupBolaoPage partners={partners} categories={categories} headerLogo={headerLogo} />} />
                         <Route path="/lgn-p5r2t8w1z4q9y-access" element={<LoginPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />

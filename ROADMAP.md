@@ -208,9 +208,25 @@ Funcionalidade para identificar usuários que já possuem identificação (OneSi
 
 ---
 
+## 📍 18. Notificações por Proximidade e Geofencing (Fase 2)
+O objetivo é transformar a experiência do usuário de passiva para ativa e hiperlocal, detectando quando ele está fisicamente próximo a um estabelecimento parceiro para enviar um alerta suave e persuasivo.
+
+*   **Experiência do Usuário (O Toque Humano):**
+    *   Ao caminhar pela região (como a Vila Formosa) e passar em frente a uma loja parceira, o cliente recebe uma notificação push amigável e contextualizada (ex: *"Que tal um café quentinho na [Loja X]? Você tem um cupom especial de 15% esperando por você bem aqui do lado!"*).
+    *   Garante uma comunicação fluida, sem spam, respeitando a privacidade e focando na conveniência real do momento de compra de forma agregadora e humana.
+*   **Viabilidade Técnica e Arquitetura:**
+    *   **Coordenadas dos Parceiros:** Adicionar campos de `latitude`, `longitude` e `raio_geofence_metros` (ex: 50 a 100 metros) no cadastro da tabela de parceiros no Supabase.
+    *   **Desafio Web (PWA):** Devido às restrições de consumo de bateria e segurança dos navegadores tradicionais para processos em segundo plano (especialmente no Safari iOS), a detecção clássica de geofencing em background puro possui limitações no ecossistema web de browsers comuns.
+    *   **Estratégias de Viabilização técnica:**
+        1.  **Abordagem Web (Geolocalização Ativa em Primeiro Plano):** Ao abrir a plataforma móvel pelo navegador, o sistema solicita acesso à geolocalização (`requestFramePermissions` com `geolocation` ativo em `metadata.json`) e calcula em tempo real a distância física dos parceiros, destacando instantaneamente no cabeçalho ou no topo da vitrine os cupons ativos com selo *"Menos de 100m de você!"*.
+        2.  **Abordagem com Push Segmentado do OneSignal:** Utilizar os recursos integrados de geolocalização do OneSignal SDK para segmentação geográfica automatizada por região e envio de campanhas push agendadas para usuários localizados num perímetro geográfico específico.
+        3.  **Abordagem via Native Wrapper (Capacitor / Cordova):** Futura evolução para empacotar o PWA em um aplicativo híbrido instalável na Play Store/App Store. Isso permite registrar e mapear pontos geográficos (`CLCircularRegion` no iOS e `GeofencingClient` do Google Play Services no Android) diretamente no nível de sistema operacional, acionando notificações automáticas e suaves toda vez que o sinal disparar, mesmo sem conexão constante de dados ou com o aparelho em repouso no bolso do cliente.
+
+---
+
 ## 🏗️ 17. Próximas Fases e Melhorias
 *   **Sistema de Cartão Presente:** Benefícios corporativos exclusivos para colaboradores de empresas parceiras (Em desenvolvimento).
 *   **Programa de Fidelidade Gamificado:** Novas formas de acumular e resgatar vantagens nos parceiros locais.
 
 ---
-*Documento atualizado em 08 de Maio de 2026. (Update: Adicionado item 16 - Reativação de Notificações)*
+*Documento atualizado em 07 de Junho de 2026. (Update: Adicionado item 18 - Geofencing de Proximidade)*
