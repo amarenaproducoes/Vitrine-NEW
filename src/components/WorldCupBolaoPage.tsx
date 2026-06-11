@@ -608,7 +608,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
           Bolão de Palpites <span className="bg-gradient-to-r from-emerald-600 to-[#279267] bg-clip-text text-transparent">Aparece Aí por Aqui</span>
         </h1>
         <p className="text-sm md:text-base text-slate-600 font-medium max-w-2xl mt-3">
-          Participe, mostre que você é um craque de bola e concorra a <span className="text-emerald-600 font-bold">Vale Compras Exclusivos</span> de nossos parceiros comerciais locais! 🎁⚽
+          Participe, mostre que você é um craque nos palpites e ganhe <span className="text-emerald-600 font-bold">Vale Compras exclusivos</span> de nossos parceiros comerciais locais! 🎁⚽
         </p>
       </div>
 
@@ -905,7 +905,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
             
             <h3 className="text-xs font-black text-emerald-800 tracking-widest uppercase mb-4 flex items-center justify-center space-x-1 font-sans">
               <Star size={12} className="animate-pulse text-emerald-600" />
-              <span>Parceiros Copantes</span>
+              <span>Parceiros Participantes</span>
             </h3>
 
             {/* Continuous Marquee/Ticker with Partner Names */}
