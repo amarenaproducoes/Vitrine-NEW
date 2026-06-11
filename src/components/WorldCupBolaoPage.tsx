@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import mascotImg from '../assets/images/bolao_copa_mockup_1781128865746.png';
 import OneSignal from 'react-onesignal';
-import { Trophy, Share2, ArrowRight, User, Phone, CheckCircle, HelpCircle, AlertCircle, RefreshCw, Star } from 'lucide-react';
+import { Trophy, Share2, ArrowRight, User, Phone, CheckCircle, HelpCircle, AlertCircle, RefreshCw, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { animate } from 'motion';
 import confetti from 'canvas-confetti';
 
@@ -36,6 +36,8 @@ interface Partner {
   id: string;
   name: string;
   imageUrl: string;
+  category?: string;
+  activity?: string;
 }
 
 interface WorldCupBolaoPageProps {
@@ -179,8 +181,20 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
   const [predBrazil, setPredBrazil] = useState<string>('');
   const [predOpponent, setPredOpponent] = useState<string>('');
   
-  // Carousel angle / rotation
+  // Safe images resolution mapping
+  const activeSponsors = useMemo(() => {
+    if (!activeGame || !activeGame.partner_logos) return [];
+    return partners.filter(p => activeGame.partner_logos.includes(p.id));
+  }, [activeGame, partners]);
+
+  const sponsorsToShow = useMemo(() => {
+    if (activeSponsors && activeSponsors.length > 0) return activeSponsors;
+    return partners || [];
+  }, [activeSponsors, partners]);
+
+  // Carousel settings & indices
   const [carouselRotation, setCarouselRotation] = useState(0);
+  const [currentSponsorIndex, setCurrentSponsorIndex] = useState(0);
 
   // Status indicators
   const [loading, setLoading] = useState(true);
@@ -273,13 +287,15 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
     if ((window as any).isOneSignalInitialized) {
       setHasOneSignalId(true);
     }
+  }, []);
 
-    // Auto rotate 3D carousel effect
+  useEffect(() => {
+    if (sponsorsToShow.length <= 1) return;
     const interval = setInterval(() => {
-      setCarouselRotation(prev => prev - 0.8);
-    }, 30);
+      setCurrentSponsorIndex(prev => (prev + 1) % sponsorsToShow.length);
+    }, 4500);
     return () => clearInterval(interval);
-  }, [partners]);
+  }, [sponsorsToShow]);
 
   // Clean whatsapp input format helper
   const handleWhatsappChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -400,7 +416,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
           setPredOpponent(String(existing.predicted_opponent_score));
           setPredictionFeedback({
             success: true,
-            message: `Você já enviou seu palpite para o jogo contra o ${activeGame.opponent_name}! Seus dedos estão cruzados! 🤞✨`,
+            message: `Você já enviou seu palpite para o jogo contra o ${activeGame.opponent_name}! Seus dedos estão cruzados! 🤞✨ \n\nQue tal convidar os seus amigos para participarem também do nosso Bolão? Compartilhe agora para torcerem juntos! 🇧🇷⚽`,
             submittedPred: {
               brazil: existing.predicted_brazil_score,
               opponent: existing.predicted_opponent_score
@@ -424,7 +440,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
           setPredOpponent(String(existing.predicted_opponent_score));
           setPredictionFeedback({
             success: true,
-            message: `Você já enviou seu palpite para este jogo! 🤞✨`,
+            message: `Você já enviou seu palpite para este jogo! Seus dedos estão cruzados! 🤞✨ \n\nQue tal convidar os seus amigos para participarem também do nosso Bolão? Compartilhe agora para torcerem juntos! 🇧🇷⚽`,
             submittedPred: {
               brazil: existing.predicted_brazil_score,
               opponent: existing.predicted_opponent_score
@@ -490,7 +506,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
 
       setPredictionFeedback({
         success: true,
-        message: 'Palpite registrado com sucesso! Que tal convidar os amigos?',
+        message: `Palpite registrado com sucesso! Seus dedos estão cruzados! 🤞✨ \n\nQue tal convidar os seus amigos para participarem também do nosso Bolão? Compartilhe agora para torcerem juntos! 🇧🇷⚽`,
         submittedPred: { brazil: scoreBr, opponent: scoreOp }
       });
 
@@ -553,26 +569,36 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
   };
 
-  // Safe images resolution mapping
-  const activeSponsors = useMemo(() => {
-    if (!activeGame || !activeGame.partner_logos) return [];
-    return partners.filter(p => activeGame.partner_logos.includes(p.id));
-  }, [activeGame, partners]);
-
   return (
     <div className="w-full max-w-4xl mx-auto px-4 md:px-6 py-8 md:py-12 mt-4">
+      {/* Custom styles for our smooth scrolling marquee animation */}
+      <style>{`
+        @keyframes marquee {
+          0% { transform: translateX(0%); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          width: max-content;
+          animation: marquee 20s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
+      `}</style>
+
       {/* Upper Area with Mascot Logo & Dynamic Slogan */}
       <div className="relative flex flex-col items-center text-center pb-6 md:pb-8">
         
-        {/* Customized Rounded Highlighted Mascot Frame */}
-        <div className="relative w-48 h-48 md:w-56 md:h-56 mb-6 flex items-center justify-center bg-white rounded-full shadow-[0_15px_40px_rgba(39,146,103,0.3)] border-4 border-emerald-500 overflow-hidden group animate-fade-in">
-          {/* Ambient inner soft glowing backdrop */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-yellow-300/10 via-emerald-100 to-emerald-500/15 opacity-80 group-hover:opacity-100 transition-opacity duration-500" />
+        {/* Customized Mascot Frame with transparent background and subtle hover glow */}
+        <div className="relative w-48 h-48 md:w-56 md:h-56 mb-6 flex items-center justify-center bg-transparent group animate-fade-in">
+          {/* Subtle glowing ambient backdrop behind the transparent mascot */}
+          <div className="absolute inset-2 bg-gradient-to-tr from-yellow-400/20 to-emerald-500/20 rounded-full blur-3xl opacity-75 group-hover:opacity-100 transition-opacity duration-500" />
           
           <img 
             src={activeGame?.mascot_url || mascotImg} 
             alt="Mascote Oficial" 
-            className="relative w-36 h-36 md:w-44 md:h-44 object-contain pointer-events-none transition-all duration-500 md:group-hover:scale-110 drop-shadow-lg"
+            className="relative w-44 h-44 md:w-52 md:h-52 object-contain pointer-events-none transition-all duration-500 md:group-hover:scale-105 drop-shadow-[0_15px_30px_rgba(39,146,103,0.3)]"
             referrerPolicy="no-referrer"
           />
         </div>
@@ -765,7 +791,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                         {predictionFeedback ? (
                           <div className="space-y-4 animate-scale-in">
                             <div className="p-4 bg-emerald-500/10 text-emerald-800 border border-emerald-500/20 rounded-2xl text-center">
-                              <p className="text-xs md:text-sm font-bold">{predictionFeedback.message}</p>
+                              <p className="text-xs md:text-sm font-bold whitespace-pre-line">{predictionFeedback.message}</p>
                             </div>
 
                             <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -873,55 +899,110 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
 
         </div>
 
-        {/* Right Column - Rotating 3D Sponsor Carousel */}
-        <div className="md:col-span-4 flex flex-col items-center">
-          <div className="bg-gradient-to-br from-[#279267]/5 to-[#279267]/10 border border-[#279267]/10 rounded-3xl p-6 w-full text-center relative overflow-hidden flex flex-col items-center">
+        {/* Right Column - Modern 9:16 Sponsor Carousel & Partner Names Animation */}
+        <div className="md:col-span-4 flex flex-col items-center w-full">
+          <div className="bg-gradient-to-br from-[#279267]/5 to-[#279267]/10 border border-[#279267]/10 rounded-3xl p-4 sm:p-6 w-full text-center relative overflow-hidden flex flex-col items-center">
             
-            <h3 className="text-xs font-black text-emerald-800 tracking-widest uppercase mb-6 flex items-center justify-center space-x-1">
-              <Star size={12} className="animate-pulse" />
-              <span>Parceiros Oficiais</span>
+            <h3 className="text-xs font-black text-emerald-800 tracking-widest uppercase mb-4 flex items-center justify-center space-x-1 font-sans">
+              <Star size={12} className="animate-pulse text-emerald-600" />
+              <span>Parceiros Copantes</span>
             </h3>
 
-            {/* Depth 3D Carousel container */}
-            <div className="relative w-full h-[220px] flex items-center justify-center overflow-visible select-none my-4">
-              {activeSponsors.length > 0 ? (
-                <div 
-                  className="relative w-full h-full flex items-center justify-center transform-gpu"
-                  style={{ transformStyle: 'preserve-3d' }}
-                >
-                  {activeSponsors.map((partner, index) => {
-                    const total = activeSponsors.length;
-                    const rotateAngle = (index * (360 / total)) + carouselRotation;
-                    // Keep radius in safe bounds
-                    const radius = 95; 
-                    
+            {/* Continuous Marquee/Ticker with Partner Names */}
+            <div className="w-full overflow-hidden bg-white/70 py-2 rounded-xl border border-emerald-500/10 mb-4 select-none relative">
+              <div className="flex whitespace-nowrap animate-marquee">
+                {/* Duplicate the array multi-fold to guarantee elegant looping */}
+                {[...sponsorsToShow, ...sponsorsToShow, ...sponsorsToShow, ...sponsorsToShow].map((partner, index) => (
+                  <span key={`${partner.id}-${index}`} className="mx-3.5 text-[10px] font-black text-emerald-700 uppercase tracking-wider flex items-center space-x-1 font-sans">
+                    <span className="text-emerald-500">⚽</span>
+                    <span>{partner.name}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Depth 9:16 Carousel container */}
+            <div className="relative w-full max-w-[280px] aspect-[9/16] mx-auto bg-slate-100 rounded-2xl shadow-md overflow-hidden group/carousel border border-slate-200/50">
+              {sponsorsToShow.length > 0 ? (
+                <div className="relative w-full h-full">
+                  {sponsorsToShow.map((partner, idx) => {
+                    const isActive = idx === currentSponsorIndex;
                     return (
-                      <div
-                        key={partner.id}
-                        className="absolute w-20 h-20 bg-white rounded-2xl p-1.5 border border-slate-100 shadow-md shadow-emerald-900/10 flex items-center justify-center hover:scale-110 transition-transform duration-200"
-                        style={{
-                          transform: `rotateY(${rotateAngle}deg) translateZ(${radius}px)`,
-                          backfaceVisibility: 'visible',
-                          transformStyle: 'preserve-3d',
-                        }}
+                      <div 
+                        key={partner.id} 
+                        className={`absolute inset-0 transition-all duration-700 ease-in-out ${isActive ? 'opacity-100 z-10 scale-100' : 'opacity-0 z-0 scale-95 pointer-events-none'}`}
                       >
-                        <img 
-                          src={partner.imageUrl} 
-                          alt={partner.name} 
-                          className="w-full h-full object-contain rounded-xl"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://wp.clube.apareceai.com/wp-content/uploads/2026/05/logo_placeholder.png';
-                          }}
-                        />
+                        <a 
+                          href={`/parceiro/${partner.id}`}
+                          className="block w-full h-full relative"
+                        >
+                          <img 
+                            src={partner.imageUrl} 
+                            alt={partner.name} 
+                            className="w-full h-full object-cover select-none"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              e.currentTarget.src = 'https://wp.clube.apareceai.com/wp-content/uploads/2026/05/logo_placeholder.png';
+                            }}
+                          />
+                          {/* Bottom info banner with dark glassy overlay */}
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent p-4 text-left">
+                            <span className="px-2 py-0.5 bg-emerald-500 text-white text-[9px] font-black uppercase rounded tracking-wider inline-block mb-1 font-sans">
+                              {partner.category || 'Parceiro'}
+                            </span>
+                            <h4 className="text-white text-xs sm:text-xs font-black uppercase tracking-wide truncate font-sans">{partner.name}</h4>
+                            <p className="text-gray-300 text-[10px] font-medium truncate font-sans">{partner.activity || 'Apoie o comércio local!'}</p>
+                          </div>
+                        </a>
                       </div>
                     );
                   })}
+
+                  {/* Manual Navigation Controls */}
+                  {sponsorsToShow.length > 1 && (
+                    <>
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentSponsorIndex(prev => (prev - 1 + sponsorsToShow.length) % sponsorsToShow.length);
+                        }}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-emerald-600 backdrop-blur-md text-white flex items-center justify-center transition-all z-20 opacity-0 group-hover/carousel:opacity-100 cursor-pointer border border-white/10 select-none"
+                      >
+                        <ChevronLeft size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentSponsorIndex(prev => (prev + 1) % sponsorsToShow.length);
+                        }}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/40 hover:bg-emerald-600 backdrop-blur-md text-white flex items-center justify-center transition-all z-20 opacity-0 group-hover/carousel:opacity-100 cursor-pointer border border-white/10 select-none"
+                      >
+                        <ChevronRight size={14} />
+                      </button>
+
+                      {/* Sliding indicator dots */}
+                      <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex items-center space-x-1 z-20">
+                        {sponsorsToShow.map((_, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCurrentSponsorIndex(idx);
+                            }}
+                            className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentSponsorIndex ? 'bg-emerald-500 w-3' : 'bg-white/50 hover:bg-white/85'}`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center space-y-1 text-slate-500 text-xs">
-                  <AlertCircle size={32} className="text-slate-300" />
-                  <span>Nenhum parceiro destacado nesta Copa.</span>
+                <div className="flex flex-col items-center justify-center h-full text-slate-500 p-4">
+                  <AlertCircle size={28} className="text-slate-300 mb-1" />
+                  <span className="text-[10px] font-semibold text-slate-400">Nenhum parceiro nesta rodada.</span>
                 </div>
               )}
             </div>
