@@ -168,6 +168,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
   const navigate = useNavigate();
   const [whatsapp, setWhatsapp] = useState('');
   const [fullName, setFullName] = useState('');
+  const [hasConsented, setHasConsented] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
   const [isNewUser, setIsNewUser] = useState(false);
@@ -595,12 +596,16 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
           {/* Subtle glowing ambient backdrop behind the transparent mascot */}
           <div className="absolute inset-2 bg-gradient-to-tr from-yellow-400/20 to-emerald-500/20 rounded-full blur-3xl opacity-75 group-hover:opacity-100 transition-opacity duration-500" />
           
-          <img 
-            src={activeGame?.mascot_url || mascotImg} 
-            alt="Mascote Oficial" 
-            className="relative w-44 h-44 md:w-52 md:h-52 object-contain pointer-events-none transition-all duration-500 md:group-hover:scale-105 drop-shadow-[0_15px_30px_rgba(39,146,103,0.3)]"
-            referrerPolicy="no-referrer"
-          />
+          {(!loading && (activeGame?.mascot_url || mascotImg)) ? (
+            <img 
+              src={activeGame?.mascot_url || mascotImg} 
+              alt="Mascote Oficial" 
+              className="relative w-44 h-44 md:w-52 md:h-52 object-contain pointer-events-none transition-all duration-500 md:group-hover:scale-105 drop-shadow-[0_15px_30px_rgba(39,146,103,0.3)]"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-44 h-44 md:w-52 md:h-52" />
+          )}
         </div>
 
         {/* Header Branding */}
@@ -787,6 +792,35 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                           </p>
                         </div>
 
+                        {/* Privacy & Data Consent Checkbox */}
+                        {!predictionFeedback?.submittedPred && (
+                          <div className="space-y-4 pt-2">
+                            <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex gap-3 text-left animate-slide-in">
+                              <AlertCircle className="text-amber-600 w-5 h-5 shrink-0 mt-0.5" />
+                              <p className="text-[10px] leading-relaxed text-amber-800 font-medium">
+                                <strong>AVISO DE COLETA DE DADOS:</strong> Seus dados serão coletados e utilizados para fins publicitários e informativos sobre promoções e benefícios locais, conforme nossa <Link to="/politica-de-privacidade" className="underline font-bold hover:text-[#279267]">Política de Privacidade</Link> e <Link to="/termos-de-uso" className="underline font-bold hover:text-[#279267]">Termos de Uso</Link>.
+                              </p>
+                            </div>
+
+                            <label className="flex items-start gap-3 cursor-pointer group text-left">
+                              <div className="relative mt-0.5">
+                                <input 
+                                  type="checkbox"
+                                  checked={hasConsented}
+                                  onChange={(e) => setHasConsented(e.target.checked)}
+                                  className="sr-only"
+                                />
+                                <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center ${hasConsented ? 'bg-emerald-600 border-emerald-600' : 'bg-white border-slate-200 group-hover:border-slate-300'}`}>
+                                  {hasConsented && <CheckCircle className="text-white w-3.5 h-3.5" />}
+                                </div>
+                              </div>
+                              <span className="text-xs text-slate-600 font-medium leading-tight select-none">
+                                Estou ciente e autorizo a coleta e uso dos meus dados, bem como o recebimento de notificações no navegador, conforme a Política de Privacidade e Termos de Uso.
+                              </span>
+                            </label>
+                          </div>
+                        )}
+
                         {/* Submission outcome block */}
                         {predictionFeedback ? (
                           <div className="space-y-4 animate-scale-in">
@@ -806,6 +840,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                               </a>
 
                               <Link 
+                                shadow-md="true"
                                 to="/" 
                                 className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center space-x-2 text-sm shadow-md cursor-pointer"
                               >
@@ -817,7 +852,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                         ) : (
                           <button 
                             type="submit" 
-                            disabled={submitting || predBrazil === '' || predOpponent === ''}
+                            disabled={submitting || predBrazil === '' || predOpponent === '' || !hasConsented}
                             className="w-full py-3.5 bg-emerald-600 text-white font-extrabold rounded-2xl hover:bg-emerald-700 active:scale-[0.98] transition-all shadow-lg shadow-green-500/20 text-sm flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
                           >
                             {submitting ? (
