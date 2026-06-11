@@ -5160,11 +5160,11 @@ const AdminPage = ({
                                 <label className="text-sm font-bold text-slate-700 block">Prêmios da Rodada</label>
                                 <textarea 
                                     required
-                                    rows={2}
+                                    rows={4}
                                     value={wcForm.prizes}
                                     onChange={e => setWcForm({ ...wcForm, prizes: e.target.value })}
                                     placeholder="Ex: R$ 150,00 em prêmios dos parceiros!"
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all resize-none text-slate-700 font-sans"
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all resize-y text-slate-700 font-sans"
                                 />
                             </div>
 

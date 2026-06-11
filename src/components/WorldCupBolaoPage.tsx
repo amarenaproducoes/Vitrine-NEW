@@ -787,7 +787,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                             <Trophy size={18} className="text-amber-500 shrink-0" />
                             <h4 className="text-xs font-black uppercase tracking-wider">Prêmios em Jogo nesta Rodada!</h4>
                           </div>
-                          <p className="text-xs md:text-sm text-amber-900 font-semibold leading-relaxed">
+                          <p className="text-xs md:text-sm text-amber-900 font-semibold leading-relaxed whitespace-pre-line">
                             {activeGame.prizes}
                           </p>
                         </div>
