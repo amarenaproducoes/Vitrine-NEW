@@ -28,6 +28,9 @@ export interface Partner {
   directLink?: string;
   useGoogleMapsAsDirect?: boolean;
   directLinkClicks?: number;
+  approval_status?: string;
+  approval_token?: string;
+  approval_feedback?: string;
 }
 
 export interface GiftCard {

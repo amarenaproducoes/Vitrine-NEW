@@ -11,7 +11,7 @@ import DOMPurify from 'dompurify';
 import { 
     Store, Car, Megaphone, Sparkles, ChevronRight, ChevronLeft, Plus, Trash2, 
     Filter, Info, ArrowRight, Zap, Edit2, Upload, X, Trophy, Settings, DollarSign, History, LogOut, MessageSquare, Search, Share2, MousePointerClick,
-    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List, Shield, CheckCircle2
+    Save, Image as ImageIcon, FileText, Hash, Type, Calendar, ExternalLink, RefreshCw, AlertCircle, Copy, Gift, List, Shield, CheckCircle2, Video
 } from 'lucide-react';
 
 import Header from './components/Header';
@@ -27,6 +27,7 @@ import RouletteModal from './components/RouletteModal';
 import WelcomeModal from './components/WelcomeModal';
 import WelcomePage from './components/WelcomePage';
 import LoginPage from './components/LoginPage';
+import PartnerValidationPage from './pages/PartnerValidationPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
 import { AnimatePresence, motion } from 'motion/react';
@@ -946,7 +947,15 @@ const AdminPage = ({
     bannerLinks,
     setBannerLinks,
     bannerNames,
-    setBannerNames
+    setBannerNames,
+    presentationTitle,
+    setPresentationTitle,
+    presentationText,
+    setPresentationText,
+    presentationVideoUrl,
+    setPresentationVideoUrl,
+    isSavingPresentation,
+    handleSavePresentation
 }: { 
     partners: Partner[], 
     setPartners: React.Dispatch<React.SetStateAction<Partner[]>>, 
@@ -978,9 +987,17 @@ const AdminPage = ({
     bannerLinks: {[key: number]: string},
     setBannerLinks: React.Dispatch<React.SetStateAction<{[key: number]: string}>>,
     bannerNames: {[key: number]: string},
-    setBannerNames: React.Dispatch<React.SetStateAction<{[key: number]: string}>>
+    setBannerNames: React.Dispatch<React.SetStateAction<{[key: number]: string}>>,
+    presentationTitle: string,
+    setPresentationTitle: React.Dispatch<React.SetStateAction<string>>,
+    presentationText: string,
+    setPresentationText: React.Dispatch<React.SetStateAction<string>>,
+    presentationVideoUrl: string,
+    setPresentationVideoUrl: React.Dispatch<React.SetStateAction<string>>,
+    isSavingPresentation: boolean,
+    handleSavePresentation: (e: React.FormEvent) => Promise<void>
 }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards' | 'worldcup'>('partners');
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards' | 'worldcup' | 'approval'>('partners');
     const [giftCardPage, setGiftCardPage] = useState(0);
     const [cashbackLogsPage, setCashbackLogsPage] = useState(0);
     const [activeGiftCardsPage, setActiveGiftCardsPage] = useState(0);
@@ -1553,7 +1570,10 @@ const AdminPage = ({
         displayId: number,
         directLink: string,
         useGoogleMapsAsDirect: boolean,
-        directLinkClicks: number
+        directLinkClicks: number,
+        approval_status: string,
+        approval_token: string,
+        approval_feedback: string
     }>({ 
         name: '', 
         category: categories.length > 0 ? categories[0].name : '', 
@@ -1580,7 +1600,10 @@ const AdminPage = ({
         displayId: 0,
         directLink: '',
         useGoogleMapsAsDirect: false,
-        directLinkClicks: 0
+        directLinkClicks: 0,
+        approval_status: 'aguardando_aprovacao',
+        approval_token: '',
+        approval_feedback: ''
     });
     const [editingId, setEditingId] = useState<string | null>(null);
     
@@ -2095,6 +2118,23 @@ const AdminPage = ({
         }
     };
 
+    const generateApprovalToken = (partnerName: string): string => {
+        const cleanName = partnerName
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // remove accents
+            .replace(/[^a-z0-9]/g, "-") // replace spaces and special chars with dash
+            .replace(/-+/g, "-") // collapse multiple dashes
+            .replace(/^-|-$/g, ""); // trim leading/trailing dashes
+
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = String(now.getFullYear()).slice(-2); // last 2 digits of year
+
+        return `aprovacao-${cleanName || 'parceiro'}-${day}${month}${year}`;
+    };
+
     const handleAddOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         
@@ -2160,6 +2200,7 @@ const AdminPage = ({
                 }
             }
 
+            const finalToken = formData.approval_token || generateApprovalToken(formData.name);
             const partnerData = {
                 name: formData.name,
                 category: formData.category,
@@ -2183,7 +2224,10 @@ const AdminPage = ({
                 display_id: formData.displayId,
                 direct_link: formData.directLink || null,
                 use_google_maps_as_direct: formData.useGoogleMapsAsDirect,
-                direct_link_clicks: formData.directLinkClicks
+                direct_link_clicks: formData.directLinkClicks,
+                approval_status: formData.approval_status || 'aguardando_aprovacao',
+                approval_token: finalToken,
+                approval_feedback: formData.approval_feedback || null
             };
 
             // Validate 10 partners per page limit (only considering authorized partners)
@@ -2227,7 +2271,10 @@ const AdminPage = ({
                         videoUrl: formData.videoUrl || '',
                         websiteUrl: formData.websiteUrl || '',
                         id: editingId, 
-                        displayId: partnerData.display_id || p.displayId || 0
+                        displayId: partnerData.display_id || p.displayId || 0,
+                        approval_status: partnerData.approval_status,
+                        approval_token: partnerData.approval_token,
+                        approval_feedback: partnerData.approval_feedback || ''
                     } : p));
                 } else {
                     console.log('Update response data:', data);
@@ -2242,7 +2289,10 @@ const AdminPage = ({
                         displayId: data.display_id,
                         directLink: data.direct_link || '',
                         useGoogleMapsAsDirect: data.use_google_maps_as_direct ?? false,
-                        directLinkClicks: data.direct_link_clicks || 0
+                        directLinkClicks: data.direct_link_clicks || 0,
+                        approval_status: data.approval_status || 'aguardando_aprovacao',
+                        approval_token: data.approval_token || '',
+                        approval_feedback: data.approval_feedback || ''
                     } : p));
                 }
                 alert("Parceiro atualizado com sucesso!");
@@ -2270,7 +2320,10 @@ const AdminPage = ({
                         videoUrl: formData.videoUrl || '',
                         websiteUrl: formData.websiteUrl || '',
                         id: 'temp-' + Date.now(), // Fallback ID if DB didn't return one
-                        displayId: partnerData.display_id || formData.displayId || 0
+                        displayId: partnerData.display_id || formData.displayId || 0,
+                        approval_status: partnerData.approval_status,
+                        approval_token: partnerData.approval_token,
+                        approval_feedback: partnerData.approval_feedback || ''
                     };
                     setPartners(prev => [newPartner, ...prev]);
                 } else {
@@ -2282,7 +2335,10 @@ const AdminPage = ({
                         videoUrl: data.video_url || '',
                         websiteUrl: data.website_url || '',
                         id: data.id, 
-                        displayId: data.display_id 
+                        displayId: data.display_id,
+                        approval_status: data.approval_status || 'aguardando_aprovacao',
+                        approval_token: data.approval_token || '',
+                        approval_feedback: data.approval_feedback || ''
                     };
                     setPartners(prev => [newPartner, ...prev]);
                 }
@@ -2325,7 +2381,10 @@ const AdminPage = ({
             displayId: nextId,
             directLink: '',
             useGoogleMapsAsDirect: false,
-            directLinkClicks: 0
+            directLinkClicks: 0,
+            approval_status: 'aguardando_aprovacao',
+            approval_token: '',
+            approval_feedback: ''
         });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -2360,7 +2419,10 @@ const AdminPage = ({
             displayId: partner.displayId || 0,
             directLink: partner.directLink || '',
             useGoogleMapsAsDirect: partner.useGoogleMapsAsDirect || false,
-            directLinkClicks: partner.directLinkClicks || 0
+            directLinkClicks: partner.directLinkClicks || 0,
+            approval_status: partner.approval_status || 'aguardando_aprovacao',
+            approval_token: partner.approval_token || '',
+            approval_feedback: partner.approval_feedback || ''
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2681,6 +2743,7 @@ const AdminPage = ({
                             <button onClick={() => setActiveTab('campaigns')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'campaigns' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons Surpresa</button>
                             <button onClick={() => setActiveTab('giftcards')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'giftcards' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cartão Presente</button>
                             <button onClick={() => setActiveTab('worldcup')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'worldcup' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>🏆 Jogo da Copa</button>
+                            <button onClick={() => setActiveTab('approval')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'approval' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Apresentação Validação</button>
                             <Link to="/adm-k9x3v8j1n4m7q-ama/mensagens" className="whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all text-slate-500 hover:text-slate-900 flex items-center">
                                 <MessageSquare size={10} className="mr-1" />
                                 Mensagens
@@ -2861,7 +2924,14 @@ const AdminPage = ({
                                                 id="isAuthorized" 
                                                 className="w-5 h-5 accent-[#279267] cursor-pointer" 
                                                 checked={formData.isAuthorized} 
-                                                onChange={e => setFormData({...formData, isAuthorized: e.target.checked})} 
+                                                onChange={e => {
+                                                    const isChecked = e.target.checked;
+                                                    setFormData({
+                                                        ...formData, 
+                                                        isAuthorized: isChecked,
+                                                        approval_status: isChecked ? 'autorizado' : (formData.approval_status === 'autorizado' ? 'aguardando_aprovacao' : formData.approval_status)
+                                                    });
+                                                }} 
                                             />
                                             <label htmlFor="isAuthorized" className="text-sm font-bold text-slate-700 cursor-pointer">Autorizado</label>
                                         </div>
@@ -2885,6 +2955,66 @@ const AdminPage = ({
                                             />
                                             <label htmlFor="giftCardEnabled" className="text-sm font-bold text-slate-700 cursor-pointer">Presente</label>
                                         </div>
+                                    </div>
+
+                                    {/* Processo de Validação e Feedback */}
+                                    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4 font-sans">
+                                        <h4 className="text-[10px] font-black text-[#279267] uppercase tracking-widest ml-1">Validação do Parceiro</h4>
+                                        <div className="flex flex-col space-y-1">
+                                            <label htmlFor="approval_status" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Status da Aprovação</label>
+                                            <select 
+                                                id="approval_status"
+                                                className="w-full px-3 py-2.5 rounded-xl bg-white border border-slate-200 outline-none text-xs font-bold text-slate-700 focus:border-[#279267]" 
+                                                value={formData.approval_status || 'aguardando_aprovacao'} 
+                                                onChange={e => {
+                                                    const newStatus = e.target.value;
+                                                    setFormData({
+                                                        ...formData, 
+                                                        approval_status: newStatus,
+                                                        isAuthorized: newStatus === 'autorizado'
+                                                    });
+                                                }}
+                                            >
+                                                <option value="aguardando_aprovacao">Aguardando aprovação</option>
+                                                <option value="ajustar">Em ajuste (Ajustar)</option>
+                                                <option value="autorizado">Aprovado e Autorizado (Publicado)</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <div className="flex flex-col space-y-1">
+                                            <label htmlFor="approval_feedback" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Anotações de Ajuste</label>
+                                            <textarea 
+                                                id="approval_feedback"
+                                                rows={2}
+                                                className="w-full px-3 py-2 rounded-xl bg-white border border-slate-200 outline-none text-xs font-medium text-slate-700 focus:border-[#279267]" 
+                                                placeholder="Descreva aqui os ajustes sugeridos pelo parceiro..." 
+                                                value={formData.approval_feedback || ''} 
+                                                onChange={e => setFormData({...formData, approval_feedback: e.target.value})} 
+                                            />
+                                        </div>
+
+                                        {editingId && (
+                                            <div className="pt-2 flex flex-col space-y-1 border-t border-slate-200">
+                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block ml-1">Link de Validação Exclusivo:</span>
+                                                <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200">
+                                                    <span className="text-[10px] font-mono text-slate-500 truncate flex-grow">
+                                                        {window.location.origin}/validar-parceiro/{formData.approval_token || generateApprovalToken(formData.name || 'parceiro')}
+                                                    </span>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const tokenValue = formData.approval_token || generateApprovalToken(formData.name || 'parceiro');
+                                                            navigator.clipboard.writeText(`${window.location.origin}/validar-parceiro/${tokenValue}`);
+                                                            alert("Link de validação copiado com sucesso!");
+                                                        }}
+                                                        className="text-[#279267] hover:text-[#1e7452] p-1 rounded-lg bg-slate-50 hover:bg-green-50 transition-colors"
+                                                        title="Copiar Link"
+                                                    >
+                                                        <Copy size={13} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex flex-col space-y-1">
                                         <label htmlFor="pageNumber" className="text-[10px] font-bold text-slate-500 uppercase ml-1">Página da Vitrine</label>
@@ -3179,6 +3309,46 @@ const AdminPage = ({
                                         <div className="flex-grow min-w-0 text-center sm:text-left">
                                             <h4 className="font-bold text-slate-900 text-sm sm:text-base break-words">{p.name}</h4>
                                             <p className="text-[9px] sm:text-[10px] font-black text-[#279267] uppercase">{p.category}</p>
+                                            
+                                            <div className="flex flex-wrap gap-1.5 mt-2 justify-center sm:justify-start">
+                                                {/* Status Badge */}
+                                                {p.isAuthorized || p.approval_status === 'autorizado' ? (
+                                                    <span className="bg-green-50 text-[#279267] border border-green-200 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
+                                                        Autorizado
+                                                    </span>
+                                                ) : p.approval_status === 'ajustar' ? (
+                                                    <span className="bg-amber-50 text-amber-700 border border-amber-200 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase" title={p.approval_feedback}>
+                                                        Em ajuste
+                                                    </span>
+                                                ) : (
+                                                    <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
+                                                        Aguardando aprovação
+                                                    </span>
+                                                )}
+
+                                                {/* Copy Link Button */}
+                                                {p.approval_token && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            navigator.clipboard.writeText(`${window.location.origin}/validar-parceiro/${p.approval_token}`);
+                                                            alert(`Link de validação copiado para ${p.name}!`);
+                                                        }}
+                                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-50 border border-slate-200 hover:border-[#279267] text-slate-500 hover:text-[#279267] text-[9px] font-bold transition-colors uppercase"
+                                                        title="Copiar Link de Validação"
+                                                    >
+                                                        <Copy size={10} />
+                                                        <span>Copiar Link</span>
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {p.approval_status === 'ajustar' && p.approval_feedback && (
+                                                <div className="mt-2 bg-amber-50/50 p-2 rounded-lg border border-amber-100 text-left">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase block">Ajustes solicitados:</span>
+                                                    <p className="text-[10px] text-slate-600 font-medium italic break-words">"{p.approval_feedback}"</p>
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="flex space-x-1">
                                             <button 
@@ -5579,6 +5749,89 @@ const AdminPage = ({
                 </div>
             )}
 
+            {activeTab === 'approval' && (
+                <div className="space-y-8 max-w-4xl mx-auto font-sans animate-in fade-in slide-in-from-bottom-3 duration-300">
+                    <div className="bg-white p-6 sm:p-10 rounded-3xl border border-slate-100 shadow-xl space-y-6">
+                        <div className="flex items-center space-x-3 pb-4 border-b border-slate-100">
+                            <div className="bg-[#279267]/10 p-2.5 rounded-2xl text-[#279267]">
+                                <Video size={24} />
+                            </div>
+                            <div>
+                                <h2 className="text-xl sm:text-2xl font-black text-slate-900">Apresentação Institucional</h2>
+                                <p className="text-xs text-slate-500 font-medium">Configure a mensagem e o vídeo de boas-vindas exibidos aos novos parceiros no link de validação.</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-emerald-50/50 border border-emerald-100 p-4 rounded-2xl flex items-start space-x-3 text-slate-600 text-xs sm:text-sm leading-relaxed">
+                            <Info size={18} className="text-[#279267] shrink-0 mt-0.5" />
+                            <div className="space-y-1">
+                                <p className="font-bold text-slate-900">Como funciona esta página de Boas-vindas?</p>
+                                <p>Sua marca é nova e muitos parceiros podem não conhecer a <strong>Vitrine Oficial</strong> ainda. O link exclusivo de validação exibe primeiro este título, texto e vídeo vertical (YouTube Shorts ou padrão) no topo da página. Logo abaixo, o parceiro vê o rascunho de seu card cadastrado com a opção de aprovar ou solicitar ajustes.</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleSavePresentation} className="space-y-6 pt-2">
+                            <div className="flex flex-col space-y-2">
+                                <label htmlFor="pres_title" className="text-xs font-black text-slate-700 uppercase tracking-wider ml-1">Título de Boas-vindas</label>
+                                <input 
+                                    id="pres_title"
+                                    type="text" 
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-xs sm:text-sm font-semibold text-slate-800" 
+                                    placeholder="Ex: Seja muito bem-vindo à Vitrine Oficial Aparece Aí por Aqui!" 
+                                    value={presentationTitle} 
+                                    onChange={e => setPresentationTitle(e.target.value)} 
+                                />
+                            </div>
+
+                            <div className="flex flex-col space-y-2">
+                                <label htmlFor="pres_text" className="text-xs font-black text-slate-700 uppercase tracking-wider ml-1">Texto de Apresentação</label>
+                                <textarea 
+                                    id="pres_text"
+                                    required
+                                    rows={5}
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-xs sm:text-sm leading-relaxed text-slate-700" 
+                                    placeholder="Escreva uma breve mensagem se apresentando, explicando o propósito do site, e orientando o parceiro a validar seus dados abaixo..." 
+                                    value={presentationText} 
+                                    onChange={e => setPresentationText(e.target.value)} 
+                                />
+                            </div>
+
+                            <div className="flex flex-col space-y-2">
+                                <label htmlFor="pres_video" className="text-xs font-black text-slate-700 uppercase tracking-wider ml-1">Link de Vídeo do YouTube (Vertical / Shorts)</label>
+                                <input 
+                                    id="pres_video"
+                                    type="url" 
+                                    required
+                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-xs sm:text-sm font-mono text-slate-700" 
+                                    placeholder="Ex: https://www.youtube.com/watch?v=... ou https://youtube.com/shorts/..." 
+                                    value={presentationVideoUrl} 
+                                    onChange={e => setPresentationVideoUrl(e.target.value)} 
+                                />
+                                <span className="text-[10px] text-slate-400 font-medium ml-1">Para garantir a melhor experiência móvel vertical, utilize vídeos no formato vertical (9:16) ou YouTube Shorts.</span>
+                            </div>
+
+                            <div className="pt-2">
+                                <button 
+                                    type="submit"
+                                    disabled={isSavingPresentation}
+                                    className="w-full sm:w-auto px-8 py-4 bg-[#279267] hover:bg-green-700 text-white font-black rounded-2xl shadow-lg shadow-green-900/10 transition-all flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-75 disabled:cursor-not-allowed"
+                                >
+                                    {isSavingPresentation ? (
+                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                    ) : (
+                                        <>
+                                            <Save size={18} />
+                                            <span>Salvar Apresentação</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {deleteConfirm && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
                     <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in zoom-in-95 duration-200">
@@ -5651,6 +5904,10 @@ const App = () => {
     };
 
     const [partners, setPartners] = useState<Partner[]>([]);
+    const [presentationTitle, setPresentationTitle] = useState('Seja Bem-vindo à Vitrine Oficial!');
+    const [presentationText, setPresentationText] = useState('Aqui está o rascunho de sua vitrine digital exclusiva. Por favor, revise todos os dados, imagens e links. Se precisar de ajustes, descreva no campo abaixo e envie para nosso time de suporte técnico. Estamos prontos para te destacar!');
+    const [presentationVideoUrl, setPresentationVideoUrl] = useState('https://www.youtube.com/embed/zH0j5XqXG7A');
+    const [isSavingPresentation, setIsSavingPresentation] = useState(false);
     const [categories, setCategories] = useState<Category[]>([]);
     const [featuredCouponsTitle, setFeaturedCouponsTitle] = useState<string>('Cupons em Destaque da Semana');
     const [commercialBanners, setCommercialBanners] = useState<CommercialBannerData[]>([]);
@@ -5683,6 +5940,31 @@ const App = () => {
         3: commercialBanners.find(b => b.id === 3)?.partnerName || '',
         4: commercialBanners.find(b => b.id === 4)?.partnerName || ''
     });
+
+    const handleSavePresentation = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsSavingPresentation(true);
+        try {
+            const { error } = await supabase
+                .from('presentation_settings')
+                .upsert({
+                    id: 1,
+                    title: presentationTitle,
+                    text: presentationText,
+                    video_url: presentationVideoUrl
+                });
+
+            if (error) {
+                throw error;
+            }
+            alert("Configurações de apresentação salvas com sucesso!");
+        } catch (err: any) {
+            console.error("Error saving presentation config:", err);
+            alert("Erro ao salvar configurações de apresentação: " + err.message);
+        } finally {
+            setIsSavingPresentation(false);
+        }
+    };
 
     const logBannerClick = async (banner: CommercialBannerData) => {
         console.log('Logging banner click:', banner);
@@ -5856,14 +6138,15 @@ const App = () => {
             const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
             // 1. Fetch CRITICAL UI data first
-            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, couponCampaignsRes, welcomeMessagesRes, aboutRes] = await Promise.all([
+            const [partnersRes, categoriesRes, bannerRes, featuredCouponsRes, couponCampaignsRes, welcomeMessagesRes, aboutRes, presentationRes] = await Promise.all([
                 supabase.from('partners').select('*'),
                 supabase.from('categories').select('*').order('name', { ascending: true }),
                 supabase.from('commercial_banner').select('*').in('id', [1, 2, 3, 4]),
                 supabase.from('featured_coupons').select('*').order('slot_id', { ascending: true }),
                 supabase.from('coupon_campaigns').select('*').order('created_at', { ascending: false }),
                 supabase.from('welcome_messages').select('*').order('created_at', { ascending: false }),
-                supabase.from('about_config').select('*').eq('id', 1).maybeSingle()
+                supabase.from('about_config').select('*').eq('id', 1).maybeSingle(),
+                supabase.from('presentation_settings').select('*').eq('id', 1).maybeSingle()
             ]);
 
             // Handle Critical Errors
@@ -5873,6 +6156,12 @@ const App = () => {
             // Process Critical Data
             if (aboutRes.data && aboutRes.data.featured_coupons_title) {
                 setFeaturedCouponsTitle(aboutRes.data.featured_coupons_title);
+            }
+
+            if (presentationRes && presentationRes.data) {
+                setPresentationTitle(presentationRes.data.title || 'Seja Bem-vindo à Vitrine Oficial!');
+                setPresentationText(presentationRes.data.text || '');
+                setPresentationVideoUrl(presentationRes.data.video_url || 'https://www.youtube.com/embed/zH0j5XqXG7A');
             }
 
             if (partnersRes.data) {
@@ -5900,7 +6189,10 @@ const App = () => {
                     displayId: p.display_id || 0,
                     directLink: p.direct_link || '',
                     useGoogleMapsAsDirect: p.use_google_maps_as_direct ?? false,
-                    directLinkClicks: p.direct_link_clicks || 0
+                    directLinkClicks: p.direct_link_clicks || 0,
+                    approval_status: p.approval_status || 'aguardando_aprovacao',
+                    approval_token: p.approval_token || '',
+                    approval_feedback: p.approval_feedback || ''
                 }));
                 setPartners(mappedPartners);
             }
@@ -6072,6 +6364,7 @@ const App = () => {
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/bolao" element={<WorldCupBolaoPage partners={partners} categories={categories} headerLogo={headerLogo} />} />
                         <Route path="/lgn-p5r2t8w1z4q9y-access" element={<LoginPage />} />
+                        <Route path="/validar-parceiro/:token" element={<PartnerValidationPage />} />
                         <Route path="/politica-de-privacidade" element={<PrivacyPolicyPage />} />
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/v/:refId" element={<WelcomePage partners={partners} />} />
@@ -6110,6 +6403,14 @@ const App = () => {
                                     setBannerLinks={setBannerLinks}
                                     bannerNames={bannerNames}
                                     setBannerNames={setBannerNames}
+                                    presentationTitle={presentationTitle}
+                                    setPresentationTitle={setPresentationTitle}
+                                    presentationText={presentationText}
+                                    setPresentationText={setPresentationText}
+                                    presentationVideoUrl={presentationVideoUrl}
+                                    setPresentationVideoUrl={setPresentationVideoUrl}
+                                    isSavingPresentation={isSavingPresentation}
+                                    handleSavePresentation={handleSavePresentation}
                                 />
                             </ProtectedRoute>
                         } />
