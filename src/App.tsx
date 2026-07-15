@@ -1573,7 +1573,8 @@ const AdminPage = ({
         directLinkClicks: number,
         approval_status: string,
         approval_token: string,
-        approval_feedback: string
+        approval_feedback: string,
+        validation_clicks: number
     }>({ 
         name: '', 
         category: categories.length > 0 ? categories[0].name : '', 
@@ -1603,7 +1604,8 @@ const AdminPage = ({
         directLinkClicks: 0,
         approval_status: 'aguardando_aprovacao',
         approval_token: '',
-        approval_feedback: ''
+        approval_feedback: '',
+        validation_clicks: 0
     });
     const [editingId, setEditingId] = useState<string | null>(null);
     
@@ -2227,7 +2229,8 @@ const AdminPage = ({
                 direct_link_clicks: formData.directLinkClicks,
                 approval_status: formData.approval_status || 'aguardando_aprovacao',
                 approval_token: finalToken,
-                approval_feedback: formData.approval_feedback || null
+                approval_feedback: formData.approval_feedback || null,
+                validation_clicks: formData.validation_clicks || 0
             };
 
             // Validate 10 partners per page limit (only considering authorized partners)
@@ -2384,7 +2387,8 @@ const AdminPage = ({
             directLinkClicks: 0,
             approval_status: 'aguardando_aprovacao',
             approval_token: '',
-            approval_feedback: ''
+            approval_feedback: '',
+            validation_clicks: 0
         });
         setEditingId(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
@@ -2422,7 +2426,8 @@ const AdminPage = ({
             directLinkClicks: partner.directLinkClicks || 0,
             approval_status: partner.approval_status || 'aguardando_aprovacao',
             approval_token: partner.approval_token || '',
-            approval_feedback: partner.approval_feedback || ''
+            approval_feedback: partner.approval_feedback || '',
+            validation_clicks: partner.validation_clicks || 0
         });
         setEditingId(partner.id);
         window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2995,7 +3000,12 @@ const AdminPage = ({
 
                                         {editingId && (
                                             <div className="pt-2 flex flex-col space-y-1 border-t border-slate-200">
-                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block ml-1">Link de Validação Exclusivo:</span>
+                                                <div className="flex items-center justify-between w-full">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block ml-1">Link de Validação Exclusivo:</span>
+                                                    <span className="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full uppercase tracking-wider mr-1">
+                                                        {formData.validation_clicks || 0} acessos
+                                                    </span>
+                                                </div>
                                                 <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-xl border border-slate-200">
                                                     <span className="text-[10px] font-mono text-slate-500 truncate flex-grow">
                                                         {window.location.origin}/validar-parceiro/{formData.approval_token || generateApprovalToken(formData.name || 'parceiro')}
@@ -3323,6 +3333,12 @@ const AdminPage = ({
                                                 ) : (
                                                     <span className="bg-blue-50 text-blue-700 border border-blue-200 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase">
                                                         Aguardando aprovação
+                                                    </span>
+                                                )}
+
+                                                {p.validation_clicks !== undefined && p.validation_clicks > 0 && (
+                                                    <span className="bg-blue-50/50 text-blue-600 border border-blue-100 text-[9px] font-black px-2 py-0.5 rounded-full uppercase" title="Visualizações do link de validação">
+                                                        {p.validation_clicks} {p.validation_clicks === 1 ? 'acesso' : 'acessos'}
                                                     </span>
                                                 )}
 
@@ -5785,16 +5801,53 @@ const AdminPage = ({
                             </div>
 
                             <div className="flex flex-col space-y-2">
-                                <label htmlFor="pres_text" className="text-xs font-black text-slate-700 uppercase tracking-wider ml-1">Texto de Apresentação</label>
-                                <textarea 
-                                    id="pres_text"
-                                    required
-                                    rows={5}
-                                    className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-xs sm:text-sm leading-relaxed text-slate-700" 
-                                    placeholder="Escreva uma breve mensagem se apresentando, explicando o propósito do site, e orientando o parceiro a validar seus dados abaixo..." 
-                                    value={presentationText} 
-                                    onChange={e => setPresentationText(e.target.value)} 
-                                />
+                                <label className="text-xs font-black text-slate-700 uppercase tracking-wider ml-1">Texto de Apresentação</label>
+                                <div className="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden focus-within:border-[#279267]">
+                                    <Editor 
+                                        value={presentationText} 
+                                        onChange={e => setPresentationText(e.target.value)} 
+                                        containerProps={{ style: { minHeight: '250px', border: 'none', width: '100%', background: '#fff' } }}
+                                    >
+                                        <Toolbar style={{ display: 'flex', flexWrap: 'wrap' }}>
+                                            <BtnUndo />
+                                            <BtnRedo />
+                                            <Separator />
+                                            <BtnBold />
+                                            <BtnItalic />
+                                            <BtnUnderline />
+                                            <BtnStrikeThrough />
+                                            <Separator />
+                                            <BtnNumberedList />
+                                            <BtnBulletList />
+                                            <Separator />
+                                            <BtnLink />
+                                            <BtnClearFormatting />
+                                            <HtmlButton />
+                                            <Separator />
+                                            <BtnStyles />
+                                            <Separator />
+                                            <div className="flex items-center space-x-1.5 px-1">
+                                                <input 
+                                                    type="color" 
+                                                    onChange={(e) => document.execCommand('foreColor', false, e.target.value)}
+                                                    title="Cor do Texto"
+                                                    className="w-5 h-5 p-0 border-0 cursor-pointer bg-transparent"
+                                                />
+                                                <span className="text-[10px] font-bold text-slate-400">Cor</span>
+                                            </div>
+                                            <Separator />
+                                            <div className="flex items-center space-x-1.5 px-1">
+                                                <input 
+                                                    type="color" 
+                                                    onChange={(e) => document.execCommand('hiliteColor', false, e.target.value)}
+                                                    title="Destaque de Fundo"
+                                                    className="w-5 h-5 p-0 border-0 cursor-pointer bg-transparent"
+                                                />
+                                                <span className="text-[10px] font-bold text-slate-400">Destaque</span>
+                                            </div>
+                                        </Toolbar>
+                                    </Editor>
+                                </div>
                             </div>
 
                             <div className="flex flex-col space-y-2">
@@ -6192,7 +6245,8 @@ const App = () => {
                     directLinkClicks: p.direct_link_clicks || 0,
                     approval_status: p.approval_status || 'aguardando_aprovacao',
                     approval_token: p.approval_token || '',
-                    approval_feedback: p.approval_feedback || ''
+                    approval_feedback: p.approval_feedback || '',
+                    validation_clicks: p.validation_clicks || 0
                 }));
                 setPartners(mappedPartners);
             }

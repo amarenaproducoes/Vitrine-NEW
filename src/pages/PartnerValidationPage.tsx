@@ -75,6 +75,19 @@ export const PartnerValidationPage: React.FC<PartnerValidationPageProps> = ({ ap
         if (!data) {
           setErrorMsg('Cadastro não encontrado ou link expirado. Por favor, verifique com seu consultor.');
         } else {
+          const currentClicks = data.validation_clicks || 0;
+          const nextClicks = currentClicks + 1;
+          
+          supabase
+            .from('partners')
+            .update({ validation_clicks: nextClicks })
+            .eq('id', data.id)
+            .then(({ error: updErr }) => {
+              if (updErr) {
+                console.error('Error incrementing validation clicks:', updErr);
+              }
+            });
+
           const mapped: Partner = {
             id: data.id,
             name: data.name,
@@ -102,7 +115,8 @@ export const PartnerValidationPage: React.FC<PartnerValidationPageProps> = ({ ap
             directLinkClicks: data.direct_link_clicks || 0,
             approval_status: data.approval_status || 'aguardando_aprovacao',
             approval_token: data.approval_token || '',
-            approval_feedback: data.approval_feedback || ''
+            approval_feedback: data.approval_feedback || '',
+            validation_clicks: nextClicks
           };
           setPartner(mapped);
           
@@ -205,9 +219,11 @@ export const PartnerValidationPage: React.FC<PartnerValidationPageProps> = ({ ap
           <h1 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight leading-tight">
             {config.title}
           </h1>
-          <p className="text-slate-600 text-sm sm:text-base leading-relaxed font-medium">
-            {config.description}
-          </p>
+          <div 
+            className="text-slate-600 text-sm sm:text-base leading-relaxed font-medium max-w-none break-words"
+            style={{ textAlign: 'center' }}
+            dangerouslySetInnerHTML={{ __html: config.description }}
+          />
         </div>
 
         {/* Vertical Video Embed Frame */}
@@ -325,7 +341,7 @@ export const PartnerValidationPage: React.FC<PartnerValidationPageProps> = ({ ap
                       Tudo certo com o seu cadastro? Excelente! Entre em contato com o nosso consultor para finalizar a liberação e publicação oficial no sistema.
                     </p>
                     <a 
-                      href={`https://wa.me/5511999999999?text=Olá!%20Acabei%20de%20revisar%20meu%20cadastro%20na%20Vitrine%20Aparece%20Aí%20Por%20Aqui%20(${encodeURIComponent(partner.name)}).%20Está%20tudo%20perfeito!`}
+                      href={`https://wa.me/5511933014850?text=${encodeURIComponent(`Olá. Sou representante da empresa ${partner.name} e tenho interesse em continuar o processo de validação do meu cadastro na Vitrine Aparece Ai por Aqui. Poderia me auxiliar?`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center text-[#279267] hover:text-[#1e7452] font-black text-xs space-x-1"

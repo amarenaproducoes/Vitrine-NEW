@@ -31,6 +31,7 @@ export interface Partner {
   approval_status?: string;
   approval_token?: string;
   approval_feedback?: string;
+  validation_clicks?: number;
 }
 
 export interface GiftCard {
