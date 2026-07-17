@@ -121,6 +121,7 @@ export const unpackWcGame = (game: any) => {
   let rawPrizes = game.prizes || '';
   let mascot_url = '';
   let brazil_flag_url = '';
+  let brazil_name = 'Brasil';
 
   if (rawPrizes.includes('|||')) {
     const parts = rawPrizes.split('|||');
@@ -131,6 +132,8 @@ export const unpackWcGame = (game: any) => {
         mascot_url = part.substring(7).trim();
       } else if (part.startsWith('BRAZIL_FLAG:')) {
         brazil_flag_url = part.substring(12).trim();
+      } else if (part.startsWith('BRAZIL_NAME:')) {
+        brazil_name = part.substring(12).trim();
       }
     }
   }
@@ -139,7 +142,8 @@ export const unpackWcGame = (game: any) => {
     ...game,
     prizes: rawPrizes, // Keep it visually clean
     mascot_url: mascot_url || '', // Empty yields fallback
-    brazil_flag_url: brazil_flag_url || 'https://flagcdn.com/w160/br.png'
+    brazil_flag_url: brazil_flag_url || 'https://flagcdn.com/w160/br.png',
+    brazil_name: brazil_name || 'Brasil'
   };
 };
 
