@@ -760,7 +760,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                                 if (!predictionFeedback?.submittedPred) setPredBrazil(val);
                               }}
                               disabled={!!predictionFeedback?.submittedPred}
-                              placeholder="0"
+                              placeholder=""
                               required
                               className="w-12 h-12 md:w-16 md:h-16 text-center bg-white border border-slate-200 rounded-2xl text-xl md:text-3xl font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 focus:scale-105 transition-all disabled:opacity-85 disabled:bg-slate-100"
                             />
@@ -775,7 +775,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                                 if (!predictionFeedback?.submittedPred) setPredOpponent(val);
                               }}
                               disabled={!!predictionFeedback?.submittedPred}
-                              placeholder="0"
+                              placeholder=""
                               required
                               className="w-12 h-12 md:w-16 md:h-16 text-center bg-white border border-slate-200 rounded-2xl text-xl md:text-3xl font-black text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-600 focus:scale-105 transition-all disabled:opacity-85 disabled:bg-slate-100"
                             />
