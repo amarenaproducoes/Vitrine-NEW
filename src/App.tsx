@@ -1069,6 +1069,7 @@ const AdminPage = ({
     const [partnerLogosSearch, setPartnerLogosSearch] = useState('');
 
     const [wcForm, setWcForm] = useState({
+        brazil_name: 'Brasil',
         opponent_name: '',
         opponent_code: 'ar',
         brazil_score: '',
@@ -1126,7 +1127,7 @@ const AdminPage = ({
             const opScore = wcForm.opponent_score === '' ? null : parseInt(wcForm.opponent_score, 10);
 
             // Pack mascot_url and brazil_flag_url into prizes string
-            const packedPrizes = packWcGame(wcForm.prizes, wcForm.mascot_url, wcForm.brazil_flag_url);
+            const packedPrizes = packWcGame(wcForm.prizes, wcForm.mascot_url, wcForm.brazil_flag_url, wcForm.brazil_name);
 
             let gamePayload: any = {
                 opponent_name: opponentName,
@@ -1155,6 +1156,7 @@ const AdminPage = ({
             alert(wcSelectedGame ? 'Jogo atualizado no banco de dados!' : 'Jogo criado no banco de dados!');
             setWcSelectedGame(null);
             setWcForm({
+                brazil_name: 'Brasil',
                 opponent_name: '',
                 opponent_code: 'ar',
                 brazil_score: '',
@@ -1183,7 +1185,7 @@ const AdminPage = ({
             }
 
             // Pack mascot_url and brazil_flag_url into prizes string
-            const packedPrizes = packWcGame(wcForm.prizes, wcForm.mascot_url, wcForm.brazil_flag_url);
+            const packedPrizes = packWcGame(wcForm.prizes, wcForm.mascot_url, wcForm.brazil_flag_url, wcForm.brazil_name);
 
             const gamePayload = {
                 id: wcSelectedGame?.id || String(Date.now()),
@@ -1209,6 +1211,7 @@ const AdminPage = ({
             alert(wcSelectedGame ? 'Jogo atualizado de forma local!' : 'Jogo criado de forma local!');
             setWcSelectedGame(null);
             setWcForm({
+                brazil_name: 'Brasil',
                 opponent_name: '',
                 opponent_code: 'ar',
                 brazil_score: '',
@@ -5294,7 +5297,29 @@ const AdminPage = ({
                         </div>
 
                         <form onSubmit={handleSaveWcGame} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-slate-700 block">País Principal</label>
+                                    <select 
+                                        required
+                                        value={wcForm.brazil_name}
+                                        onChange={(e) => {
+                                            const name = e.target.value;
+                                            const country = WORLD_CUP_COUNTRIES.find(c => c.name === name);
+                                            setWcForm({
+                                                ...wcForm, 
+                                                brazil_name: name,
+                                                brazil_flag_url: country ? `https://flagcdn.com/w160/${country.code}.png` : 'https://flagcdn.com/w160/br.png'
+                                            });
+                                        }}
+                                        className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 outline-none focus:border-[#279267] focus:ring-4 focus:ring-[#279267]/10 transition-all text-slate-700"
+                                    >
+                                        {WORLD_CUP_COUNTRIES.map(country => (
+                                            <option key={`home-${country.code}`} value={country.name}>{country.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 <div className="space-y-2">
                                     <label className="text-sm font-bold text-slate-700 block">País Adversário</label>
                                     <select 
@@ -5318,7 +5343,7 @@ const AdminPage = ({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-slate-700 block">Gols do Brasil (Real / Final)</label>
+                                    <label className="text-sm font-bold text-slate-700 block">Gols de {wcForm.brazil_name || 'Brasil'} (Real / Final)</label>
                                     <input 
                                         type="number" 
                                         min="0"
@@ -5421,12 +5446,12 @@ const AdminPage = ({
                                     {/* Brazil Flag Image */}
                                     <div className="space-y-3 bg-white p-4 rounded-xl border border-slate-100 shadow-sm">
                                         <div className="flex items-center justify-between">
-                                            <label className="text-xs font-black text-slate-700 uppercase tracking-wide">Bandeira do Brasil</label>
-                                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase font-mono">Bandeira BR</span>
+                                            <label className="text-xs font-black text-slate-700 uppercase tracking-wide">Bandeira de {wcForm.brazil_name || 'Brasil'}</label>
+                                            <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase font-mono">Bandeira 1</span>
                                         </div>
                                         <input 
                                             type="text"
-                                            placeholder="URL da Bandeira do Brasil..."
+                                            placeholder={`URL da Bandeira de ${wcForm.brazil_name || 'Brasil'}...`}
                                             value={wcForm.brazil_flag_url}
                                             onChange={e => setWcForm({ ...wcForm, brazil_flag_url: e.target.value })}
                                             className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-700 focus:border-[#279267] outline-none"
@@ -5457,12 +5482,12 @@ const AdminPage = ({
                                                 htmlFor="wc-brazil-file-admin"
                                                 className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-center rounded-lg text-[10px] cursor-pointer block transition-all border border-slate-200"
                                             >
-                                                Escolher Bandeira BR...
+                                                Escolher Bandeira...
                                             </label>
                                         </div>
                                         {wcForm.brazil_flag_url && (
                                             <div className="flex items-center justify-center p-2 bg-slate-50 rounded-lg border border-slate-100 relative">
-                                                <img src={wcForm.brazil_flag_url} alt="Brasil Flag Preview" className="h-10 object-cover rounded shadow-sm" />
+                                                <img src={wcForm.brazil_flag_url} alt={`${wcForm.brazil_name || 'Brasil'} Flag Preview`} className="h-10 object-cover rounded shadow-sm" />
                                                 <button 
                                                     type="button" 
                                                     onClick={() => setWcForm(prev => ({ ...prev, brazil_flag_url: '' }))}
@@ -5597,6 +5622,7 @@ const AdminPage = ({
                                         onClick={() => {
                                             setWcSelectedGame(null);
                                             setWcForm({
+                                                brazil_name: 'Brasil',
                                                 opponent_name: '',
                                                 opponent_code: 'ar',
                                                 brazil_score: '',
@@ -5636,7 +5662,7 @@ const AdminPage = ({
                                                 <FlagImage src={game.opponent_flag_url} alt={game.opponent_name} className="w-7 h-4.5 object-cover rounded shadow-sm" />
                                             </div>
                                             <div>
-                                                <h4 className="text-xs font-black text-slate-800 uppercase font-sans">Brasil x {game.opponent_name}</h4>
+                                                <h4 className="text-xs font-black text-slate-800 uppercase font-sans">{game.brazil_name || 'Brasil'} x {game.opponent_name}</h4>
                                                 <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider font-mono">
                                                     {game.brazil_score !== null ? `Placar: ${game.brazil_score} x ${game.opponent_score}` : 'Sem placar final'}
                                                 </p>
@@ -5648,6 +5674,7 @@ const AdminPage = ({
                                                 onClick={() => {
                                                     setWcSelectedGame(game);
                                                     setWcForm({
+                                                        brazil_name: game.brazil_name || 'Brasil',
                                                         opponent_name: game.opponent_name,
                                                         opponent_code: game.opponent_code,
                                                         brazil_score: game.brazil_score !== null ? String(game.brazil_score) : '',
@@ -6075,6 +6102,10 @@ const App = () => {
     }, []);
 
     const fetchActiveGiftCards = async () => {
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+            logger.warn('Supabase is not configured.');
+            return;
+        }
         setIsLoadingActiveGiftCards(true);
         setActiveGiftCardsError(null);
         try {
@@ -6109,6 +6140,10 @@ const App = () => {
     };
 
     const fetchGiftCards = async () => {
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+            logger.warn('Supabase is not configured.');
+            return;
+        }
         setIsLoadingGiftCards(true);
         try {
             const { data, error } = await supabase
@@ -6179,6 +6214,12 @@ const App = () => {
     };
 
     const fetchData = async () => {
+        if (!import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY) {
+            logger.warn('Supabase is not configured.');
+            setLoading(false);
+            return;
+        }
+
         const timeoutId = setTimeout(() => {
             if (loading) {
                 console.warn('FetchData taking too long, forcing loading to false');

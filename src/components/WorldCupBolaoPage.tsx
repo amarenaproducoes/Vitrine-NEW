@@ -19,6 +19,7 @@ interface Game {
   is_active: boolean;
   brazil_flag_url?: string;
   mascot_url?: string;
+  brazil_name?: string;
 }
 
 interface Prediction {
@@ -55,6 +56,7 @@ export const WORLD_CUP_COUNTRIES = [
   { name: 'Argentina', code: 'ar' },
   { name: 'Austrália', code: 'au' },
   { name: 'Bélgica', code: 'be' },
+  { name: 'Brasil', code: 'br' },
   { name: 'Camarões', code: 'cm' },
   { name: 'Canadá', code: 'ca' },
   { name: 'Catar', code: 'qa' },
@@ -141,13 +143,16 @@ export const unpackWcGame = (game: any) => {
   };
 };
 
-export const packWcGame = (prizesText: string, mascotUrl: string, brazilFlagUrl: string): string => {
+export const packWcGame = (prizesText: string, mascotUrl: string, brazilFlagUrl: string, brazilName?: string): string => {
   let result = prizesText ? prizesText.trim() : '';
   if (mascotUrl) {
     result += ` |||MASCOT:${mascotUrl.trim()}`;
   }
   if (brazilFlagUrl) {
     result += ` |||BRAZIL_FLAG:${brazilFlagUrl.trim()}`;
+  }
+  if (brazilName) {
+    result += ` |||BRAZIL_NAME:${brazilName.trim()}`;
   }
   return result;
 };
@@ -566,7 +571,8 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
   // Share text builder
   const getShareLink = () => {
     if (!activeGame) return '';
-    const shareText = `Dei meu palpite oficial para o jogo do Brasil x ${activeGame.opponent_name} no Bolão do Aparece Aí por Aqui! Palpitei em Brasil ${predBrazil} x ${predOpponent} ${activeGame.opponent_name}. Entre no site para dar o seu palpite gratuitamente também e concorrer a prêmios excepcionais dos parceiros! ⚽💚 👉 ${window.location.origin}/bolao`;
+    const homeName = activeGame.brazil_name || 'Brasil';
+    const shareText = `Dei meu palpite oficial para o jogo do ${homeName} x ${activeGame.opponent_name} no Bolão do Aparece Aí por Aqui! Palpitei em ${homeName} ${predBrazil} x ${predOpponent} ${activeGame.opponent_name}. Entre no site para dar o seu palpite gratuitamente também e concorrer a prêmios excepcionais dos parceiros! ⚽💚 👉 ${window.location.origin}/bolao`;
     return `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
   };
 
@@ -613,7 +619,7 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
           Bolão de Palpites <span className="bg-gradient-to-r from-emerald-600 to-[#279267] bg-clip-text text-transparent">Aparece Aí por Aqui</span>
         </h1>
         <p className="text-sm md:text-base text-slate-600 font-medium max-w-2xl mt-3">
-          Participe, mostre que você é um craque nos palpites e ganhe <span className="text-emerald-600 font-bold">Vale Compras exclusivos</span> de nossos parceiros comerciais locais! 🎁⚽
+          Participe, mostre que você é um craque nos palpites e ganhe <span className="text-emerald-600 font-bold">um lindo relógio</span> de nossos parceiros comerciais locais! 🎁⚽
         </p>
       </div>
 
@@ -733,9 +739,9 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                           {/* Brazil Team */}
                           <div className="flex flex-col items-center space-y-2 w-28 md:w-36 text-center">
                             <div className="w-16 h-12 md:w-20 md:h-16 rounded-xl overflow-hidden shadow-md border-2 border-slate-100 bg-white flex items-center justify-center transition-all bg-slate-50">
-                              <FlagImage src={activeGame?.brazil_flag_url || 'https://flagcdn.com/w160/br.png'} alt="Brasil" className="w-full h-full object-cover" />
+                              <FlagImage src={activeGame?.brazil_flag_url || 'https://flagcdn.com/w160/br.png'} alt={activeGame?.brazil_name || 'Brasil'} className="w-full h-full object-cover" />
                             </div>
-                            <span className="text-xs md:text-sm font-black text-slate-800">BRASIL</span>
+                            <span className="text-xs md:text-sm font-black text-slate-800 uppercase">{activeGame?.brazil_name || 'BRASIL'}</span>
                           </div>
 
                           {/* Prediction Inputs */}
@@ -893,8 +899,8 @@ export const WorldCupBolaoPage: React.FC<WorldCupBolaoPageProps> = ({ partners, 
                               <div className="flex items-center space-x-3">
                                 {/* Flags Mini UI */}
                                 <div className="flex items-center space-x-1 shrink-0 bg-white px-2 py-1 rounded-lg border border-slate-100 shadow-sm">
-                                  <FlagImage src={pred.game?.brazil_flag_url || 'https://flagcdn.com/w160/br.png'} alt="Brasil" className="w-6 h-4 object-cover rounded-sm" />
-                                  <span className="text-[10px] font-black text-slate-700">BR</span>
+                                  <FlagImage src={pred.game?.brazil_flag_url || 'https://flagcdn.com/w160/br.png'} alt={pred.game?.brazil_name || 'Brasil'} className="w-6 h-4 object-cover rounded-sm" />
+                                  <span className="text-[10px] font-black text-slate-700 uppercase">{(pred.game?.brazil_name || 'BR').substring(0, 3)}</span>
                                   <span className="text-[10px] font-black text-slate-400">x</span>
                                   <span className="text-[10px] font-black text-slate-700 uppercase">{pred.game?.opponent_code || 'OP'}</span>
                                   <FlagImage src={pred.game?.opponent_flag_url || 'https://flagcdn.com/w160/fr.png'} alt={pred.game?.opponent_name} className="w-6 h-4 object-cover rounded-sm" />
