@@ -30,6 +30,8 @@ import LoginPage from './components/LoginPage';
 import PartnerValidationPage from './pages/PartnerValidationPage';
 import GiftCardModal from './components/GiftCardModal';
 import ProtectedRoute from './components/ProtectedRoute';
+import { SequenceComboPage } from './components/SequenceComboPage';
+import { AdminSequenceComboTab } from './components/AdminSequenceComboTab';
 import { AnimatePresence, motion } from 'motion/react';
 import { WorldCupBolaoPage, WORLD_CUP_COUNTRIES, FlagImage, unpackWcGame, packWcGame } from './components/WorldCupBolaoPage';
 import { CATEGORIES } from './constants';
@@ -997,7 +999,7 @@ const AdminPage = ({
     isSavingPresentation: boolean,
     handleSavePresentation: (e: React.FormEvent) => Promise<void>
 }) => {
-    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards' | 'worldcup' | 'approval'>('partners');
+    const [activeTab, setActiveTab] = useState<'partners' | 'about' | 'cases' | 'ranking' | 'cashback' | 'featured' | 'coupons' | 'welcome' | 'campaigns' | 'giftcards' | 'worldcup' | 'approval' | 'sequence_combo'>('partners');
     const [giftCardPage, setGiftCardPage] = useState(0);
     const [cashbackLogsPage, setCashbackLogsPage] = useState(0);
     const [activeGiftCardsPage, setActiveGiftCardsPage] = useState(0);
@@ -2746,7 +2748,8 @@ const AdminPage = ({
                             <button onClick={() => setActiveTab('ranking')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'ranking' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Ranking</button>
                             <button onClick={() => setActiveTab('cashback')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'cashback' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cashback</button>
                             <button onClick={() => setActiveTab('featured')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'featured' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Destaques</button>
-                            <button onClick={() => setActiveTab('coupons')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'coupons' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons/Sequência</button>
+                            <button onClick={() => setActiveTab('coupons')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'coupons' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons/Páginas</button>
+                            <button onClick={() => setActiveTab('sequence_combo')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'sequence_combo' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>🎁 Promoção Sequência</button>
                             <button onClick={() => setActiveTab('welcome')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'welcome' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Boas-vindas</button>
                             <button onClick={() => setActiveTab('campaigns')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'campaigns' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cupons Surpresa</button>
                             <button onClick={() => setActiveTab('giftcards')} className={`whitespace-nowrap px-2 sm:px-4 py-1.5 rounded-lg text-[9px] sm:text-xs font-bold transition-all ${activeTab === 'giftcards' ? 'bg-[#279267] text-white shadow-md' : 'text-slate-500 hover:text-slate-900'}`}>Cartão Presente</button>
@@ -4483,6 +4486,10 @@ const AdminPage = ({
                         </table>
                     </div>
                 </div>
+            )}
+
+            {activeTab === 'sequence_combo' && (
+                <AdminSequenceComboTab partners={partners} />
             )}
 
             {activeTab === 'giftcards' && (
@@ -6464,6 +6471,9 @@ const App = () => {
                         <Route path="/termos-de-uso" element={<TermsOfUsePage />} />
                         <Route path="/v/:refId" element={<WelcomePage partners={partners} />} />
                         <Route path="/especial/:refId" element={<WelcomePage partners={partners} />} />
+                        <Route path="/cupom-sequencia" element={<SequenceComboPage partners={partners} headerLogo={headerLogo} />} />
+                        <Route path="/cupom-sequencia/v/:token" element={<SequenceComboPage partners={partners} headerLogo={headerLogo} />} />
+                        <Route path="/cupom-sequencia/resgate/:resgateToken" element={<SequenceComboPage partners={partners} headerLogo={headerLogo} />} />
                         <Route path="/adm-k9x3v8j1n4m7q-ama" element={
                             <ProtectedRoute>
                                 <AdminPage 

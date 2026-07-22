@@ -154,3 +154,44 @@ export interface CouponCampaignAccessLog {
   ip_address: string;
   created_at: string;
 }
+
+export interface SequenceComboPartner {
+  id: string;
+  partner_id: string;
+  partner_name: string;
+  sequence_pattern: string;
+  benefit_description: string;
+  product_name?: string;
+  is_active: boolean;
+  created_at?: string;
+}
+
+export interface SequenceComboCoupon {
+  id: string;
+  token: string;
+  resgate_token: string;
+  initiator_whatsapp: string;
+  initiator_name: string;
+  initiator_has_sequence: boolean;
+  partner_id: string;
+  partner_name: string;
+  benefit_description: string;
+  coupon_code: string;
+  friend_whatsapp?: string | null;
+  friend_first_name?: string | null;
+  friend_full_name?: string | null;
+  status: 'awaiting_friend' | 'unlocked' | 'redeemed';
+  created_at?: string;
+  unlocked_at?: string | null;
+}
+
+export interface SequenceComboLead {
+  id: string;
+  coupon_id?: string | null;
+  initiator_whatsapp: string;
+  friend_whatsapp: string;
+  friend_first_name: string;
+  is_registered_member: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
