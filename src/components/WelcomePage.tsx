@@ -100,16 +100,16 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
   if (!targetPartner) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 text-center">
-        <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 max-w-md">
+        <div className="bg-amber-50 p-6 rounded-3xl border border-amber-100 max-w-md w-full">
           <Sparkles size={48} className="text-amber-500 mx-auto mb-4" />
           <h2 className="text-xl font-black text-slate-900 mb-2">{campaignData.title}</h2>
           <p className="text-slate-600 mb-6">{campaignData.message}</p>
           {campaignData.logo_url && (
-            <div className="mb-6 flex justify-center">
+            <div className="mb-6 w-full">
               <img 
                 src={campaignData.logo_url} 
                 alt={campaignData.title} 
-                className="max-h-60 w-auto object-contain rounded-2xl shadow-md border border-slate-100"
+                className="w-full h-auto rounded-2xl shadow-md border border-slate-100"
                 referrerPolicy="no-referrer"
               />
             </div>
@@ -130,7 +130,7 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 sm:py-12" ref={titleRef}>
-      <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700 flex flex-col items-center">
         <div className="inline-flex items-center justify-center p-3 bg-[#279267]/10 rounded-2xl mb-6">
           <Sparkles className="text-[#279267]" size={32} />
         </div>
@@ -140,20 +140,20 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
         <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
           {campaignData.message}
         </p>
-        {campaignData.logo_url && (
-          <div className="mt-6 flex justify-center">
-            <img 
-              src={campaignData.logo_url} 
-              alt={campaignData.title} 
-              className="max-h-80 w-auto object-contain rounded-2xl shadow-md border border-slate-100"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-        )}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center justify-center">
         <div className="w-full max-w-md">
+          {campaignData.logo_url && (
+            <div className="mb-6 w-full">
+              <img 
+                src={campaignData.logo_url} 
+                alt={campaignData.title} 
+                className="w-full h-auto rounded-2xl shadow-md border border-slate-100"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          )}
           <PartnerCard 
             partner={targetPartner} 
             welcomeData={{
