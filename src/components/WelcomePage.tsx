@@ -105,11 +105,11 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
           <h2 className="text-xl font-black text-slate-900 mb-2">{campaignData.title}</h2>
           <p className="text-slate-600 mb-6">{campaignData.message}</p>
           {campaignData.logo_url && (
-            <div className="mb-6 w-full">
+            <div className="mb-6 w-full overflow-hidden rounded-2xl shadow-md border border-slate-100 bg-white">
               <img 
                 src={campaignData.logo_url} 
                 alt={campaignData.title} 
-                className="w-full h-auto rounded-2xl shadow-md border border-slate-100"
+                className="w-full h-auto block object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>
@@ -145,11 +145,11 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
       <div className="flex flex-col items-center justify-center">
         <div className="w-full max-w-md">
           {campaignData.logo_url && (
-            <div className="mb-6 w-full">
+            <div className="mb-6 w-full overflow-hidden rounded-2xl shadow-md border border-slate-100 bg-white">
               <img 
                 src={campaignData.logo_url} 
                 alt={campaignData.title} 
-                className="w-full h-auto rounded-2xl shadow-md border border-slate-100"
+                className="w-full h-auto block object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>
