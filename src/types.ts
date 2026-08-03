@@ -176,6 +176,7 @@ export interface SequenceComboCoupon {
   partner_id: string;
   partner_name: string;
   benefit_description: string;
+  sequence_pattern?: string;
   coupon_code: string;
   friend_whatsapp?: string | null;
   friend_first_name?: string | null;

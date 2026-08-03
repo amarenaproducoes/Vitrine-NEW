@@ -104,6 +104,16 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
           <Sparkles size={48} className="text-amber-500 mx-auto mb-4" />
           <h2 className="text-xl font-black text-slate-900 mb-2">{campaignData.title}</h2>
           <p className="text-slate-600 mb-6">{campaignData.message}</p>
+          {campaignData.logo_url && (
+            <div className="mb-6 flex justify-center">
+              <img 
+                src={campaignData.logo_url} 
+                alt={campaignData.title} 
+                className="max-h-60 w-auto object-contain rounded-2xl shadow-md border border-slate-100"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+          )}
           <p className="text-sm text-amber-700 font-bold mb-6">
             Infelizmente o parceiro desta promoção não está disponível no momento.
           </p>
@@ -130,6 +140,16 @@ const WelcomePage: React.FC<WelcomePageProps> = ({ partners }) => {
         <p className="text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
           {campaignData.message}
         </p>
+        {campaignData.logo_url && (
+          <div className="mt-6 flex justify-center">
+            <img 
+              src={campaignData.logo_url} 
+              alt={campaignData.title} 
+              className="max-h-80 w-auto object-contain rounded-2xl shadow-md border border-slate-100"
+              referrerPolicy="no-referrer"
+            />
+          </div>
+        )}
       </div>
 
       <div className="flex justify-center">

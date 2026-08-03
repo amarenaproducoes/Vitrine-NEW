@@ -4,7 +4,6 @@ import {
   Gift, CheckCircle2, AlertCircle, Share2, Phone, User, ShieldCheck, 
   Sparkles, Lock, ExternalLink, ArrowRight, RefreshCw, Printer, Search, Store
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
 import { supabase } from '../lib/supabase';
 import { Partner, SequenceComboPartner, SequenceComboCoupon, SequenceComboLead } from '../types';
 
@@ -12,6 +11,14 @@ interface SequenceComboPageProps {
   partners: Partner[];
   headerLogo?: string | null;
 }
+
+// Phone mask helper for Brazilian numbers
+const formatPhoneMask = (val: string) => {
+  const digits = val.replace(/\D/g, '').slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
 
 export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, headerLogo }) => {
   const { token, resgateToken } = useParams<{ token?: string; resgateToken?: string }>();
@@ -25,13 +32,17 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
   // Active combo partners state
   const [comboPartners, setComboPartners] = useState<SequenceComboPartner[]>([]);
   const [loadingComboPartners, setLoadingComboPartners] = useState(true);
+  const [selectedComboPartnerId, setSelectedComboPartnerId] = useState<string>('');
 
   // Initiator Form State
   const [initiatorPhone, setInitiatorPhone] = useState('');
   const [initiatorName, setInitiatorName] = useState('');
-  const [selectedComboPartnerId, setSelectedComboPartnerId] = useState<string>('');
+  const [isInitiatorMember, setIsInitiatorMember] = useState(false);
+  const [initiatorCheckingMember, setInitiatorCheckingMember] = useState(false);
+  const [initiatorTermsAccepted, setInitiatorTermsAccepted] = useState(false);
   const [initiatorStep, setInitiatorStep] = useState<'input' | 'awaiting_friend' | 'unlocked'>('input');
-  
+  const [existingCouponNotice, setExistingCouponNotice] = useState<'active' | 'unlocked' | null>(null);
+
   // Current Coupon State
   const [currentCoupon, setCurrentCoupon] = useState<SequenceComboCoupon | null>(null);
   const [loadingCoupon, setLoadingCoupon] = useState(false);
@@ -54,7 +65,29 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
   // Submitting state
   const [submitting, setSubmitting] = useState(false);
 
-  // Load Active Combo Partners on mount
+  // Helper clean phone
+  const cleanPhone = (phone: string) => phone.replace(/\D/g, '');
+
+  // Helper check sequence
+  const phoneHasSequence = (phone: string, pattern: string = '22') => {
+    const cleaned = cleanPhone(phone);
+    return cleaned.includes(pattern);
+  };
+
+  // Selected combo partner object
+  const selectedComboPartner = useMemo(() => {
+    return comboPartners.find(p => p.id === selectedComboPartnerId) || comboPartners[0];
+  }, [comboPartners, selectedComboPartnerId]);
+
+  // Selected pattern
+  const currentPattern = selectedComboPartner?.sequence_pattern || '22';
+
+  // Check if initiator phone has sequence
+  const initiatorHasSeq = useMemo(() => {
+    return phoneHasSequence(initiatorPhone, currentPattern);
+  }, [initiatorPhone, currentPattern]);
+
+  // Load Active Combo Partners on mount (NO FALLBACK IF NONE ACTIVE!)
   useEffect(() => {
     const fetchComboPartners = async () => {
       setLoadingComboPartners(true);
@@ -67,34 +100,106 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
 
         if (error) {
           console.error('Error fetching sequence combo partners:', error);
-          // Fallback if table not created yet
           setComboPartners([]);
         } else if (data && data.length > 0) {
           setComboPartners(data);
           setSelectedComboPartnerId(data[0].id);
         } else {
-          // If no custom config in DB, default to partner list fallback
-          const defaultList: SequenceComboPartner[] = partners.slice(0, 6).map(p => ({
-            id: p.id,
-            partner_id: p.id,
-            partner_name: p.name,
-            sequence_pattern: '22',
-            benefit_description: '22% de desconto exclusivo em produtos selecionados',
-            product_name: 'Combo Especial da Sorte',
-            is_active: true
-          }));
-          setComboPartners(defaultList);
-          if (defaultList.length > 0) setSelectedComboPartnerId(defaultList[0].id);
+          // Rule: If no active campaign, do NOT show partners!
+          setComboPartners([]);
         }
       } catch (err) {
         console.error('Failed to load combo partners', err);
+        setComboPartners([]);
       } finally {
         setLoadingComboPartners(false);
       }
     };
 
     fetchComboPartners();
-  }, [partners]);
+  }, []);
+
+  // Real-time check for Initiator Phone (Member lookup + Active coupon lookup)
+  useEffect(() => {
+    if (!isInitiatorMode) return;
+    const cleanWsp = cleanPhone(initiatorPhone);
+
+    if (cleanWsp.length === 11) {
+      const runChecks = async () => {
+        setInitiatorCheckingMember(true);
+        setExistingCouponNotice(null);
+
+        try {
+          // 1. Check if member in customers table
+          const { data: custData } = await supabase
+            .from('customers')
+            .select('name')
+            .eq('whatsapp', cleanWsp)
+            .maybeSingle();
+
+          if (custData) {
+            setIsInitiatorMember(true);
+            setInitiatorName(custData.name || '');
+            setInitiatorTermsAccepted(true);
+          } else {
+            setIsInitiatorMember(false);
+          }
+
+          // 2. Check if existing active or unlocked coupon for this initiator phone
+          const { data: couponData } = await supabase
+            .from('sequence_combo_coupons')
+            .select('*')
+            .eq('initiator_whatsapp', cleanWsp)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (couponData) {
+            setCurrentCoupon(couponData as SequenceComboCoupon);
+            if (couponData.status === 'unlocked') {
+              setExistingCouponNotice('unlocked');
+            } else {
+              setExistingCouponNotice('active');
+            }
+          }
+        } catch (err) {
+          console.error('Error in initiator phone check:', err);
+        } finally {
+          setInitiatorCheckingMember(false);
+        }
+      };
+
+      runChecks();
+    } else {
+      setIsInitiatorMember(false);
+      setExistingCouponNotice(null);
+    }
+  }, [initiatorPhone, isInitiatorMode]);
+
+  // Real-time check if friend phone entered by initiator is already a member
+  useEffect(() => {
+    const cleaned = cleanPhone(friendPhone);
+    if (cleaned.length === 11) {
+      setFriendMemberChecking(true);
+      const checkMember = async () => {
+        try {
+          const { data } = await supabase
+            .from('customers')
+            .select('name')
+            .eq('whatsapp', cleaned)
+            .maybeSingle();
+          setIsFriendMember(Boolean(data));
+        } catch {
+          setIsFriendMember(false);
+        } finally {
+          setFriendMemberChecking(false);
+        }
+      };
+      checkMember();
+    } else {
+      setIsFriendMember(false);
+    }
+  }, [friendPhone]);
 
   // Load Coupon when in Friend Unlock Mode (/v/:token)
   useEffect(() => {
@@ -111,7 +216,7 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
           .maybeSingle();
 
         if (error || !data) {
-          setErrorMessage('Cupom não encontrado ou link inválido.');
+          setErrorMessage('Cupom não encontrado ou link de desbloqueio inválido.');
         } else {
           setCurrentCoupon(data as SequenceComboCoupon);
           if (data.status === 'unlocked') {
@@ -121,7 +226,7 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
 
           // Check if friend is already a member in customers table
           if (data.friend_whatsapp) {
-            const cleanWsp = data.friend_whatsapp.replace(/\D/g, '');
+            const cleanWsp = cleanPhone(data.friend_whatsapp);
             const { data: custData } = await supabase
               .from('customers')
               .select('name')
@@ -176,55 +281,13 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
     loadResgateCoupon();
   }, [isResgateMode, resgateToken]);
 
-  // Clean phone helper
-  const cleanPhone = (phone: string) => phone.replace(/\D/g, '');
-
-  // Check if phone contains sequence pattern (e.g. '22')
-  const phoneHasSequence = (phone: string, pattern: string = '22') => {
-    const cleaned = cleanPhone(phone);
-    return cleaned.includes(pattern);
-  };
-
-  // Real-time check if friend phone entered by initiator is already a member
-  useEffect(() => {
-    const cleaned = cleanPhone(friendPhone);
-    if (cleaned.length === 11) {
-      setFriendMemberChecking(true);
-      const checkMember = async () => {
-        try {
-          const { data } = await supabase
-            .from('customers')
-            .select('name')
-            .eq('whatsapp', cleaned)
-            .maybeSingle();
-          setIsFriendMember(Boolean(data));
-        } catch {
-          setIsFriendMember(false);
-        } finally {
-          setFriendMemberChecking(false);
-        }
-      };
-      checkMember();
-    } else {
-      setIsFriendMember(false);
-    }
-  }, [friendPhone]);
-
-  // Selected combo partner object
-  const selectedComboPartner = useMemo(() => {
-    return comboPartners.find(p => p.id === selectedComboPartnerId) || comboPartners[0];
-  }, [comboPartners, selectedComboPartnerId]);
-
-  // Handle Initiator Check & Start
+  // Handle Initiator Submit (Start Coupon)
   const handleInitiatorSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanWsp = cleanPhone(initiatorPhone);
+
     if (cleanWsp.length !== 11) {
       alert('Por favor, insira um número de WhatsApp válido com DDD (11 dígitos).');
-      return;
-    }
-    if (!initiatorName.trim()) {
-      alert('Por favor, informe o seu nome completo.');
       return;
     }
     if (!selectedComboPartner) {
@@ -232,56 +295,57 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
       return;
     }
 
+    // Check existing active / unlocked coupon block
+    if (existingCouponNotice === 'active') {
+      setInitiatorStep('awaiting_friend');
+      return;
+    }
+    if (existingCouponNotice === 'unlocked') {
+      setInitiatorStep('unlocked');
+      return;
+    }
+
+    if (!initiatorName.trim()) {
+      alert('Por favor, informe seu nome completo.');
+      return;
+    }
+
+    if (!isInitiatorMember && !initiatorTermsAccepted) {
+      alert('Por favor, aceite os Termos de Uso e Política de Privacidade para se cadastrar.');
+      return;
+    }
+
     setSubmitting(true);
     setErrorMessage('');
 
     try {
-      // 1. Check if initiator already has an active pending or unlocked coupon for this sequence campaign
-      const { data: existingCoupon } = await supabase
-        .from('sequence_combo_coupons')
-        .select('*')
-        .eq('initiator_whatsapp', cleanWsp)
-        .eq('partner_id', selectedComboPartner.partner_id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (existingCoupon) {
-        setCurrentCoupon(existingCoupon as SequenceComboCoupon);
-        if (existingCoupon.status === 'unlocked') {
-          setInitiatorStep('unlocked');
-        } else {
-          setInitiatorStep('awaiting_friend');
-          if (existingCoupon.friend_whatsapp) setFriendPhone(existingCoupon.friend_whatsapp);
-          if (existingCoupon.friend_first_name) setFriendFirstName(existingCoupon.friend_first_name);
-        }
-        setSubmitting(false);
-        return;
+      // 1. Register initiator in customers table if non-member
+      if (!isInitiatorMember) {
+        await supabase.from('customers').upsert({
+          whatsapp: cleanWsp,
+          name: initiatorName.trim(),
+          created_at: new Date().toISOString()
+        }, { onConflict: 'whatsapp' });
       }
 
-      // 2. Also register initiator in customers table if not existing
-      await supabase.from('customers').upsert({
-        whatsapp: cleanWsp,
-        name: initiatorName.trim(),
-        created_at: new Date().toISOString()
-      }, { onConflict: 'whatsapp' });
-
-      // 3. Create new coupon record
-      const pattern = selectedComboPartner.sequence_pattern || '22';
+      // 2. Create coupon record
+      const pattern = currentPattern;
       const hasSeq = phoneHasSequence(cleanWsp, pattern);
-      const token = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 8);
-      const resgateToken = 'r_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 8);
+      const generatedToken = Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 8);
+      const generatedResgateToken = 'r_' + Math.random().toString(36).substring(2, 10) + Math.random().toString(36).substring(2, 8);
       const couponCode = `SEQ${pattern}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-      const newCouponPayload = {
-        token,
-        resgate_token: resgateToken,
+      const newCouponPayload: SequenceComboCoupon = {
+        id: 'c_' + Math.random().toString(36).substring(2, 9),
+        token: generatedToken,
+        resgate_token: generatedResgateToken,
         initiator_whatsapp: cleanWsp,
         initiator_name: initiatorName.trim(),
         initiator_has_sequence: hasSeq,
         partner_id: selectedComboPartner.partner_id,
         partner_name: selectedComboPartner.partner_name,
         benefit_description: selectedComboPartner.benefit_description,
+        sequence_pattern: pattern,
         coupon_code: couponCode,
         status: 'awaiting_friend',
         created_at: new Date().toISOString()
@@ -295,7 +359,6 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
 
       if (createError) {
         console.error('Error creating combo coupon:', createError);
-        // Fallback local state if DB insert fails
         setCurrentCoupon(newCouponPayload as SequenceComboCoupon);
       } else {
         setCurrentCoupon(createdData as SequenceComboCoupon);
@@ -310,10 +373,11 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
     }
   };
 
-  // Handle Initiator saving friend details & opening WhatsApp
+  // Handle Initiator Share to Friend
   const handleInitiatorShareToFriend = async () => {
     if (!currentCoupon) return;
     const cleanFriend = cleanPhone(friendPhone);
+
     if (cleanFriend.length !== 11) {
       alert('Informe o WhatsApp do seu amigo com DDD (11 dígitos).');
       return;
@@ -366,16 +430,27 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
     }
   };
 
+  // Friend Sequence check (when in Stage 2)
+  const friendPhoneClean = cleanPhone(currentCoupon?.friend_whatsapp || '');
+  const patternForCoupon = currentCoupon?.sequence_pattern || '22';
+  const friendHasSeq = phoneHasSequence(friendPhoneClean, patternForCoupon);
+  const friendUnlockAllowed = Boolean(currentCoupon?.initiator_has_sequence || friendHasSeq);
+
   // Handle Friend Submitting Unlock (Stage 2)
   const handleFriendUnlockConfirm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentCoupon) return;
 
-    if (!friendFullName.trim()) {
+    if (!friendUnlockAllowed) {
+      alert('Não é possível desbloquear pois nem você nem seu amigo possuem a sequência da sorte no número de celular.');
+      return;
+    }
+
+    if (!friendIsAlreadyMember && !friendFullName.trim()) {
       alert('Por favor, informe seu nome completo.');
       return;
     }
-    if (!friendTermsAccepted) {
+    if (!friendIsAlreadyMember && !friendTermsAccepted) {
       alert('Você precisa aceitar os Termos de Uso e Política de Privacidade.');
       return;
     }
@@ -385,11 +460,13 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
       const cleanFriendWsp = cleanPhone(currentCoupon.friend_whatsapp || '');
 
       // 1. Register or update friend in main customers table
-      await supabase.from('customers').upsert({
-        whatsapp: cleanFriendWsp,
-        name: friendFullName.trim(),
-        created_at: new Date().toISOString()
-      }, { onConflict: 'whatsapp' });
+      if (!friendIsAlreadyMember) {
+        await supabase.from('customers').upsert({
+          whatsapp: cleanFriendWsp,
+          name: friendFullName.trim(),
+          created_at: new Date().toISOString()
+        }, { onConflict: 'whatsapp' });
+      }
 
       // 2. Update sequence_combo_leads setting is_registered_member = true
       await supabase
@@ -425,7 +502,7 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
     }
   };
 
-  // Handle Friend Sharing BACK to Initiator after Stage 2 unlock
+  // Handle Friend Sharing BACK to Initiator
   const handleFriendShareBackToInitiator = () => {
     if (!currentCoupon) return;
     if (!stage2WarningAccepted) {
@@ -446,7 +523,7 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans pb-16 pt-24 md:pt-28">
-      {/* Decorative ambient lighting */}
+      {/* Decorative background glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-emerald-500/10 via-emerald-600/5 to-transparent pointer-events-none rounded-b-full blur-3xl" />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 relative z-10">
@@ -463,31 +540,172 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
             </span>
           </h1>
           <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">
-            A sequência do seu número de celular libera vantagens incríveis! Se o seu celular possui a combinação da sorte (como o número <strong className="text-emerald-400 font-black">22</strong>), você concorre a <strong className="text-emerald-400">22% de desconto</strong>, <strong className="text-emerald-400">R$ 22 OFF</strong> ou <strong className="text-emerald-400">combos exclusivos de 22 produtos</strong> com nossos parceiros!
+            A sequência do seu número de celular libera vantagens incríveis! Se o seu celular possui a combinação da sorte (como a sequência <strong className="text-emerald-400 font-black">22</strong>), você e seu amigo garantem benefícios exclusivos com nossos parceiros!
           </p>
         </div>
 
+        {/* CHECK IF NO CAMPAIGN IS ACTIVE */}
+        {!loadingComboPartners && comboPartners.length === 0 && isInitiatorMode && (
+          <div className="bg-slate-900/90 border border-slate-800 rounded-3xl p-8 text-center space-y-4 shadow-2xl">
+            <AlertCircle className="w-12 h-12 text-amber-400 mx-auto" />
+            <h2 className="text-xl font-bold text-white">Nenhuma Campanha Ativa no Momento</h2>
+            <p className="text-slate-400 text-sm max-w-md mx-auto">
+              Nenhuma campanha de Cupom Sequência está ativa no momento. Fique atento às nossas redes sociais para o lançamento das próximas rodadas do Jogo dos Números da Sorte!
+            </p>
+            <Link
+              to="/"
+              className="inline-block bg-emerald-600 hover:bg-emerald-500 text-white font-bold px-6 py-3 rounded-xl text-xs uppercase tracking-wider"
+            >
+              Voltar para as Ofertas do Aparece Aí
+            </Link>
+          </div>
+        )}
+
         {/* MODE A: INITIATOR FLOW (/cupom-sequencia) */}
-        {isInitiatorMode && (
+        {isInitiatorMode && (comboPartners.length > 0 || loadingComboPartners) && (
           <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden">
             {initiatorStep === 'input' && (
               <form onSubmit={handleInitiatorSubmit} className="space-y-6">
                 <div className="bg-emerald-950/40 border border-emerald-800/50 rounded-2xl p-4 sm:p-5 flex items-start space-x-3 text-emerald-300 text-xs sm:text-sm">
                   <Gift className="w-6 h-6 text-emerald-400 flex-shrink-0 mt-0.5" />
                   <div>
-                    <strong className="block font-bold text-emerald-200 text-sm mb-1">Passo 1: Selecione o parceiro e informe seu celular</strong>
-                    Escolha a empresa parceira de sua preferência e verifique se o seu celular tem a combinação para iniciar o desbloqueio do cupom em 2 etapas!
+                    <strong className="block font-bold text-emerald-200 text-sm mb-1">Passo 1: Digite seu celular e selecione o parceiro</strong>
+                    Digite seu WhatsApp para validar se seu celular possui a sequência e se você já possui cadastro no sistema.
                   </div>
                 </div>
 
-                {/* Partner Selector */}
+                {/* 1. Initiator WhatsApp First */}
                 <div>
                   <label className="block text-sm font-bold text-slate-200 mb-2">
-                    1. Escolha o Parceiro Participante:
+                    1. Digite seu Celular / WhatsApp (com DDD):
                   </label>
-                  {loadingComboPartners ? (
-                    <div className="p-4 text-center text-slate-400 text-sm">Carregando parceiros da promoção...</div>
-                  ) : (
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="tel"
+                      value={formatPhoneMask(initiatorPhone)}
+                      onChange={(e) => setInitiatorPhone(e.target.value)}
+                      placeholder="(11) 99999-9999"
+                      required
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Status Indicator & Member Badge */}
+                {initiatorCheckingMember && (
+                  <div className="text-xs text-slate-400 flex items-center space-x-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Verificando seu cadastro e sequência do celular...</span>
+                  </div>
+                )}
+
+                {/* MEMBER BADGE OR NON-MEMBER INPUTS */}
+                {cleanPhone(initiatorPhone).length === 11 && !initiatorCheckingMember && (
+                  <div className="space-y-4">
+                    {/* Existing active coupon notice */}
+                    {existingCouponNotice === 'active' && (
+                      <div className="bg-amber-950/60 border border-amber-500/50 rounded-2xl p-4 text-amber-200 text-xs space-y-2">
+                        <p className="font-bold text-sm flex items-center space-x-2">
+                          <AlertCircle className="w-4 h-4 text-amber-400" />
+                          <span>Solicitação Ativa em Andamento!</span>
+                        </p>
+                        <p>
+                          Você já possui um cupom em andamento aguardando a 2ª etapa pelo seu amigo. Não é permitido criar um novo cupom enquanto houver um ativo.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setInitiatorStep('awaiting_friend')}
+                          className="px-4 py-2 bg-amber-600 text-white font-bold rounded-xl text-xs uppercase"
+                        >
+                          Ir para o Envio ao Amigo
+                        </button>
+                      </div>
+                    )}
+
+                    {existingCouponNotice === 'unlocked' && (
+                      <div className="bg-emerald-950/60 border border-emerald-500/50 rounded-2xl p-4 text-emerald-200 text-xs space-y-2">
+                        <p className="font-bold text-sm flex items-center space-x-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                          <span>Cupom Já Desbloqueado!</span>
+                        </p>
+                        <p>
+                          Você já possui um cupom de desconto desbloqueado nesta promoção.
+                        </p>
+                        {currentCoupon && (
+                          <Link
+                            to={`/cupom-sequencia/resgate/${currentCoupon.resgate_token}`}
+                            className="inline-block px-4 py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs uppercase"
+                          >
+                            Ver Meus Cupons Desbloqueados
+                          </Link>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Member Badge Signal */}
+                    {isInitiatorMember ? (
+                      <div className="bg-emerald-950/60 border border-emerald-500/50 rounded-2xl p-4 flex items-center space-x-3 text-emerald-300 text-xs sm:text-sm font-bold">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                        <div>
+                          <span className="block text-emerald-200 text-sm">Olá, {initiatorName}! 🟢</span>
+                          Você é um Membro Oficial do Aparece Aí por Aqui!
+                        </div>
+                      </div>
+                    ) : (
+                      /* Non-Member Full Name + Terms */
+                      <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 space-y-4">
+                        <div>
+                          <label className="block text-xs font-bold text-slate-300 mb-1">
+                            Seu Nome Completo (para cadastro):
+                          </label>
+                          <div className="relative">
+                            <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                              type="text"
+                              value={initiatorName}
+                              onChange={(e) => setInitiatorName(e.target.value)}
+                              placeholder="Digite seu nome completo"
+                              required={!isInitiatorMember}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+
+                        <label className="flex items-start space-x-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={initiatorTermsAccepted}
+                            onChange={(e) => setInitiatorTermsAccepted(e.target.checked)}
+                            required={!isInitiatorMember}
+                            className="mt-1 w-4 h-4 text-emerald-600 rounded border-slate-700 bg-slate-900 focus:ring-emerald-500"
+                          />
+                          <span className="text-xs text-slate-300 leading-relaxed">
+                            Li e concordo com os <Link to="/termos-de-uso" target="_blank" className="text-emerald-400 underline">Termos de Uso</Link> e <Link to="/politica-de-privacidade" target="_blank" className="text-emerald-400 underline">Política de Privacidade</Link> do Aparece Aí por Aqui.
+                          </span>
+                        </label>
+                      </div>
+                    )}
+
+                    {/* Sequence Message feedback */}
+                    {initiatorHasSeq ? (
+                      <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 text-emerald-300 text-xs sm:text-sm">
+                        ✨ <strong>Que sorte!</strong> O seu número de celular possui a sequência da sorte <strong className="text-emerald-200 font-mono font-bold">[{currentPattern}]</strong>! Ao convidar um amigo para a 2ª etapa, o seu amigo <strong>não precisará</strong> ter a sequência para liberar o cupom!
+                      </div>
+                    ) : (
+                      <div className="bg-amber-950/40 border border-amber-500/40 rounded-2xl p-4 text-amber-200 text-xs sm:text-sm">
+                        💡 <strong>Seu número não possui a sequência [{currentPattern}]</strong>, mas não se preocupe! Você ainda pode garantir o desconto convidando um amigo cujo celular tenha essa sequência da sorte!
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Partner Selector */}
+                {comboPartners.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-bold text-slate-200 mb-2">
+                      2. Escolha a Oferta / Parceiro:
+                    </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {comboPartners.map((cp) => (
                         <div
@@ -512,59 +730,20 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-
-                {/* Initiator Name */}
-                <div>
-                  <label className="block text-sm font-bold text-slate-200 mb-2">
-                    2. Seu Nome Completo:
-                  </label>
-                  <div className="relative">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="text"
-                      value={initiatorName}
-                      onChange={(e) => setInitiatorName(e.target.value)}
-                      placeholder="Digite seu nome completo"
-                      required
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    />
                   </div>
-                </div>
-
-                {/* Initiator WhatsApp */}
-                <div>
-                  <label className="block text-sm font-bold text-slate-200 mb-2">
-                    3. Seu Celular / WhatsApp (com DDD):
-                  </label>
-                  <div className="relative">
-                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="tel"
-                      value={initiatorPhone}
-                      onChange={(e) => setInitiatorPhone(e.target.value)}
-                      placeholder="(11) 99999-9999"
-                      required
-                      className="w-full bg-slate-950 border border-slate-800 rounded-xl py-3.5 pl-12 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all"
-                    />
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
-                    O sistema verificará a combinação no seu número e iniciará a 1ª etapa do cupom.
-                  </p>
-                </div>
+                )}
 
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={submitting}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2 text-base uppercase tracking-wider disabled:opacity-50"
+                  disabled={submitting || cleanPhone(initiatorPhone).length !== 11 || Boolean(existingCouponNotice)}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2 text-base uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <RefreshCw className="w-5 h-5 animate-spin" />
                   ) : (
                     <>
-                      <span>Verificar Celular e Iniciar Desbloqueio</span>
+                      <span>Confirmar e Iniciar Desbloqueio</span>
                       <ArrowRight className="w-5 h-5" />
                     </>
                   )}
@@ -599,10 +778,10 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
                       <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                       <input
                         type="tel"
-                        value={friendPhone}
+                        value={formatPhoneMask(friendPhone)}
                         onChange={(e) => setFriendPhone(e.target.value)}
                         placeholder="(11) 98888-8888"
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500"
+                        className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-emerald-500 font-mono"
                       />
                     </div>
                   </div>
@@ -620,11 +799,11 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
                       className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 px-4 text-white text-sm focus:outline-none focus:border-emerald-500"
                     />
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Este primeiro nome será usado apenas na mensagem de saudação do WhatsApp.
+                      Este primeiro nome será usado apenas na mensagem de saudação do WhatsApp e na tabela de leads.
                     </p>
                   </div>
 
-                  {/* Member Badge indicator */}
+                  {/* Member Badge indicator for friend */}
                   {friendMemberChecking && (
                     <div className="text-xs text-slate-400 flex items-center space-x-2">
                       <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -722,6 +901,26 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
                   <p className="text-sm text-emerald-300 font-semibold">{currentCoupon.benefit_description}</p>
                 </div>
 
+                {/* Sequence check validation message for Friend */}
+                {!friendUnlockAllowed ? (
+                  <div className="bg-rose-950/60 border border-rose-500/50 rounded-2xl p-4 text-rose-200 text-xs sm:text-sm space-y-2">
+                    <div className="flex items-center space-x-2 font-bold text-rose-400 text-base">
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <span>Desbloqueio Não Permitido</span>
+                    </div>
+                    <p>
+                      Infelizmente, nem o celular do seu amigo nem o seu número ({formatPhoneMask(currentCoupon.friend_whatsapp || '')}) possuem a sequência da sorte <strong className="font-mono text-white">[{patternForCoupon}]</strong> necessária para liberar esta promoção.
+                    </p>
+                    <p className="text-xs text-rose-300/80">
+                      Peça para outro amigo com a sequência da sorte enviar um novo convite!
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-emerald-950/40 border border-emerald-500/40 rounded-2xl p-4 text-emerald-300 text-xs sm:text-sm">
+                    ✨ <strong>Sequência Válida!</strong> O cupom está pronto para ser desbloqueado para você e seu amigo!
+                  </div>
+                )}
+
                 <div className="bg-slate-950 border border-slate-800 rounded-2xl p-5 space-y-4">
                   <h4 className="text-sm font-bold text-white flex items-center space-x-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -737,7 +936,7 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
                       <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
                       <input
                         type="text"
-                        value={currentCoupon.friend_whatsapp || ''}
+                        value={formatPhoneMask(currentCoupon.friend_whatsapp || '')}
                         disabled
                         className="w-full bg-slate-900/60 border border-slate-800 rounded-xl py-3 pl-10 pr-4 text-slate-400 text-sm font-mono cursor-not-allowed"
                       />
@@ -810,8 +1009,8 @@ export const SequenceComboPage: React.FC<SequenceComboPageProps> = ({ partners, 
                 {/* Unlock Confirm Button */}
                 <button
                   type="submit"
-                  disabled={submitting || (!friendIsAlreadyMember && (!friendFullName.trim() || !friendTermsAccepted))}
-                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 text-white font-black py-4 rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2 text-base uppercase tracking-wider"
+                  disabled={submitting || !friendUnlockAllowed || (!friendIsAlreadyMember && (!friendFullName.trim() || !friendTermsAccepted))}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-black py-4 rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center space-x-2 text-base uppercase tracking-wider"
                 >
                   {submitting ? (
                     <RefreshCw className="w-5 h-5 animate-spin" />
