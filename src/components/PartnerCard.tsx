@@ -414,7 +414,8 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
     mediaItems.push({
       type: 'video',
       id: videoId,
-      thumbnail: `https://img.youtube.com/vi/${videoId}/0.jpg`,
+      thumbnail: `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`,
+      fallbackThumbnail: `https://img.youtube.com/vi/${videoId}/sddefault.jpg`,
       embedUrl: `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1&enablejsapi=1&mute=1`
     });
   }
@@ -464,6 +465,15 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
                       alt={partner.name}
                       referrerPolicy="no-referrer"
                       className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        const fallback = mediaItems[currentMediaIndex].fallbackThumbnail;
+                        if (fallback && target.src !== fallback) {
+                          target.src = fallback;
+                        } else if (!target.src.includes('hqdefault.jpg')) {
+                          target.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        }
+                      }}
                     />
                     <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover/video:bg-black/40 transition-colors">
                       <div className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-2xl transform group-hover/video:scale-110 transition-transform">
