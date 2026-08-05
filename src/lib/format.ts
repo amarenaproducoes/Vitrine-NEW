@@ -34,3 +34,16 @@ export const getCleanWhatsApp = (value: string | null | undefined) => {
   
   return v.slice(0, 11);
 };
+
+export const slugify = (text: string | null | undefined): string => {
+  if (!text) return '';
+  return text
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\-]+/g, '')
+    .replace(/\-\-+/g, '-');
+};

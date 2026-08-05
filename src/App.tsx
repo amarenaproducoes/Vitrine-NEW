@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Link, useNavigate, useParams } from 'react-router-dom';
 import { GoogleReCaptchaProvider } from 'react-google-recaptcha-v3';
 import { Lock } from 'lucide-react';
 import DOMPurify from 'dompurify';
@@ -47,7 +47,7 @@ interface FeaturedCoupon {
 import { supabase, AUTHORIZED_EMAILS } from './lib/supabase';
 import { getUserIP } from './lib/ip';
 import { logger } from './lib/logger';
-import { formatWhatsApp } from './lib/format';
+import { formatWhatsApp, slugify } from './lib/format';
 import { AgencyAssistant } from './services/geminiService';
 import Editor, { 
     Toolbar, 
@@ -397,6 +397,49 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
     const [showWelcomeModal, setShowWelcomeModal] = useState(false);
     const [customWelcomeData, setCustomWelcomeData] = useState<{ title: string; message: string; logoUrl: string | null } | null>(null);
     const location = useLocation();
+    const params = useParams<{ slug?: string }>();
+
+    useEffect(() => {
+        if (!partners || partners.length === 0) return;
+
+        const windowParams = new URLSearchParams(window.location.search);
+        const locationParams = new URLSearchParams(location.search);
+        const rawParam = params.slug || windowParams.get('parceiro') || windowParams.get('p') || locationParams.get('parceiro') || locationParams.get('p');
+
+        if (!rawParam) return;
+
+        const targetSlug = slugify(rawParam);
+        const matchedPartner = partners.find(p => {
+            if (!p.isAuthorized) return false;
+            const pSlug = slugify(p.name);
+            return (
+                p.id === rawParam ||
+                p.displayId?.toString() === rawParam ||
+                pSlug === targetSlug ||
+                (pSlug.length >= 3 && targetSlug.length >= 3 && (pSlug.startsWith(targetSlug) || targetSlug.startsWith(pSlug)))
+            );
+        });
+
+        if (matchedPartner) {
+            setActiveCategory("Todos");
+            setSearchTerm("");
+            setExpandedPartnerId(matchedPartner.id);
+            document.title = `${matchedPartner.name} - Vitrine Oficial`;
+
+            if (matchedPartner.page_number) {
+                setPartnersPage(matchedPartner.page_number);
+            }
+
+            setTimeout(() => {
+                const element = document.getElementById(`partner-card-${matchedPartner.id}`);
+                if (element) {
+                    const offset = 160;
+                    const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+                    window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
+                }
+            }, 300);
+        }
+    }, [partners, params.slug, location.search]);
 
     useEffect(() => {
         // Check both window.location.search (before hash) and location.search (after hash)
@@ -752,6 +795,11 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                         const isExpanding = expandedPartnerId !== partner.id;
                                         setExpandedPartnerId(isExpanding ? partner.id : null);
                                         if (isExpanding) {
+                                            const pSlug = slugify(partner.name);
+                                            if (pSlug) {
+                                                window.history.replaceState(null, '', `/parceiro/${pSlug}`);
+                                                document.title = `${partner.name} - Vitrine Oficial`;
+                                            }
                                             setTimeout(() => {
                                                 const element = document.getElementById(`partner-card-${partner.id}`);
                                                 if (element) {
@@ -760,6 +808,9 @@ const LandingPage = ({ partners, categories, commercialBanners, featuredPartner,
                                                     window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
                                                 }
                                             }, 100);
+                                        } else {
+                                            window.history.replaceState(null, '', '/');
+                                            document.title = 'Vitrine Oficial - O seu guia oficial de benefícios e descontos locais';
                                         }
                                     }}
                                     className={`flex items-center p-3 bg-white border rounded-2xl transition-all group text-left shadow-sm hover:shadow-md ${expandedPartnerId === partner.id ? 'border-[#279267] bg-green-50 ring-2 ring-[#279267]/10' : 'border-slate-100'}`}
@@ -6463,6 +6514,8 @@ const App = () => {
                     <CommercialBanner position="top" />
                     <Routes>
                         <Route path="/" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} featuredCouponsTitle={featuredCouponsTitle} />} />
+                        <Route path="/parceiro/:slug" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} featuredCouponsTitle={featuredCouponsTitle} />} />
+                        <Route path="/p/:slug" element={<LandingPage partners={partners} categories={categories} commercialBanners={commercialBanners} featuredPartner={featuredPartner} featuredCoupons={featuredCoupons} headerLogo={headerLogo} partnerAccessCounts={partnerAccessCounts} onBannerClick={logBannerClick} featuredCouponsTitle={featuredCouponsTitle} />} />
                         <Route path="/sobre-nos" element={<AboutUsPage />} />
                         <Route path="/bolao" element={<WorldCupBolaoPage partners={partners} categories={categories} headerLogo={headerLogo} />} />
                         <Route path="/lgn-p5r2t8w1z4q9y-access" element={<LoginPage />} />

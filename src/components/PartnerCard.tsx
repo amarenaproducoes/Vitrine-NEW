@@ -10,7 +10,7 @@ import { supabase } from '../lib/supabase';
 import { getUserIP } from '../lib/ip';
 import { logger } from '../lib/logger';
 import OneSignal from 'react-onesignal';
-import { formatWhatsApp, getCleanWhatsApp } from '../lib/format';
+import { formatWhatsApp, getCleanWhatsApp, slugify } from '../lib/format';
 
 interface PartnerCardProps {
   partner: Partner;
@@ -351,8 +351,12 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
   };
 
   const handleShare = async () => {
-    const shareUrl = `${window.location.origin}?ref=${partner.displayId}`;
-    const shareText = `Eu já garanti o meu cupom de benefícios do ${partner.name}. Não fique de fora e venha garantir o seu também!`;
+    const partnerSlug = slugify(partner.name);
+    const shareUrl = partnerSlug
+      ? `${window.location.origin}/parceiro/${partnerSlug}`
+      : `${window.location.origin}?ref=${partner.displayId}`;
+    const benefit = partner.couponDescription || partner.coupon || 'benefícios e descontos exclusivos';
+    const shareText = `Eu já aproveitei o benefício de "${benefit}" do parceiro ${partner.name}! Venha aproveitar você também:`;
     
     try {
       const ip = await getUserIP();
@@ -370,14 +374,13 @@ const PartnerCard: React.FC<PartnerCardProps> = ({ partner, welcomeData, isFlat 
       logger.error('Error logging share:', error);
     }
 
-    const fullText = `${shareText} ${shareUrl}`;
+    const fullText = `${shareText}\n${shareUrl}`;
 
     if (navigator.share) {
       try {
         await navigator.share({
           title: partner.name,
-          text: shareText,
-          url: shareUrl,
+          text: fullText,
         });
       } catch (err) {
         logger.error('Error sharing:', err);
